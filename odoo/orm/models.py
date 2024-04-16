@@ -3079,7 +3079,8 @@ class BaseModel(metaclass=MetaModel):
         if not env.su and fetched != self:
             forbidden = (self - fetched).exists()
             if forbidden:
-                raise env['ir.rule']._make_access_error('read', forbidden)
+                domain = self._access_domain('read')
+                raise forbidden._make_access_error_message('read', domain)  # noqa: EM101
 
     def _determine_fields_to_fetch(
             self,
@@ -3386,10 +3387,7 @@ class BaseModel(metaclass=MetaModel):
 
         origin = self._origin
         if not origin:  # only new ids or empty
-            return (
-                self.env['ir.model.access'].check(self._name, operation, raise_exception=False)
-                or not self._access_domain(operation).is_false()  # check for overrides
-            )
+            return not self._access_domain(operation).is_false()
 
         if operation != 'read':
             domain = self._access_domain(operation)
@@ -3421,10 +3419,7 @@ class BaseModel(metaclass=MetaModel):
 
         origin = self._origin
         if not origin:  # only new ids
-            if (
-                self.env['ir.model.access'].check(self._name, operation, raise_exception=False)
-                or not self._access_domain(operation).is_false()  # check for overrides
-            ):
+            if not self._access_domain(operation).is_false():
                 return self
             return self.browse()
         if origin is not self:  # we have some new ids
@@ -3499,7 +3494,7 @@ class BaseModel(metaclass=MetaModel):
         restrict the access to ``self``.
         """
         domain = self._access_domain(operation)
-        if domain.is_false() and not self.env['ir.model.access'].check(self._name, operation, raise_exception=False):
+        if domain.is_false():
             return self, functools.partial(self._make_access_error_message, operation, domain)
 
         origin = self._origin
@@ -3519,21 +3514,16 @@ class BaseModel(metaclass=MetaModel):
         If the user has no model access, return the false domain.
         Otherwise, the default implementation returns the access rule domain.
         """
-        if not self.env['ir.model.access'].check(self._name, operation, raise_exception=False):
-            return Domain.FALSE
-
-        return self.env['ir.rule']._compute_domain(self._name, operation)
+        return self.env['ir.access']._get_domain_for(self._name, operation)
 
     def _make_access_error_message(self, operation: str, domain: Domain) -> AccessError:
         """Create the access error for the given operation.
         :param operation: operation performed
         :param domain: security domain from :meth:`_access_domain`
         """
-        Access = self.env['ir.model.access']
-        if domain.is_false() and not Access.check(self._name, operation, raise_exception=False):
-            return Access._make_access_error(self._name, operation)
-
-        return self.env['ir.rule']._make_access_error(operation, self)
+        if domain.is_false():
+            return self.env['ir.access']._make_model_access_error(self._name, operation)
+        return self.env['ir.access']._make_record_access_error(self, operation)
 
     def unlink(self) -> typing.Literal[True]:
         """ Delete the records in ``self``.
@@ -5209,7 +5199,7 @@ class BaseModel(metaclass=MetaModel):
         the allowed_company_ids in the context. This method can be
         overridden, for example on the hr.leave model, where the
         most suited company is the company of the leave type, as
-        specified by the ir.rule.
+        specified by the access rules.
         """
         if 'company_id' in self:
             return self.company_id
