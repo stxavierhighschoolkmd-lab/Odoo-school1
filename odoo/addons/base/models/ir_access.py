@@ -186,6 +186,40 @@ class IrAccess(models.Model):
 
         return Domain.OR(permissions) & Domain.AND(restrictions)
 
+    @ormcache('self.env.uid', 'model_name', 'operation', 'include_inherits', 'tuple(self._get_access_context())')
+    def _get_restriction_domain_for(self, model_name: str, operation: str, *, include_inherits=True) -> Domain:
+        """ Return the domain that combines the restrictions to perform
+        ``operation`` on the records of ``model_name``.
+        """
+        assert operation in OPERATIONS, "Invalid access operation"
+
+        domain = Domain([
+            ('model_id', '=', self.env['ir.model']._get_id(model_name)),
+            ('group_id', '=', False),
+            (f'for_{operation}', '=', True),
+            ('active', '=', True),
+        ])
+        accesses = self.sudo().search_fetch(domain, ['group_id', 'domain'], order='id')
+
+        # collect restrictions
+        eval_context = self._eval_context()
+        restrictions = [
+            Domain(safe_eval(access.domain, eval_context)) if access.domain else Domain.TRUE
+            for access in accesses
+        ]
+
+        # add access for parent models as restrictions
+        if include_inherits:
+            for parent_model_name, parent_field_name in self.env[model_name]._inherits.items():
+                domain = self._get_restriction_domain_for(parent_model_name, operation)
+                if domain.is_false():
+                    return Domain.FALSE
+                if domain.is_true():
+                    continue
+                restrictions.append(Domain(parent_field_name, 'any', domain))
+
+        return Domain.AND(restrictions)
+
     def _get_records_for(self, model_name: str, operation: str):
         """ Returns all the accesses matching the given model for the operation
         for the current user.
@@ -217,6 +251,41 @@ class IrAccess(models.Model):
             'company_ids': self.env.companies.ids,
             'company_id': self.env.company.id,
         }
+
+    @ormcache('model_name', 'operation')
+    def _get_access_groups(self, model_name, operation='read'):
+        """ Return the group expression object that represents the users who
+        can perform ``operation`` on model ``model_name``.
+        """
+        assert operation in OPERATIONS, "Invalid access operation"
+
+        model_id = self.env['ir.model']._get_id(model_name)
+        domain = [
+            ('model_id', '=', model_id),
+            ('group_id', '!=', False),
+            (f'for_{operation}', '=', True),
+            ('domain', '!=', "[(0, '=', 1)]"),
+            ('active', '=', True),
+        ]
+        accesses = self.sudo().search_fetch(domain, ['group_id'])
+
+        group_definitions = self.env['res.groups']._get_group_definitions()
+        return group_definitions.from_ids(accesses.group_id.ids)
+
+    def _get_allowed_models(self, operation='read') -> set[str]:
+        """ Return all the models for which the given operation is possible. """
+        assert operation in OPERATIONS, "Invalid access operation"
+
+        group_ids = self.env.user._get_group_ids()
+        domain = Domain('access_ids', 'any', [
+            ('group_id', 'in', group_ids),
+            (f'for_{operation}', '=', True),
+            ('domain', '!=', "[(0, '=', 1)]"),
+            ('active', '=', True),
+        ])
+        models = self.sudo().env['ir.model'].search_fetch(domain, ['model'], order='id')
+
+        return set(models.mapped('model'))
 
     def _make_access_error(self, records, operation: str) -> AccessError:
         """ Return the exception to be raised in case of access error.
