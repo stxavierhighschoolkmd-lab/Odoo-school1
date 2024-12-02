@@ -38,7 +38,7 @@
     </record>
 
     <!-- Interviewer Access Rules -->
-    <record id="hr.access_hr_job_user" model="ir.model.access">
+    <record id="hr.access_hr_job_user" model="ir.access">
         <field name="active" eval="False"/>
     </record>
 
