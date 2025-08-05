@@ -10,7 +10,7 @@ from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
 from odoo import api
 from odoo.modules.registry import Registry
 from odoo.sql_db import db_connect
-from odoo.tests import tagged, common
+from odoo.tests import tagged, common, flushing_cursor
 from odoo.tests.common import BaseCase, HttpCase, TransactionCase
 from odoo.tests.test_cursor import TestCursor
 from odoo.tools.misc import config
@@ -23,7 +23,7 @@ class TestOrmCache(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        if cls.registry.registry_invalidated:
+        if cls.env.transaction._registry_invalidated:
             raise AssertionError('Registry should not be invalidated when starting this test')
         if cls.registry.cache_invalidated:
             raise AssertionError('Cache should not be invalidated when starting this test')
@@ -78,11 +78,11 @@ class TestOrmCache(TransactionCase):
         self.env.registry.clear_cache()
         self.env.registry.clear_cache('templates')
         self.assertEqual(self.env.registry.cache_invalidated, {'default', 'templates'})
-        self.env.registry.reset_changes()
+        self.env.transaction.reset()
         self.assertEqual(self.env.registry.cache_invalidated, set())
         self.env.registry.clear_cache('assets')
         self.assertEqual(self.env.registry.cache_invalidated, {'assets'})
-        self.env.registry.reset_changes()
+        self.env.transaction.reset()
         self.assertEqual(self.env.registry.cache_invalidated, set())
 
     def test_signaling_gc(self):
@@ -129,58 +129,69 @@ class TestOrmCacheSignaling(BaseCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.registry = Registry(common.get_db_name())
         cls._retry = False
-        if cls.registry.registry_invalidated:
-            raise AssertionError('Registry should not be invalidated when starting this test')
+        cls.registry = Registry(common.get_db_name())
+
+    def setUp(self):
+        super().setUp()
+        self.cr = self.cursor()
+        self.addCleanup(self.cr.close)
+        self.transaction = api.Environment(self.cr, api.SUPERUSER_ID, {}).transaction
+
+        assert not self._registry_patched, "registry must not be patched"
+        self.registry.cache_invalidated.clear()
+        # flush once to set the nextval from the sequence
+        self.registry.clear_cache('default')
+        self.registry.clear_cache('assets')
+        with flushing_cursor(self.cr):
+            pass
+        self.old_sequences = dict(self.registry.cache_sequences)
 
     def test_signaling_01_single(self):
-        self.assertFalse(self._registry_patched)
-        self.registry.cache_invalidated.clear()
+        transaction = self.transaction
         registry = self.registry
-        old_sequences = dict(registry.cache_sequences)
+
         with self.assertLogs('odoo.registry') as logs:
             registry.cache_invalidated.add('assets')
             self.assertEqual(registry.cache_invalidated, {'assets'})
-            registry.signal_changes()
-            self.assertFalse(registry.cache_invalidated)
+            with flushing_cursor(self.cr):
+                self.assertFalse(registry.cache_invalidated)
 
         self.assertEqual(
             logs.output,
             ["INFO:odoo.registry:Caches invalidated, signaling through the database: ['assets']"],
         )
 
-        for key, value in old_sequences.items():
+        for key, value in self.old_sequences.items():
             if key == 'assets':
                 self.assertEqual(value + 1, registry.cache_sequences[key], "Assets cache sequence should have changed")
             else:
                 self.assertEqual(value, registry.cache_sequences[key], "other registry sequence shouldn't have changed")
 
         with self.assertNoLogs(None, None):  # the registry sequence should be up to date on the same worker
-            registry.check_signaling()
+            transaction.reset()
 
         # simulate other worker state
 
-        registry.cache_sequences.update(old_sequences)
+        registry.cache_sequences.update(self.old_sequences)
 
         with self.assertLogs() as logs:
-            registry.check_signaling()
+            transaction.reset()
         self.assertEqual(
             logs.output,
             ["INFO:odoo.registry:Invalidating caches after database signaling: ['assets', 'templates.cached_values']"],
         )
 
     def test_signaling_01_multiple(self):
-        self.assertFalse(self._registry_patched)
-        self.registry.cache_invalidated.clear()
+        transaction = self.transaction
         registry = self.registry
-        old_sequences = dict(registry.cache_sequences)
+
         with self.assertLogs('odoo.registry') as logs:
             registry.cache_invalidated.add('assets')
             registry.cache_invalidated.add('default')
             self.assertEqual(registry.cache_invalidated, {'assets', 'default'})
-            registry.signal_changes()
-            self.assertFalse(registry.cache_invalidated)
+            with flushing_cursor(self.cr):
+                self.assertFalse(registry.cache_invalidated)
 
         self.assertEqual(
             logs.output,
@@ -189,21 +200,21 @@ class TestOrmCacheSignaling(BaseCase):
             ],
         )
 
-        for key, value in old_sequences.items():
+        for key, value in self.old_sequences.items():
             if key in ('assets', 'default'):
                 self.assertEqual(value + 1, registry.cache_sequences[key], "Assets and default cache sequence should have changed")
             else:
                 self.assertEqual(value, registry.cache_sequences[key], "other registry sequence shouldn't have changed")
 
         with self.assertNoLogs(None, None):  # the registry sequence should be up to date on the same worker
-            registry.check_signaling()
+            transaction.reset()
 
         # simulate other worker state
 
-        registry.cache_sequences.update(old_sequences)
+        registry.cache_sequences.update(self.old_sequences)
 
         with self.assertLogs() as logs:
-            registry.check_signaling()
+            transaction.reset()
         self.assertEqual(
             logs.output,
             ["INFO:odoo.registry:Invalidating caches after database signaling: ['assets', 'default', 'templates.cached_values']"],
