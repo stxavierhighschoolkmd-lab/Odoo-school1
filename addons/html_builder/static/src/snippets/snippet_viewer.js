@@ -1,5 +1,6 @@
 import { useRef } from "@web/owl2/utils";
 import { Component, markup } from "@odoo/owl";
+import { handleMatrixKeyNavigation } from "@html_builder/utils/backend_utils";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
 import { localization } from "@web/core/l10n/localization";
 import { _t } from "@web/core/l10n/translation";
@@ -81,6 +82,10 @@ export class SnippetViewer extends Component {
         if (hotkey === "enter" || hotkey === "space") {
             this.onClick(snippet);
         }
+        handleMatrixKeyNavigation(ev, {
+            containerEl: ev.currentTarget.closest(".o_snippets_preview_row"),
+            focusedItemSelector: ".o_snippet_preview_wrap",
+        });
     }
 
     getContent(elem) {
