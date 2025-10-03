@@ -314,7 +314,7 @@ export class MovePlugin extends Plugin {
         const visibleSiblingEls = siblingEls.filter(
             (el) =>
                 !el.classList.contains("o_we_no_overlay") &&
-                window.getComputedStyle(el).display !== "none" &&
+                (this.checkPredicates("is_element_shown_predicates", el) ?? true) &&
                 !el.closest(systemNodeSelectors)
         );
         const targetMobileOrder = target.style.order;
