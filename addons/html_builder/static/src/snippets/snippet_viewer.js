@@ -1,10 +1,19 @@
-import { Component, markup, useRef } from "@odoo/owl";
+import { Component, markup, useRef, xml } from "@odoo/owl";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
 import { localization } from "@web/core/l10n/localization";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
 import { InputConfirmationDialog } from "./input_confirmation_dialog";
 import { fuzzyLookup } from "@web/core/utils/search";
+import { Img } from "@html_builder/core/img";
+
+class DeviceInvisibleIndicator extends Component {
+    static template = xml`
+        <Img src="this.props.src" style="'height: 1em'" attrs="{ fill: 'var(--body-color)' }"/>
+    `;
+    static components = { Img };
+    static props = { src: String };
+}
 
 export class SnippetViewer extends Component {
     static template = "html_builder.SnippetViewer";
@@ -21,6 +30,38 @@ export class SnippetViewer extends Component {
         this.dialog = useService("dialog");
         this.content = useRef("content");
         this.backendDirection = localization.direction;
+    }
+
+    /**
+     * @param {HTMLElement} snippetContent
+     * @returns {{keyClass: string, title: string, Component: Component?, props: Object?, content: import("@web/core/utils/html").Markup?}[]}
+     */
+    getPrefixIcons(snippetContent) {
+        const icons = [];
+        if (snippetContent.matches(".o_snippet_desktop_invisible")) {
+            icons.push({
+                keyClass: "o_visibility_indicator_desktop_invisible",
+                title: "Invisible on desktop",
+                Component: DeviceInvisibleIndicator,
+                props: { src: "/html_builder/static/img/options/desktop_invisible.svg" },
+            });
+        }
+        if (snippetContent.matches(".o_snippet_mobile_invisible")) {
+            icons.push({
+                keyClass: "o_visibility_indicator_mobile_invisible",
+                title: "Invisible on mobile",
+                Component: DeviceInvisibleIndicator,
+                props: { src: "/html_builder/static/img/options/mobile_invisible.svg" },
+            });
+        }
+        if (snippetContent.matches(".o_conditional_hidden")) {
+            icons.push({
+                keyClass: "o_visibility_indicator_conditional",
+                title: "Conditionally visible",
+                content: markup`<span class="fa fa-eye-slash"/>`,
+            });
+        }
+        return icons;
     }
 
     getRenameBtnLabel(snippetName) {
