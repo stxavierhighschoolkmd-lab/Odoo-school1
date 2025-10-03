@@ -527,7 +527,6 @@ export class BlockTab extends Component {
                 delete this.dragState.replacedSnippetEl;
             }
         }
-        this.env.editor.config.updateInvisibleElementsPanel();
         this.shared.disableSnippets.disableUndroppableSnippets();
         this.shared.history.addStep();
     }
