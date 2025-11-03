@@ -4,6 +4,7 @@ import {
     setupWebsiteBuilderWithSnippet,
 } from "@website/../tests/builder/website_helpers";
 import { contains } from "@web/../tests/web_test_helpers";
+import { queryFirst } from "@odoo/hoot-dom";
 
 defineWebsiteModels();
 
@@ -119,4 +120,16 @@ test("Test Carousel Option (s_image_gallery)", async () => {
     await contains(".o-hb-select-dropdown-item:contains('Never')").click();
     expect(carouselEl).toHaveAttribute("data-bs-ride", "false");
     expect(carouselEl).toHaveAttribute("data-bs-interval", "1000");
+});
+
+test("Test carousel item height matches viewport when full height is enabled", async () => {
+    await setupWebsiteBuilderWithSnippet("s_carousel", { loadIframeBundles: true });
+    await contains(":iframe .s_carousel").click();
+    await contains("button[data-action-param='o_full_screen_height']").click();
+
+    const carouselItemEl = queryFirst(":iframe .carousel-item");
+    const carouselItemHeight = carouselItemEl.getBoundingClientRect().height;
+    const iframeHeight = carouselItemEl.ownerDocument.defaultView.innerHeight;
+
+    expect(Math.round(carouselItemHeight)).toBe(iframeHeight);
 });
