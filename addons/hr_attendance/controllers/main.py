@@ -24,17 +24,36 @@ class HrAttendance(http.Controller):
     def _get_user_attendance_data(employee):
         response = {}
         if employee:
+            last_attendance = employee.last_attendance_id.read([
+                'check_in',
+                'check_out',
+                'worked_hours',
+                'break_duration',
+                'can_edit',
+                'in_location',
+                'out_location',
+            ])[0] if employee.last_attendance_id else False
             response = {
                 'id': employee.id,
                 'name': employee.name,
                 'hours_today': float_round(employee.hours_today, precision_digits=3),
                 'hours_previously_today': float_round(employee.hours_previously_today, precision_digits=2),
-                'today_attendance_ids': employee.today_attendance_ids.read(['check_in', 'check_out', 'worked_hours']),
+                'today_attendance_ids': employee.today_attendance_ids.read([
+                    'check_in',
+                    'check_out',
+                    'worked_hours',
+                    'break_duration',
+                    'can_edit',
+                    'in_location',
+                    'out_location',
+                ]),
+                'last_attendance': last_attendance,
                 'last_attendance_worked_hours': float_round(employee.last_attendance_worked_hours, precision_digits=2),
                 'last_check_in': employee.last_check_in,
                 'attendance_state': employee.attendance_state,
                 'display_systray': employee.company_id.attendance_from_systray,
                 'device_tracking_enabled': employee.company_id.attendance_device_tracking,
+                'break_management_enabled': employee.company_id.attendance_break_management,
             }
         return response
 
@@ -55,9 +74,51 @@ class HrAttendance(http.Controller):
                 'use_pin': employee.company_id.attendance_kiosk_use_pin,
                 'display_overtime': employee.company_id.hr_attendance_display_overtime,
                 'device_tracking_enabled': employee.company_id.attendance_device_tracking,
-                'is_employee_single_checkin': not employee.version_id.is_flexible and employee.company_id.single_check_in,
+                'is_employee_single_checkin': (
+                    not employee.version_id.is_flexible
+                    and employee.company_id.single_check_in
+                ),
+                'break_management_enabled': employee.company_id.attendance_break_management,
+                'break_duration': float_round(
+                    employee.last_attendance_id.break_duration or 0.0,
+                    precision_digits=2,
+                ),
+                'attendance_worked_hours': float_round(
+                    employee.last_attendance_id.worked_hours or 0.0,
+                    precision_digits=2,
+                ),
+                'has_timesheet': 'has_timesheet' in employee._fields and bool(employee.has_timesheet),
             }
         return response
+
+    @staticmethod
+    def _get_break_preview_payload(employee):
+        if not employee:
+            return {}
+        return {
+            'employee_name': employee.name,
+            'attendance_state': employee.attendance_state,
+            'break_management_enabled': employee.company_id.attendance_break_management,
+        }
+
+    @staticmethod
+    def _normalize_break_duration(break_duration):
+        if break_duration in (None, False, ''):
+            return None
+        try:
+            duration = float(break_duration)
+        except (TypeError, ValueError):
+            return None
+        if duration < 0.0:
+            return None
+        return duration
+
+    @staticmethod
+    def _set_last_attendance_break_duration(employee, break_duration):
+        if not employee or not employee.last_attendance_id or not employee.last_attendance_id.check_out:
+            return False
+        employee.last_attendance_id.write({'break_duration': break_duration})
+        return employee.last_attendance_id
 
     @staticmethod
     def _get_geoip_response(mode, latitude=False, longitude=False, device_tracking_enabled=True):
@@ -197,6 +258,7 @@ class HrAttendance(http.Controller):
                         'from_trial_mode': from_trial_mode,
                         'barcode_source': company.attendance_barcode_source,
                         'device_tracking_enabled': company.attendance_device_tracking,
+                        'break_management_enabled': company.attendance_break_management,
                         'lang': py_to_js_locale(company.partner_id.lang or company.env.lang),
                         'server_version_info': odoo.release.version_info,
                     },
@@ -212,24 +274,68 @@ class HrAttendance(http.Controller):
                 return self._get_employee_info_response(employee)
         return {}
 
+    @http.route('/hr_attendance/attendance_barcode_preview', type="jsonrpc", auth="public")
+    def attendance_barcode_preview(self, token, barcode):
+        company = self._get_company(token)
+        if not company:
+            return {}
+        employee = request.env['hr.employee'].sudo().search([
+            ('barcode', '=', barcode),
+            ('company_id', '=', company.id),
+        ], limit=1)
+        if not employee:
+            return {}
+        return self._get_break_preview_payload(employee)
+
     @http.route('/hr_attendance/attendance_barcode_scanned', type="jsonrpc", auth="public")
-    def scan_barcode(self, token, barcode):
+    def scan_barcode(self, token, barcode, break_duration=False):
         company = self._get_company(token)
         if company:
-            employee = request.env['hr.employee'].sudo().search([('barcode', '=', barcode), ('company_id', '=', company.id)], limit=1)
+            employee = request.env['hr.employee'].sudo().search(
+                [('barcode', '=', barcode), ('company_id', '=', company.id)],
+                limit=1,
+            )
             if employee:
-                employee._attendance_action_change(self._get_geoip_response('kiosk', device_tracking_enabled=company.attendance_device_tracking))
+                employee._attendance_action_change(
+                    self._get_geoip_response('kiosk', device_tracking_enabled=company.attendance_device_tracking),
+                    break_duration=self._normalize_break_duration(break_duration),
+                )
                 return self._get_employee_info_response(employee)
         return {}
 
     @http.route('/hr_attendance/manual_selection', type="jsonrpc", auth="public")
-    def manual_selection(self, token, employee_id, pin_code, latitude=False, longitude=False):
+    def manual_selection(
+        self, token, employee_id, pin_code, break_duration=False,
+        latitude=False, longitude=False,
+    ):
         company = self._get_company(token)
         if company:
             employee = request.env['hr.employee'].sudo().browse(employee_id)
-            if employee.company_id == company and ((not company.attendance_kiosk_use_pin) or (employee.pin == pin_code)):
-                employee.sudo()._attendance_action_change(self._get_geoip_response('kiosk', latitude=latitude, longitude=longitude, device_tracking_enabled=company.attendance_device_tracking))
+            if employee.company_id == company and (
+                (not company.attendance_kiosk_use_pin)
+                or (employee.pin == pin_code)
+            ):
+                employee.sudo()._attendance_action_change(
+                    self._get_geoip_response(
+                        'kiosk',
+                        latitude=latitude,
+                        longitude=longitude,
+                        device_tracking_enabled=company.attendance_device_tracking,
+                    ),
+                    break_duration=self._normalize_break_duration(break_duration),
+                )
                 return self._get_employee_info_response(employee)
+        return {}
+
+    @http.route('/hr_attendance/attendance_kiosk_break_duration', type="jsonrpc", auth="public")
+    def attendance_kiosk_break_duration(self, token, employee_id, break_duration):
+        company = self._get_company(token)
+        if company:
+            employee = request.env['hr.employee'].sudo().browse(employee_id)
+            duration = self._normalize_break_duration(break_duration)
+            if employee.company_id == company and duration is not None:
+                if self._set_last_attendance_break_duration(employee, duration):
+                    return self._get_employee_info_response(employee)
         return {}
 
     @http.route('/hr_attendance/employees_infos', type="jsonrpc", auth="public")
@@ -259,13 +365,18 @@ class HrAttendance(http.Controller):
         return []
 
     @http.route('/hr_attendance/systray_check_in_out', type="jsonrpc", auth="user")
-    def systray_attendance(self, latitude=False, longitude=False):
+    def systray_attendance(self, latitude=False, longitude=False, break_duration=False):
         employee = request.env.user.employee_id
         geo_ip_response = self._get_geoip_response(mode='systray',
                                                   latitude=latitude,
                                                   longitude=longitude,
-                                                  device_tracking_enabled=employee.company_id.attendance_device_tracking)
-        employee.with_context({'is_from_systray_check_in_out': True})._attendance_action_change(geo_ip_response)
+                                                  device_tracking_enabled=(
+                                                      employee.company_id.attendance_device_tracking
+                                                  ))
+        employee.with_context(is_from_systray_check_in_out=True)._attendance_action_change(
+            geo_ip_response,
+            break_duration=self._normalize_break_duration(break_duration),
+        )
         return self._get_employee_info_response(employee)
 
     @http.route('/hr_attendance/attendance_user_data', type="jsonrpc", auth="user", readonly=True)

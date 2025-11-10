@@ -38,6 +38,9 @@
                         <setting string="Device &amp; Location Tracking" company_dependent="1" help="Allow the collection of GPS location, IP address, and browser/device details used to track employee access and attendance">
                             <field name="attendance_device_tracking"/>
                         </setting>
+                        <setting string="Break Management on Checkout" company_dependent="1" help="If enabled, employees will be prompted to enter their total break duration when checking out.">
+                            <field name="attendance_break_management"/>
+                        </setting>
                     </block>
                     <block title="Kiosk Settings">
                         <setting invisible="attendance_kiosk_mode == 'manual'" company_dependent="1" help="Define the camera used for the barcode scan.">

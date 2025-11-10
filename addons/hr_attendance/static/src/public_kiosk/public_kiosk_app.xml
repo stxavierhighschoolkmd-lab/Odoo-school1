@@ -151,11 +151,17 @@
                 token="this.props.token"/>
         </t>
         <t t-if="this.state.active_display === 'greet'">
-            <KioskGreetings employeeData="this.employeeData" kioskReturn="() => this.kioskReturn(true)"/>
+            <KioskGreetings
+                employeeData="this.state.employeeData"
+                kioskReturn="() => this.kioskReturn(true)"
+                showCheckoutActions="this.state.showGreetingCheckoutActions"
+                savingCheckoutAction="this.state.savingGreetingAction"
+                onSelectBreakTime="() => this.onGreetingBreakTime()"
+                onSelectOutOfOffice="() => this.onGreetingOutOfOffice()"/>
         </t>
         <t t-if="this.state.active_display === 'pin'">
             <KioskPinCode
-                employeeData="this.employeeData"
+                employeeData="this.state.employeeData"
                 onPinConfirm="(id, pin) => this.onManualSelection(id, pin)"
                 onClickBack="() => this.kioskReturn()"/>
         </t>

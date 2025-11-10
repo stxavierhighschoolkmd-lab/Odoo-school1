@@ -1,6 +1,9 @@
 .att_container {
-    .o_att_today_wrap table {
-        --#{$prefix}table-bg: none;
-        --#{$prefix}table-border-color: #{$gray-400};
+    --o-attendance-review-card-bg: rgba(255, 255, 255, 0.04);
+    --o-attendance-review-card-hover-bg: rgba(255, 255, 255, 0.08);
+    --o-attendance-review-border-color: rgba(255, 255, 255, 0.12);
+
+    .o_attendance_review_card {
+        border-color: var(--o-attendance-review-border-color);
     }
 }

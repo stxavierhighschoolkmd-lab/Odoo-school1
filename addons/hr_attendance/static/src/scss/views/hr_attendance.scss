@@ -13,9 +13,175 @@
 }
 
 .att_container {
+    --o-attendance-review-card-bg: rgba(var(--#{$prefix}body-color-rgb), 0.02);
+    --o-attendance-review-card-hover-bg: rgba(var(--#{$prefix}body-color-rgb), 0.04);
+    --o-attendance-review-border-color: var(--#{$prefix}border-color);
+
     font-variant-numeric: tabular-nums;
+    min-width: 22rem;
 
     .o_wrap_btn_sign_out {
         background: var(--#{$prefix}popover-bg);
+    }
+
+    .o_attendance_review_wrap {
+        padding: 1rem 0;
+        width: 100%;
+    }
+
+    .o_attendance_review_header_actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .o_attendance_review_grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .o_attendance_review_card {
+        min-width: 0;
+        border: 1px solid var(--o-attendance-review-border-color);
+        border-radius: var(--#{$prefix}border-radius-lg);
+        background: var(--o-attendance-review-card-bg);
+        padding: 0.875rem;
+    }
+
+    .o_attendance_review_time {
+        line-height: 1.1;
+    }
+
+    .o_attendance_review_input {
+        width: 100%;
+    }
+
+
+    .o_attendance_review_location {
+        margin-top: 0.375rem;
+        display: -webkit-box;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        word-break: break-word;
+    }
+
+    .o_attendance_review_sessions {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 0.75rem;
+        padding: 0.5rem 0.875rem;
+        border: 1px solid var(--o-attendance-review-border-color);
+        border-radius: var(--#{$prefix}border-radius-xl);
+        background: var(--#{$prefix}popover-bg);
+    }
+
+    .o_attendance_review_session {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.4rem 0;
+
+        & + .o_attendance_review_session {
+            border-top: 1px solid var(--o-attendance-review-border-color);
+        }
+
+        &.o_is_selectable {
+            cursor: pointer;
+            transition: background-color 120ms ease-in-out;
+
+            &:hover,
+            &:focus-visible {
+                background: var(--o-attendance-review-card-hover-bg);
+            }
+        }
+
+        &.o_is_selected {
+            background: var(--o-attendance-review-card-hover-bg);
+        }
+    }
+
+    .o_attendance_review_session_range {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--#{$prefix}secondary-color);
+    }
+
+    .o_attendance_review_session_duration {
+        white-space: nowrap;
+    }
+
+    .o_attendance_review_summary {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-bottom: 1rem;
+        padding: 0.875rem;
+        border-radius: var(--#{$prefix}border-radius-xl);
+        border: 1px solid var(--o-attendance-review-border-color);
+        background: var(--#{$prefix}popover-bg);
+        color: var(--#{$prefix}emphasis-color);
+    }
+
+    .o_attendance_review_summary_item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.125rem;
+        min-width: 0;
+        text-align: center;
+
+        &.w-100 {
+            grid-column: 1 / -1;
+        }
+    }
+
+    .o_attendance_review_summary_label {
+        color: var(--#{$prefix}secondary-color);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .o_attendance_review_summary_value {
+        font-size: 1.1rem;
+        line-height: 1.2;
+    }
+
+    .o_attendance_review_break_editor {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .o_attendance_review_break_row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .o_attendance_review_break_input {
+        width: 100%;
+        max-width: 10rem;
+    }
+
+    .o_attendance_review_break_unit {
+        white-space: nowrap;
+    }
+
+    .o_attendance_review_summary_input {
+        max-width: 7rem;
+    }
+
+    .o_attendance_review_actions {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: stretch;
     }
 }
