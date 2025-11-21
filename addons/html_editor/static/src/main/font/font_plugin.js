@@ -216,6 +216,7 @@ export class FontPlugin extends Plugin {
                     },
                     onBlur: () => this.dependencies.selection.focusEditable(),
                     document: this.document,
+                    maxFontSize: this.config.maxFontSize,
                 },
                 isAvailable: isHtmlContentSupported,
             }),

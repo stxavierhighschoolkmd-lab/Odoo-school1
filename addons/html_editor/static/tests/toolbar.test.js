@@ -605,19 +605,19 @@ test("toolbar works: can select font size", async () => {
     await waitFor(".o-we-toolbar");
     const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
-    expect(inputEl).toHaveValue(getFontSizeFromVar("body-font-size").toString());
+    expect(inputEl).toHaveValue(getFontSizeFromVar("body-font-size"));
 
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
     const sizes = [...new Set(fontSizeItems.map((item) => getFontSizeFromVar(item.variableName)))]
         .sort((a, b) => a - b)
         .map(String);
     expect(queryAllTexts(".o_font_size_selector_menu .dropdown-item")).toEqual([...sizes]);
-    const h1Size = getFontSizeFromVar("h1-font-size").toString();
+    const h1Size = getFontSizeFromVar("h1-font-size");
     await contains(`.o_font_size_selector_menu .dropdown-item:contains('${h1Size}')`).click();
     expect(getContent(el)).toBe(`<p><span class="h1-fs">[test]</span></p>`);
     expect(inputEl).toHaveValue(h1Size);
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
-    const oSmallSize = getFontSizeFromVar("small-font-size").toString();
+    const oSmallSize = getFontSizeFromVar("small-font-size");
     await contains(`.o_font_size_selector_menu .dropdown-item:contains('${oSmallSize}')`).click();
     expect(getContent(el)).toBe(`<p><span class="o_small-fs">[test]</span></p>`);
     expect(inputEl).toHaveValue(oSmallSize);
@@ -636,14 +636,14 @@ test("toolbar works: change font size correctly when closest block element has a
     await waitFor(".o-we-toolbar");
     const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
-    expect(inputEl).toHaveValue(getFontSizeFromVar("h3-font-size").toString());
+    expect(inputEl).toHaveValue(getFontSizeFromVar("h3-font-size"));
 
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
     const sizes = [...new Set(fontSizeItems.map((item) => getFontSizeFromVar(item.variableName)))]
         .sort((a, b) => a - b)
         .map(String);
     expect(queryAllTexts(".o_font_size_selector_menu .dropdown-item")).toEqual([...sizes]);
-    const h1Size = getFontSizeFromVar("h1-font-size").toString();
+    const h1Size = getFontSizeFromVar("h1-font-size");
     await contains(`.o_font_size_selector_menu .dropdown-item:contains('${h1Size}')`).click();
     expect(getContent(el)).toBe(
         `<h2 class="h3-fs">abc <strong>def </strong><span class="h1-fs"><strong>[ghi]</strong></span></h2>`
@@ -773,14 +773,14 @@ test("toolbar works: display correct font size on select all", async () => {
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
     await animationFrame();
-    const h1Size = getFontSizeFromVar("h1-font-size").toString();
+    const h1Size = getFontSizeFromVar("h1-font-size");
     await contains(`.o_font_size_selector_menu .dropdown-item:contains('${h1Size}')`).click();
     expect(getContent(el)).toBe(`<p><span class="h1-fs">[test]</span></p>`);
     setContent(el, `<p><span class="h1-fs">te[]st</span></p>`);
     await waitForNone(".o-we-toolbar");
     await press(["ctrl", "a"]); // Select all
     await waitFor(".o-we-toolbar");
-    expect(inputEl).toHaveValue(`${h1Size}`);
+    expect(inputEl).toHaveValue(h1Size);
 });
 
 test("toolbar works: displays correct font size on input", async () => {
@@ -792,18 +792,43 @@ test("toolbar works: displays correct font size on input", async () => {
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
     await contains(inputEl).click();
     // Ensure that the input has the default font size value.
-    expect(inputEl).toHaveValue("14");
+    expect(inputEl).toHaveValue(14);
     expect(".o_font_size_selector_menu").toHaveCount(1);
     // Ensure that the selection is still present in the editable.
     expect(getContent(el)).toBe(`<p>[test]</p>`);
     expect(getActiveElement()).toBe(inputEl);
 
-    await press("8");
-    expect(inputEl).toHaveValue("8");
+    inputEl.value = 8;
+    await manuallyDispatchProgrammaticEvent(inputEl, "input", {
+        inputType: "insertText",
+    });
+    expect(inputEl).toHaveValue(8);
     await advanceTime(200);
     expectElementCount(".o_font_size_selector_menu", 1);
     expect(getContent(el)).toBe(`<p><span style="font-size: 8px;">[test]</span></p>`);
     await expectElementCount(".o-we-toolbar", 1);
+});
+
+test("should allow font size up to 144px in editor", async () => {
+    const { el } = await setupEditor(`<p>[abc]</p>`);
+    await waitFor(".o-we-toolbar");
+
+    const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
+    expect(iframeEl).toHaveCount(1);
+    const inputEl = iframeEl.contentWindow.document?.querySelector("input");
+    await contains(inputEl).click();
+    // Ensure that the input has the default font size value.
+    expect(inputEl).toHaveValue(14);
+
+    // Simulate entering a font size greater than 144px (backend limit)
+    inputEl.value = 150;
+    await manuallyDispatchProgrammaticEvent(inputEl, "input", {
+        inputType: "insertText",
+    });
+    await advanceTime(200);
+
+    expect(inputEl).toHaveValue(144);
+    expect(getContent(el)).toBe(`<p><span style="font-size: 144px;">[abc]</span></p>`);
 });
 
 test("toolbar works: font size dropdown closes on Enter and Escape key press", async () => {

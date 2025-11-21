@@ -196,6 +196,7 @@ export class Builder extends Component {
                 isEditableRTL: false,
                 publicAttachments: true,
                 direction: localization.direction || "ltr",
+                maxFontSize: 400,
             },
             this.env.services
         );

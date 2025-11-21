@@ -1,5 +1,5 @@
 import { dummyBase64Img, setupHTMLBuilder } from "@html_builder/../tests/helpers";
-import { setSelection } from "@html_editor/../tests/_helpers/selection";
+import { getContent, setSelection } from "@html_editor/../tests/_helpers/selection";
 import { expandToolbar } from "@html_editor/../tests/_helpers/toolbar";
 import { expectElementCount } from "@html_editor/../tests/_helpers/ui_expectations";
 import { insertText, pasteHtml } from "@html_editor/../tests/_helpers/user_actions";
@@ -13,6 +13,7 @@ import {
     waitFor,
     queryOne,
     waitForNone,
+    advanceTime,
 } from "@odoo/hoot-dom";
 import { animationFrame } from "@odoo/hoot-mock";
 import { contains, onRpc, patchWithCleanup } from "@web/../tests/web_test_helpers";
@@ -340,5 +341,30 @@ describe("font types", () => {
         await contains(":iframe .test_snippet").click();
         await contains(".overlay .oe_snippet_remove").click();
         expect(emptyStructureEl.childNodes.length).toBe(0);
+    });
+});
+
+describe("font size", () => {
+    test("should allow font size up to 400px in website", async () => {
+        const { getEditor } = await setupHTMLBuilder(`<p>abc</p>`);
+        const editor = getEditor();
+        const p = editor.editable.querySelector("p");
+        setSelection({ anchorNode: p, anchorOffset: 0, focusOffset: 1 });
+        await waitFor(".o-we-toolbar button[name='font_size_selector'] iframe");
+
+        const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
+        const inputEl = iframeEl.contentWindow.document?.querySelector("input");
+        await contains(".o-we-toolbar [name='font_size_selector']").click();
+        await animationFrame();
+
+        // Simulate entering a font size greater than 400px (frontent limit)
+        inputEl.value = 410;
+        await manuallyDispatchProgrammaticEvent(inputEl, "input", {
+            inputType: "insertText",
+        });
+        await advanceTime(200);
+
+        expect(inputEl).toHaveValue(400);
+        expect(getContent(p)).toBe(`<span style="font-size: 400px;">[abc]</span>`);
     });
 });
