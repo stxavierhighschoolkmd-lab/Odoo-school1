@@ -4083,6 +4083,7 @@ class AccountMove(models.Model):
         logger_message = self._get_unlink_logger_message()
         self.line_ids.remove_move_reconcile()
         self.line_ids.unlink()
+        self.env.flush_all()  # mimic old behaviour
         res = super().unlink()
         if logger_message:
             _logger.info(logger_message)

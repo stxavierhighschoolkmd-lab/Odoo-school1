@@ -150,6 +150,7 @@ class MailMessage(models.Model):
         return Domain('message_type', '=', 'notification') & Domain.OR(
             [('model', '=', model), ('res_id', 'in', self.env[model]._search(domain_factory(self, operator, value)))]
             for model, domain_factory in DOMAINS.items()
+            if self.env[model].has_access('read')
         )
 
     def _compute_audit_log_related_record_id(self, model, fname):
