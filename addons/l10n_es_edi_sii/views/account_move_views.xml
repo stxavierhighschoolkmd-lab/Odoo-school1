@@ -6,13 +6,69 @@
             <field name="model">account.move</field>
             <field name="inherit_id" ref="account.view_move_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//group[@id='other_tab_group']//group[@name='accounting_info_group']" position="inside">
-                    <field name="l10n_es_registration_date" readonly="state == 'posted'" invisible="country_code != 'ES'"/>
-                    <field name="l10n_es_edi_csv" invisible="1"/>
+
+                <xpath expr="//header" position="after">
+                    <div class="alert alert-danger"
+                         role="alert"
+                         invisible="not l10n_es_edi_sii_error">
+                        <field name="l10n_es_edi_sii_error"/>
+                    </div>
                 </xpath>
+
+                <xpath expr="//header" position="inside">
+                    <button
+                        name="action_l10n_es_send_sii"
+                        type="object"
+                        string="Send to SII"
+                        class="btn-primary"
+                        invisible="move_type not in ('in_invoice', 'in_refund')
+                                   or not l10n_es_edi_is_required
+                                   or state != 'posted'
+                                   or l10n_es_edi_sii_state == 'sent'"/>
+
+                    <button
+                        name="action_l10n_es_send_sii"
+                        type="object"
+                        string="Resend to SII"
+                        class="btn-secondary"
+                        invisible="move_type not in ('in_invoice', 'in_refund')
+                                   or not l10n_es_edi_is_required
+                                   or state != 'posted'
+                                   or l10n_es_edi_sii_state != 'sent'"/>
+                </xpath>
+
+                <xpath expr="//group[@id='other_tab_group']//group[@name='accounting_info_group']" position="inside">
+                    <field name="l10n_es_registration_date"
+                           readonly="state == 'posted'"
+                           invisible="country_code != 'ES'"/>
+                    <field name="l10n_es_edi_csv" readonly="1"/>
+                </xpath>
+
+                <xpath expr="//notebook" position="inside">
+                    <page string="SII History" name="sii_history" 
+                          invisible="not l10n_es_edi_is_required or not l10n_es_edi_sii_document_ids">
+                        <field name="l10n_es_edi_sii_document_ids" readonly="1">
+                            <list decoration-danger="state == 'rejected'" 
+                                  decoration-success="state == 'accepted'"
+                                  decoration-warning="state == 'accepted_with_errors'"
+                                  decoration-muted="state == 'cancelled'">
+                                <field name="create_date" string="Date"/>
+                                <field name="state" widget="badge" 
+                                       decoration-success="state == 'accepted'"
+                                       decoration-danger="state == 'rejected'"
+                                       decoration-warning="state == 'accepted_with_errors'"/>
+                                <field name="csv" string="CSV"/>
+                                <field name="response_message" optional="hide"/>
+                                <button name="action_download_json" type="object" string="Download JSON" icon="fa-download"  groups="base.group_no_one"/>
+                            </list>
+                        </field>
+                    </page>
+                </xpath>
+
                 <field name="ref" position="attributes">
                     <attribute name="readonly">l10n_es_edi_csv</attribute>
                 </field>
+
             </field>
         </record>
     </data>
