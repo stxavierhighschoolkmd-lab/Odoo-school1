@@ -51,6 +51,7 @@ import {
 import { isCSSColor } from '@web/core/utils/colors';
 import { EmojiPicker } from '@web/core/emoji_picker/emoji_picker';
 import { Tooltip } from "@web/core/tooltip/tooltip";
+import { ATTACHMENT_PENDING_RECORD_ID } from "@web_editor/js/backend/html_field";
 
 const OdooEditor = OdooEditorLib.OdooEditor;
 const getDeepRange = OdooEditorLib.getDeepRange;
@@ -1851,6 +1852,11 @@ export class Wysiwyg extends Component {
                 });
             }
             : () => {};
+
+
+        if (!this.props.options.recordInfo?.res_id) {
+            element.classList.add(ATTACHMENT_PENDING_RECORD_ID);
+        }
 
         if (params.node) {
             this.odooEditor.historyPauseSteps();
