@@ -128,7 +128,7 @@ import { omit } from "@web/core/utils/objects";
 
 export class BuilderOptionsPlugin extends Plugin {
     static id = "builderOptions";
-    static dependencies = ["operation", "history"];
+    static dependencies = ["operation", "domMutation"];
     static shared = [
         "checkElement",
         "closestWithOption",
@@ -148,7 +148,7 @@ export class BuilderOptionsPlugin extends Plugin {
     ];
     /** @type {import("plugins").BuilderResources} */
     resources = {
-        on_will_add_step_handlers: this.onWillAddStep.bind(this),
+        on_will_commit_handlers: this.onWillCommit.bind(this),
         on_step_added_handlers: this.onStepAdded.bind(this),
         on_undone_handlers: (revertedStep) => this.restoreContainers(revertedStep, "undo"),
         on_redone_handlers: (revertedStep) => this.restoreContainers(revertedStep, "redo"),
@@ -270,12 +270,12 @@ export class BuilderOptionsPlugin extends Plugin {
     }
 
     updateContainers(target, { forceUpdate = false } = {}) {
-        if (this.dependencies.history.getIsCurrentStepModified()) {
+        if (this.dependencies.domMutation.hasStagedMutations()) {
             console.warn(
                 "Should not have any mutations in the current step when you update the container selection"
             );
         }
-        if (this.dependencies.history.getIsPreviewing()) {
+        if (this.dependencies.domMutation.getIsPreviewing()) {
             return;
         }
         if (target) {
@@ -455,7 +455,7 @@ export class BuilderOptionsPlugin extends Plugin {
                 button.handler = (...args) => {
                     this.dependencies.operation.next(async () => {
                         await handler(...args);
-                        this.dependencies.history.addStep();
+                        this.dependencies.domMutation.commit();
                     });
                 };
             }
@@ -483,22 +483,24 @@ export class BuilderOptionsPlugin extends Plugin {
      * @param {HTMLElement|Boolean} targetEl the element to activate or `false`
      */
     setNextTarget(targetEl) {
-        if (this.dependencies.history.getIsPreviewing()) {
+        if (this.dependencies.domMutation.getIsPreviewing()) {
             return;
         }
         // Store the next target to activate in the current step.
-        this.dependencies.history.setStepExtra("nextTarget", targetEl);
+        this.dependencies.domMutation.update("nextTarget", targetEl);
     }
 
-    onWillAddStep() {
-        // Store the current target in the current step.
-        this.dependencies.history.setStepExtra("currentTarget", this.target);
+    onWillCommit(type) {
+        if (!["undo", "redo"].includes(type)) {
+            // Store the current target in the current step.
+            this.dependencies.domMutation.update("currentTarget", this.target);
+        }
     }
 
-    onStepAdded({ step }) {
+    onStepAdded(step) {
         // If a target is specified, activate its containers, otherwise simply
         // update them.
-        const nextTargetEl = step.extraStepInfos.nextTarget;
+        const nextTargetEl = step.commit.data.nextTarget;
         if (nextTargetEl) {
             this.updateContainers(nextTargetEl, { forceUpdate: true });
         } else if (nextTargetEl === false) {
@@ -515,11 +517,11 @@ export class BuilderOptionsPlugin extends Plugin {
      * @param {String} mode "undo" or "redo"
      */
     restoreContainers(revertedStep, mode) {
-        if (revertedStep && revertedStep.extraStepInfos.currentTarget) {
-            let targetEl = revertedStep.extraStepInfos.currentTarget;
+        if (revertedStep && revertedStep.commit.data.currentTarget) {
+            let targetEl = revertedStep.commit.data.currentTarget;
             // If the step was supposed to activate another target, activate
             // this one instead.
-            const nextTarget = revertedStep.extraStepInfos.nextTarget;
+            const nextTarget = revertedStep.commit.data.nextTarget;
             if (mode === "redo" && (nextTarget || nextTarget === false)) {
                 targetEl = nextTarget;
             }
