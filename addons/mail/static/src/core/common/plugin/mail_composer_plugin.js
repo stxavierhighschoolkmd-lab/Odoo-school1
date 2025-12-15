@@ -32,7 +32,7 @@ const PRESERVED_CLASSNAMES = new Set([
  */
 export class MailComposerPlugin extends Plugin {
     static id = "mail_composer";
-    static dependencies = ["clipboard", "dom", "hint", "history", "input", "selection"];
+    static dependencies = ["clipboard", "dom", "hint", "domMutation", "input", "selection"];
     resources = {
         on_will_paste_handlers: this.config.composerPluginDependencies.onBeforePaste.bind(this),
         paste_odoo_editor_html_overrides: this.handlePasteHtmlOverride.bind(this),
@@ -108,7 +108,7 @@ export class MailComposerPlugin extends Plugin {
         };
         [...sanitizedFragment.childNodes].forEach(removeStyle);
         this.dependencies.dom.insert(sanitizedFragment);
-        this.dependencies.history.addStep();
+        this.dependencies.domMutation.commit();
         return true;
     }
 }

@@ -8,7 +8,7 @@ import { useSortable } from "@web/core/utils/sortable_owl";
 export class SocialMediaLinks extends BaseOptionComponent {
     static id = "social_media_links";
     static template = "website.SocialMediaLinks";
-    static dependencies = ["socialMediaOptionPlugin", "history"];
+    static dependencies = ["socialMediaOptionPlugin", "domMutation"];
 
     setup() {
         super.setup();
@@ -72,7 +72,7 @@ export class SocialMediaLinks extends BaseOptionComponent {
                         element: this.idsElMap.get(elId),
                         elementAfter: this.idsElMap.get(newNext),
                     });
-                    this.dependencies.history.addStep();
+                    this.dependencies.domMutation.commit();
                 }
 
                 // hack to trigger the rebuild
