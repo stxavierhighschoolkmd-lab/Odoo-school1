@@ -222,6 +222,8 @@ describe("toolbar dropdowns", () => {
         const bulletedListButtonSelector = ".dropdown-menu button[name='bulleted_list']";
         await focusAndClick(bulletedListButtonSelector);
         await animationFrame();
+        // Need another animation frame for the dropdown to settle
+        await animationFrame();
         expect(bulletedListButtonSelector).toBeVisible();
         expect(bulletedListButtonSelector).toHaveClass("active");
         expect(!!editor.editable.querySelector("ul li")).toBe(true);

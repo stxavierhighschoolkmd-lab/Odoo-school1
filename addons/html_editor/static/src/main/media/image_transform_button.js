@@ -82,6 +82,17 @@ export class ImageTransformButton extends Component {
             closeImageTransformation: this.closeImageTransformation.bind(this),
             buttonSelector: '[name="image_transform"], [name="image_transform"] *',
         });
+        useExternalListener(
+            document,
+            "keydown",
+            (ev) => {
+                if (ev.key === "Escape" && this.transform.isImageTransformationOpen()) {
+                    ev.stopPropagation();
+                    this.closeImageTransformation();
+                }
+            },
+            true
+        );
     }
 
     onButtonClick() {

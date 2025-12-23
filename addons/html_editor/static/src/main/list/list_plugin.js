@@ -40,7 +40,6 @@ import { FONT_SIZE_CLASSES, getFontSizeOrClass, getHtmlStyle } from "@html_edito
 import { getTextColorOrClass, TEXT_CLASSES_REGEX } from "@html_editor/utils/color";
 import { baseContainerGlobalSelector } from "@html_editor/utils/base_container";
 import { ListSelector } from "./list_selector";
-import { reactive } from "@odoo/owl";
 import { composeToolbarButton } from "../toolbar/toolbar";
 import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 import { pick } from "@web/core/utils/objects";
@@ -84,7 +83,6 @@ export class ListPlugin extends Plugin {
     static defaultConfig = {
         allowChecklist: true,
     };
-    toolbarListSelectorKey = reactive({ value: 0 });
     /** @type {import("plugins").EditorResources} */
     resources = {
         user_commands: [
@@ -152,7 +150,6 @@ export class ListPlugin extends Plugin {
                 props: {
                     getButtons: () => this.listSelectorButtons,
                     getListMode: this.getListMode.bind(this),
-                    key: this.toolbarListSelectorKey,
                 },
                 isAvailable: this.canToggleList.bind(this),
             }),
@@ -181,7 +178,6 @@ export class ListPlugin extends Plugin {
 
         /** Handlers */
         normalize_handlers: this.normalize.bind(this),
-        step_added_handlers: this.updateToolbarButtons.bind(this),
         delete_handlers: this.adjustListPaddingOnDelete.bind(this),
 
         /** Overrides */
@@ -1298,10 +1294,6 @@ export class ListPlugin extends Plugin {
     // --------------------------------------------------------------------------
     // Toolbar buttons
     // --------------------------------------------------------------------------
-
-    updateToolbarButtons() {
-        this.toolbarListSelectorKey.value++;
-    }
 
     getListSelectorButtons() {
         return listSelectorItems
