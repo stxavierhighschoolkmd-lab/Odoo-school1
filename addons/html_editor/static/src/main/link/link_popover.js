@@ -8,6 +8,7 @@ import { CheckBox } from "@web/core/checkbox/checkbox";
 import { isAbsoluteURLInCurrentDomain } from "@html_editor/utils/url";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
+import { trapFocus } from "@html_editor/utils/dom_traversal";
 
 const DEFAULT_CUSTOM_TEXT_COLOR = "#714B67";
 const DEFAULT_CUSTOM_FILL_COLOR = "#ffffff";
@@ -387,14 +388,10 @@ export class LinkPopover extends Component {
             this.onClickApply();
         } else if (ev.key == "Tab") {
             ev.preventDefault();
-            const focusableElements = [
-                ...this.editingWrapper.el.querySelectorAll("input, select, button:not([disabled])"),
-            ];
-            const currentIndex = focusableElements.indexOf(document.activeElement);
-            const nextIndex =
-                (currentIndex + (ev.shiftKey ? -1 : 1) + focusableElements.length) %
-                focusableElements.length;
-            focusableElements[nextIndex].focus();
+            const focusableElements = this.editingWrapper.el.querySelectorAll(
+                "input, select, button:not([disabled])"
+            );
+            trapFocus(focusableElements, ev.shiftKey);
         }
     }
 
