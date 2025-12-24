@@ -71,6 +71,11 @@ class ResConfigSettings(models.TransientModel):
         if self.pos_self_ordering_service_mode == 'counter' and self.pos_self_ordering_mode == 'mobile':
             self.pos_self_ordering_pay_after = "each"
 
+    @api.depends('use_kiosk_mode')
+    def _compute_hide_inventory_settings(self):
+        for res_config in self:
+            res_config.hide_inventory_settings = res_config.use_kiosk_mode
+
     def custom_link_action(self):
         self.ensure_one()
         return {

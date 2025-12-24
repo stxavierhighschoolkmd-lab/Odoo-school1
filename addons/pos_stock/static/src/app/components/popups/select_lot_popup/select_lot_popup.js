@@ -7,7 +7,7 @@ import { useAutoFocusToLast } from "@point_of_sale/app/hooks/hooks";
 import { AutoComplete } from "@web/core/autocomplete/autocomplete";
 
 export class SelectLotPopup extends Component {
-    static template = "point_of_sale.SelectLotPopup";
+    static template = "pos_stock.SelectLotPopup";
     static components = { Dialog, AutoComplete };
     static props = {
         array: Array,

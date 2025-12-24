@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -20,7 +18,6 @@ class StockPicking(models.Model):
             'location_dest_id': location_dest_id,
             'state': 'draft',
         }
-
 
     @api.model
     def _create_picking_from_pos_order_lines(self, location_dest_id, lines, picking_type, partner=False):
@@ -104,13 +101,12 @@ class StockPicking(models.Model):
             returned_lines_picking = lines[0].order_id.refunded_order_id.picking_ids
             returnable_qty_by_product = {}
             for move_line in returned_lines_picking.move_line_ids:
-                returnable_qty_by_product[(move_line.product_id.id, move_line.owner_id.id or 0)] = move_line.quantity
+                returnable_qty_by_product[(move_line.product_id.id, move_line.owner_id.id or 0)] = move_line.quantity  # noqa: RUF031
             for move in self.move_line_ids:
-                for keys in returnable_qty_by_product:
+                for keys in returnable_qty_by_product:  # noqa: PLC0206
                     if move.product_id.id == keys[0] and keys[1] and returnable_qty_by_product[keys] > 0:
                         move.write({'owner_id': keys[1]})
                         returnable_qty_by_product[keys] -= move.quantity
-
 
     def _send_confirmation_email(self):
         # Avoid sending Mail/SMS for POS deliveries
@@ -160,7 +156,7 @@ class StockMove(models.Model):
         return vals
 
     def _key_assign_picking(self):
-        keys = super(StockMove, self)._key_assign_picking()
+        keys = super()._key_assign_picking()
         return keys + (self.reference_ids.pos_order_ids,)
 
     @api.model
@@ -191,7 +187,7 @@ class StockMove(models.Model):
                 ('product_id', 'in', lines.product_id.ids),
                 ('name', 'in', lots.mapped('lot_name')),
             ])
-            #The previous search may return (product_id.id, lot_name) combinations that have no matching in lines.pack_lot_ids.
+            # The previous search may return (product_id.id, lot_name) combinations that have no matching in lines.pack_lot_ids.
             for lot in existing_lots:
                 if (lot.product_id.id, lot.name) in lots_data:
                     valid_lots |= lot

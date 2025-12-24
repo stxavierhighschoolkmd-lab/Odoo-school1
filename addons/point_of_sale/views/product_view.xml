@@ -217,7 +217,6 @@
                     <group>
                         <field name="barcode" placeholder="e.g. 1234567890"/>
                         <field name="is_storable" invisible="type != 'consu'" widget="boolean_toggle"/>
-                        <field name="tracking" invisible="type != 'consu' or not is_storable" groups="stock.group_production_lot"/>
                         <field name="list_price" widget="monetary"
                                 options="{'currency_field': 'currency_id', 'field_digits': True}"/>
                         <label for="taxes_id"/>

@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-from odoo import models, fields, api, _
+from odoo import models, fields, api
 
 
 class StockWarehouse(models.Model):
@@ -12,7 +10,7 @@ class StockWarehouse(models.Model):
         sequence_values = super()._get_sequence_values(name=name, code=code)
         sequence_values.update({
             'pos_type_id': {
-                'name': _('%(name)s Picking POS', name=self.name),
+                'name': self.env._('%(name)s Picking POS', name=self.name),
                 'prefix': self.code + '/POS/',
                 'padding': 5,
                 'company_id': self.company_id.id,
@@ -31,7 +29,7 @@ class StockWarehouse(models.Model):
         picking_type_create_values, max_sequence = super()._get_picking_type_create_values(max_sequence)
         picking_type_create_values.update({
             'pos_type_id': {
-                'name': _('PoS Orders'),
+                'name': self.env._('PoS Orders'),
                 'code': 'outgoing',
                 'default_location_src_id': self.lot_stock_id.id,
                 'default_location_dest_id': self.env.ref('stock.stock_location_customers').id,
