@@ -18,11 +18,11 @@ class ProductRibbon(models.Model):
         ),
     )
 
-    def _is_applicable_for(self, product, price_data):
+    def _is_applicable_for(self, product_template, price_data):
         """Override of `website_sale` to handle `out_of_stock` ribbons."""
-        return super()._is_applicable_for(product, price_data) or (
-            product
+        return super()._is_applicable_for(product_template, price_data) or (
+            product_template
             and self.assign == "out_of_stock"
-            and not product.product_tmpl_id.allow_out_of_stock_order
-            and product._is_sold_out()
+            and not product_template.allow_out_of_stock_order
+            and product_template._is_sold_out()
         )

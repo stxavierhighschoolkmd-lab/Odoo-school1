@@ -2192,10 +2192,10 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'product_no_variant_attribute_value_ids': [Command.set(product_with_description.attribute_line_ids[1].product_template_value_ids[0].ids)],
             }
         )
-        self.assertEqual(so.order_line.name, 'Product with description (red)\nSale description\nNo variant: extra')
+        self.assertEqual(so.order_line.name, 'Product with description (red)\nSale description\nextra')
         so.order_line.name += '\nRandom sale notes'
         so.action_confirm()
-        self.assertEqual(so.picking_ids.move_ids.description_picking, 'No variant: extra\nDeliver with care')
+        self.assertEqual(so.picking_ids.move_ids.description_picking, 'extra\nDeliver with care')
 
     def test_move_description_uses_custom_attribute_values(self):
         """
@@ -2243,8 +2243,8 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         deliveries = sale_orders.picking_ids.with_user(basic_user.id)
         sale_orders.invalidate_recordset()
         self.assertRecordValues(deliveries.move_ids, [
-            {'description_picking': "No variant: extra: Best"},
-            {'description_picking': "No variant: extra: Best\nFrench Sofa"},
+            {'description_picking': "extra: Best"},
+            {'description_picking': "extra: Best\nFrench Sofa"},
         ])
 
     def test_multicompany_transit_with_one_company_for_user(self):

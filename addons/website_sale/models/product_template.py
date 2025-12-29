@@ -1105,7 +1105,7 @@ class ProductTemplate(models.Model):
             }
         return markup_data
 
-    def _get_ribbon(self, price_vals=None, auto_assign_ribbons=None, variant=None):
+    def _get_ribbon(self, price_vals=None, auto_assign_ribbons=None):
         """Return the ribbon to display for the current template.
 
         It'll be either the ribbon set on the first variant, or the template, or the first
@@ -1114,14 +1114,10 @@ class ProductTemplate(models.Model):
         :param dict price_vals: price values for the current product
         :param auto_assign_ribbons: automatically assigned recordsets, as a `product.ribbon`
             recordset
-        :param product.product variant: if any, the displayed variant whose ribbon we're looking
-            for.
-
         :returns: the ribbon to display, if there is one.
         :rtype: `product.ribbon` recordset
         """
-        variant = variant or self.product_variant_id
-        ribbon = variant.sudo().variant_ribbon_id or self.sudo().website_ribbon_id
+        ribbon = self.sudo().website_ribbon_id
         if not ribbon:
             # The None check ensures that we do not recompute the ribbons when no ribbons were
             # previously found.
@@ -1131,7 +1127,7 @@ class ProductTemplate(models.Model):
                     ("assign", "!=", "manual")
                 ])
             for rb in auto_assign_ribbons:
-                if rb._is_applicable_for(variant, price_vals):
+                if rb._is_applicable_for(self, price_vals):
                     return rb
 
         return ribbon

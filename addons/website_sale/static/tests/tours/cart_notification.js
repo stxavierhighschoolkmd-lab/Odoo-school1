@@ -39,7 +39,7 @@ registry.category("web_tour.tours").add("website_sale.cart_notification_tax_incl
         },
         {
             content: "check that the novariants/custom attributes are displayed.",
-            trigger: '.toast-body span.text-muted.small:contains("Size: S")',
+            trigger: '.toast-body span.text-muted.small:contains("S")',
         },
         {
             content: "check the price of 3 website_sale_cart_notification_product_2",
@@ -100,7 +100,7 @@ registry.category("web_tour.tours").add("website_sale.cart_notification_tax_excl
         },
         {
             content: "check that the novariants/custom attributes are displayed.",
-            trigger: '.toast-body span.text-muted.small:contains("Size: S")',
+            trigger: '.toast-body span.text-muted.small:contains("S")',
         },
         {
             content: "check the price of 3 website_sale_cart_notification_product_2",

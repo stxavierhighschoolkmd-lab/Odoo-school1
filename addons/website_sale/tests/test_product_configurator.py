@@ -110,9 +110,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
         new_order_line = new_sale_order.order_line
         self.assertEqual(
             new_order_line.name,
-            "Short (TEST) (M always, M dynamic)"
-            "\nNever attribute size: M never"
-            "\nNever attribute size custom: Yes never custom: TEST",
+            "Short (TEST) (M always, M dynamic)\nM never\nYes never custom: TEST",
         )
 
     def test_product_configurator_optional_products(self):

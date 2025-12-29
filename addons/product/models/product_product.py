@@ -53,8 +53,13 @@ class ProductProduct(models.Model):
         help="International Article Number used for product identification.")
     product_uom_ids = fields.One2many('product.uom', 'product_id', 'Unit Barcode', store=True)
     product_template_attribute_value_ids = fields.Many2many('product.template.attribute.value', relation='product_variant_combination', string="Attribute Values", ondelete='restrict')
-    product_template_variant_value_ids = fields.Many2many('product.template.attribute.value', relation='product_variant_combination',
-                                                          domain=[('attribute_line_id.value_count', '>', 1)], string="Variant Values", ondelete='restrict')
+    product_template_variant_value_ids = fields.Many2many(
+        string="Attributes",
+        comodel_name='product.template.attribute.value',
+        relation='product_variant_combination',
+        domain=[('attribute_line_id.value_count', '>', 1)],
+        ondelete='restrict',
+    )
 
     import_attribute_values = fields.Char(
         string='Product Values',

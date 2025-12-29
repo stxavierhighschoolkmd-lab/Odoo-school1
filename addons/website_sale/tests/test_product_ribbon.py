@@ -46,9 +46,7 @@ class TestProductRibbon(WebsiteSaleCommon):
     def test_no_ribbon_if_none_match(self):
         self.product.publish_date -= timedelta(days=100)
         products_prices = {"base_price": 100, "price_reduce": 100}
-        ribbon = self.product.product_tmpl_id._get_ribbon(
-            products_prices, self.auto_assign_ribbon, self.product
-        )
+        ribbon = self.product.product_tmpl_id._get_ribbon(products_prices, self.auto_assign_ribbon)
         self.assertFalse(ribbon, "No ribbon should be returned when no condition is matched")
 
     def test_ribbon_priority_assignment(self):

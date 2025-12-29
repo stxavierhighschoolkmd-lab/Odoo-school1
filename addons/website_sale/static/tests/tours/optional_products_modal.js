@@ -53,11 +53,11 @@ registry.category("web_tour.tours").add('website_sale.optional_products_modal', 
         },
         {
             content: "Check never variant",
-            trigger: 'div.text-muted>span:contains(Never attribute size: M never)',
+            trigger: 'div.text-muted>span:contains(M never)',
         },
         {
             content: "Check never custom variant",
-            trigger: 'div.text-muted>span:contains(Never attribute size custom: Yes never custom: TEST)',
+            trigger: 'div.text-muted>span:contains(Yes never custom: TEST)',
         }
     ]
 });

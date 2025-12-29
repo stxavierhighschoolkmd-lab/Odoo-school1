@@ -352,7 +352,7 @@ class TestSaleStockInvoices(TestSaleCommon):
         so.action_confirm()
         picking = so.picking_ids[0]
         picking_description = picking.move_ids._get_report_description_picking()
-        self.assertEqual(picking_description, 'Color: Value1\nColor: Value2')
+        self.assertEqual(picking_description, 'Value1\nValue2')
 
     def test_backorder_and_several_invoices(self):
         """

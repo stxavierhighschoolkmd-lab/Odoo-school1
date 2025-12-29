@@ -1023,7 +1023,7 @@
         <t t-set="product_images" t-value="product_variant._get_images() if product_variant else product._get_images()"/>
         <t
             t-set="ribbon"
-            t-value="product.sudo()._get_ribbon(price_vals=combination_info, variant=product_variant)"
+            t-value="product.sudo()._get_ribbon(price_vals=combination_info)"
         />
         <t t-set="bg_color" t-value="ribbon.bg_color"/>
         <t t-set="text_color" t-value="ribbon.text_color"/>

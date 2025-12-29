@@ -336,7 +336,7 @@ class ProductTemplate(models.Model):
             else:
                 template[fname] = default
 
-    def _set_product_variant_field(self, fname):
+    def _set_product_variant_field(self, fname, update_all_variants=False):
         """Propagate the value of the given field from the templates to their unique variant.
 
         Only if it's a single variant product.
@@ -344,13 +344,14 @@ class ProductTemplate(models.Model):
 
         :param str fname: name of the field whose value should be propagated to the variant.
             (field name must be identical between product.product & product.template models)
+        :param bool update_all_variants: Update all the variant or not.
         """
         for template in self:
             count = len(template.product_variant_ids)
-            if count == 1:
+            if count == 1 or (update_all_variants and count > 1):
                 template.product_variant_ids[fname] = template[fname]
             elif count == 0:
-                archived_variants = self.with_context(active_test=False).product_variant_ids
+                archived_variants = template.with_context(active_test=False).product_variant_ids
                 if len(archived_variants) == 1:
                     archived_variants[fname] = template[fname]
 
@@ -418,17 +419,21 @@ class ProductTemplate(models.Model):
 
     @api.depends('product_variant_ids.volume')
     def _compute_volume(self):
-        self._compute_template_field_from_variant_field('volume')
+        self.filtered(
+            lambda t: t.product_variant_count < 2
+        )._compute_template_field_from_variant_field('volume')
 
     def _set_volume(self):
-        self._set_product_variant_field('volume')
+        self._set_product_variant_field('volume', update_all_variants=True)
 
     @api.depends('product_variant_ids.weight')
     def _compute_weight(self):
-        self._compute_template_field_from_variant_field('weight')
+        self.filtered(
+            lambda t: t.product_variant_count < 2
+        )._compute_template_field_from_variant_field('weight')
 
     def _set_weight(self):
-        self._set_product_variant_field('weight')
+        self._set_product_variant_field('weight', update_all_variants=True)
 
     def _compute_is_product_variant(self):
         self.is_product_variant = False
