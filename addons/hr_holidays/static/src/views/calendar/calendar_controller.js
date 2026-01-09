@@ -7,8 +7,9 @@ import { serializeDate } from "@web/core/l10n/dates";
 
 import { TimeOffCalendarSidePanel } from "./calendar_side_panel/calendar_side_panel";
 import { TimeOffCalendarMobileFilterPanel } from "./calendar_filter_panel/calendar_mobile_filter_panel";
+import { TimeOffNewDropdown } from "../../components/time_off_new_dropdown/time_off_new_dropdown";
 import { TimeOffFormViewDialog } from "../view_dialog/form_view_dialog";
-import { useLeaveCancelWizard } from "../hooks";
+import { useLeaveCancelWizard, useNewAllocationRequest } from "../hooks";
 import { EventBus } from "@odoo/owl";
 
 export class TimeOffCalendarController extends CalendarController {
@@ -16,6 +17,7 @@ export class TimeOffCalendarController extends CalendarController {
         ...CalendarController.components,
         CalendarSidePanel: TimeOffCalendarSidePanel,
         MobileFilterPanel: TimeOffCalendarMobileFilterPanel,
+        NewButton: TimeOffNewDropdown,
     };
     static template = "hr_holidays.CalendarController";
     setup() {
@@ -24,6 +26,7 @@ export class TimeOffCalendarController extends CalendarController {
             timeOffBus: new EventBus(),
         });
         this.leaveCancelWizard = useLeaveCancelWizard();
+        this.newAllocRequest = useNewAllocationRequest();
     }
 
     get employeeId() {
@@ -61,6 +64,16 @@ export class TimeOffCalendarController extends CalendarController {
             size: "md",
             context: context,
         });
+    }
+
+    newAllocationRequest() {
+        let empId;
+        if (this.props.context.active_id && this.props.context.active_model === "hr.employee") {
+            empId = this.props.context.active_id;
+        } else if (this.employeeId) {
+            empId = this.employeeId;
+        }
+        this.newAllocRequest({ employeeId: empId, forceLargeDialog: this.props.context.hide_employee_name ?? false })
     }
 
     _deleteRecord(resId, canCancel) {

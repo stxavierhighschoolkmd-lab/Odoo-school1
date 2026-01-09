@@ -10,7 +10,8 @@
                 employeeId="this.props.employeeId"/>
         </t>
         <div class="o_timeoff_card p-0 d-flex justify-content-around">
-            <div class="row justify-content-center align-items-center border-bottom h-25 w-100 p-0" t-if="this.hasAccrualAllocation">
+            <div t-if="this.hasAccrualAllocation or this.hasFutureAllocation"
+                 class="row justify-content-center align-items-center border-bottom h-25 w-100 p-0">
                 Balance at the
                 <div class="p-1" style="max-width: 100px!important">
                     <DateTimeInput
@@ -25,13 +26,9 @@
             <div class="d-flex flex-column justify-content-center align-items-center w-100">
                 <strong class="o_timeoff_name">Pending Requests</strong>
                 <span t-on-click="this.openPendingRequests"
-                    t-att-class="'o_timeoff_duration' + (this.state.allocationRequests ? ' cursor-pointer' : '')">
+                    t-att-class="'o_timeoff_duration' + (this.state.allocationRequests ? ' text-primary cursor-pointer' : '')">
                     <t t-out="this.state.allocationRequests"/>
                 </span>
-                <a class="text-uppercase o_timeoff_details p-1" t-on-click="this.newAllocationRequest">
-                    <t t-if="this.employeeId">Grant Time</t>
-                    <t t-else="">New Allocation Request</t>
-                </a>
             </div>
         </div>
     </div>
