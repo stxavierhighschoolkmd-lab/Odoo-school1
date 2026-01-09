@@ -4,7 +4,7 @@ import json
 from datetime import date
 from unittest.mock import patch
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.addons.bus.models.bus import channel_with_db, json_dump
 from odoo.addons.mail.tests.common import MailCommon
@@ -575,7 +575,8 @@ class TestAccountMoveSend(TestAccountMoveSendCommon):
         # Send it again. The PDF must not be created again.
         wizard = self.create_send_and_print(invoice, sending_methods=['email', 'manual'])
         with patch('odoo.addons.account.models.account_move_send.AccountMoveSend._hook_invoice_document_after_pdf_report_render') as mocked_method:
-            results = wizard.action_send_and_print()
+            with self.allow_pdf_render():
+                results = wizard.action_send_and_print()
             mocked_method.assert_not_called()
         self.assertEqual(results['type'], 'ir.actions.act_url')
         self.assertFalse(invoice.sending_data)
@@ -769,6 +770,18 @@ class TestAccountMoveSend(TestAccountMoveSendCommon):
 
     def test_invoice_mail_attachments_widget(self):
         invoice = self.init_invoice("out_invoice", amounts=[1000], post=True)
+        followup_installed = self.env['ir.module.module']._get('account_followup').state == 'installed'
+
+        def get_followup_values():
+            today = fields.Date.today().strftime('%m%d%Y')
+            filename = f"{invoice.partner_id.name} - open_items_{today}_{invoice.company_id.name}"
+            return {
+                'id': f'placeholder_{filename}',
+                'name': filename,
+                'mimetype': 'application/pdf',
+                'placeholder': True,
+                'dynamic_followup': True,
+            }
 
         # Add a new attachment on the mail_template.
         template = invoice._get_mail_template()
@@ -842,23 +855,24 @@ class TestAccountMoveSend(TestAccountMoveSendCommon):
 
         # Resend.
         wizard = self.create_send_and_print(invoice, sending_methods=['email'])
-        pdf_report_values['id'] = invoice.invoice_pdf_report_id.id
-        self._assert_mail_attachments_widget(wizard, [
-            pdf_report_values,
-            extra_attachment_values,
-        ])
+        # If the follow-up module is installed, a second Send & Print is handled as a reminder:
+        # it adds the open items report as an attachment and switches the email template.
+        if followup_installed:
+            expected_attachments = [get_followup_values(), dict(pdf_report_values, id=invoice.invoice_pdf_report_id.id)]
+        else:
+            expected_attachments = [dict(pdf_report_values, id=invoice.invoice_pdf_report_id.id), extra_attachment_values]
+        self._assert_mail_attachments_widget(wizard, expected_attachments)
 
         # Switch the template.
         wizard.template_id = new_mail_template
-        self._assert_mail_attachments_widget(wizard, [
-            pdf_report_values,
-            extra_attachment2_values,
-        ])
+        expected_attachments = [dict(pdf_report_values, id=invoice.invoice_pdf_report_id.id), extra_attachment2_values]
+        if followup_installed:
+            expected_attachments.insert(0, get_followup_values())
+        self._assert_mail_attachments_widget(wizard, expected_attachments)
 
         # Send.
         wizard.action_send_and_print()
-        message = self._get_mail_message(invoice)
-        self.assertRecordValues(message.attachment_ids.sorted('name'), [
+        expected_attachment_values = [
             {
                 'name': invoice.invoice_pdf_report_id.name,
                 'raw': invoice.invoice_pdf_report_id.raw,
@@ -867,13 +881,26 @@ class TestAccountMoveSend(TestAccountMoveSendCommon):
                 'name': extra_attachment2.name,
                 'raw': extra_attachment2.raw,
             },
-        ])
+        ]
+        # reminder log is added on the partner, so fetch the message from the partner instead of the invoice
+        message = self._get_mail_message(invoice.partner_id if followup_installed else invoice)
+        if followup_installed:
+            followup_report = self.env['ir.attachment'].search([
+                ('res_model', '=', 'res.partner'),
+                ('res_id', '=', invoice.partner_id.id),
+                ('name', 'like', 'open_items'),
+            ], limit=1)
+            expected_attachment_values.append({
+                'name': followup_report.name,
+                'raw': followup_report.raw,
+            })
+        self.assertRecordValues(message.attachment_ids.sorted('name'), expected_attachment_values)
 
         # Manually remove the attachment and check the mail's attachments are not removed.
         invoice_pdf_report_name = invoice.invoice_pdf_report_id.name
         invoice_pdf_report_raw = invoice.invoice_pdf_report_id.raw
         invoice.invoice_pdf_report_id.unlink()
-        self.assertRecordValues(message.attachment_ids.sorted('name'), [
+        expected_attachment_values = [
             {
                 'name': invoice_pdf_report_name,
                 'raw': invoice_pdf_report_raw,
@@ -882,7 +909,13 @@ class TestAccountMoveSend(TestAccountMoveSendCommon):
                 'name': extra_attachment2.name,
                 'raw': extra_attachment2.raw,
             },
-        ])
+        ]
+        if followup_installed:
+            expected_attachment_values.append({
+                'name': followup_report.name,
+                'raw': followup_report.raw,
+            })
+        self.assertRecordValues(message.attachment_ids.sorted('name'), expected_attachment_values)
 
     def test_invoice_web_service_after_pdf_rendering(self):
         """ Test the ir.attachment for the PDF is not generated when the web service
