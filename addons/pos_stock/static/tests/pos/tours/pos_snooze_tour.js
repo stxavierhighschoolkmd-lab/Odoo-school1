@@ -2,7 +2,7 @@ import { registry } from "@web/core/registry";
 import * as Chrome from "@point_of_sale/../tests/pos/tours/utils/chrome_util";
 import * as ProductScreen from "@point_of_sale/../tests/pos/tours/utils/product_screen_util";
 import * as Dialog from "@point_of_sale/../tests/generic_helpers/dialog_util";
-import * as ProductInfoScreen from "@point_of_sale/../tests/pos/tours/utils/product_info_screen_util";
+import * as ProductInfoScreen from "@pos_stock/../tests/pos/tours/utils/product_info_screen_util";
 
 registry.category("web_tour.tours").add("test_pos_snooze", {
     steps: () =>

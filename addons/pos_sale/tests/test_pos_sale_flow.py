@@ -9,7 +9,6 @@ from odoo.addons.point_of_sale.tests.test_frontend import TestPointOfSaleHttpCom
 import uuid
 
 
-@tagged('post_install', '-at_install')
 class TestPoSSale(TestPointOfSaleHttpCommon):
     @classmethod
     def get_default_groups(cls):
@@ -2232,7 +2231,7 @@ class TestPoSSalePayment(TestPointOfSaleHttpCommon, PaymentCommon):
         sale_order.action_confirm()
         self.main_pos_config.open_ui()
         self.main_pos_config.down_payment_product_id = downpayment_product
-        self.start_pos_tour('PoSApplyDownpaymentInvoice')
+        self.start_pos_tour('PoSApplyDownpaymentInvoice', login="accountman")
         invoice = sale_order._create_invoices(final=True)
         invoice.action_post()
 
