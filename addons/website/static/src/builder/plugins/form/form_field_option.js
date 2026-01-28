@@ -183,14 +183,44 @@ export class FormFieldOption extends BaseOptionComponent {
      */
     get isMultipleTextConditionForRequirementOptionVisible() {
         const el = this.env.getEditingElement();
+        return el.dataset.requirementComparator && this.isTextLikeField;
+    }
+    /**
+     * Determines the visibility of the character limit checkbox used for
+     * validation.
+     *
+     * @returns {boolean} Whether the character limit option should be visible.
+     */
+    get isTextLikeField() {
         return (
-            el.dataset.requirementComparator &&
             !this.domStateCurrentFieldInput.hasDateTimePicker &&
             (this.domStateCurrentFieldInput.isTextArea ||
                 ["text", "email", "tel", "url", "search", "password"].includes(
                     this.domStateCurrentFieldInput.type
                 ))
         );
+    }
+    /**
+     * Retrieves the default minimum character limit value
+     * for the current field input.
+     *
+     * @returns {number} The default minimum character limit value.
+     */
+    get defaultMinValue() {
+        const el = this.env.getEditingElement();
+        const fieldInputEl = getCurrentFieldInputEl(el);
+        return fieldInputEl.minLength;
+    }
+    /**
+     * Retrieves the default maximum character limit value
+     * for the current field input.
+     *
+     * @returns {number} The default maximum character limit value.
+     */
+    get defaultMaxValue() {
+        const el = this.env.getEditingElement();
+        const fieldInputEl = getCurrentFieldInputEl(el);
+        return fieldInputEl.maxLength;
     }
     /**
      * Determines the visibility of the text condition input field used for
