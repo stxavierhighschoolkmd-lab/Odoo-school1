@@ -8,6 +8,7 @@ import { _t } from "@web/core/l10n/translation";
 import { post } from "@web/core/network/http_service";
 import { user } from "@web/core/user";
 import { delay } from "@web/core/utils/concurrency";
+import { rpc } from "@web/core/network/rpc";
 import { session } from "@web/session";
 import {
     formatDate,
@@ -315,9 +316,11 @@ export class Form extends Interaction {
     }
 
     async send() {
-        this.el.querySelector("#s_website_form_result, #o_website_form_result")?.replaceChildren(); // !compatibility
+        const resultEl = this.el.querySelector("#s_website_form_result, #o_website_form_result"); // !compatibility
+        resultEl?.replaceChildren();
+        resultEl?.removeAttribute("class");
         this.removeErrorMessages();
-        if (!this.checkErrorFields({})) {
+        if (!(await this.checkErrorFields({}))) {
             this.updateStatus("error", _t("Please fill in the form correctly."));
             return false;
         }
@@ -428,7 +431,7 @@ export class Form extends Interaction {
                     this.updateStatus("error", resultData.error ? resultData.error : false);
                     if (resultData.error_fields) {
                         // If the server return a list of bad fields, show these fields for users
-                        this.checkErrorFields(resultData.error_fields);
+                        await this.checkErrorFields(resultData.error_fields);
                     }
                 } else {
                     // Success, redirect or update status
@@ -548,7 +551,7 @@ export class Form extends Interaction {
         });
     }
 
-    checkErrorFields(errorFields) {
+    async checkErrorFields(errorFields) {
         let formValid = true;
         let firstInvalidInput = null;
         // Loop on all fields
@@ -565,7 +568,8 @@ export class Form extends Interaction {
                     ".s_website_form_input:not(#editable_select), .o_website_form_input:not(#editable_select)"
                 ),
             ]; // !compatibility
-            const invalidInputs = inputEls.filter((inputEl) => {
+            const invalidInputs = [];
+            for (const inputEl of inputEls) {
                 // Special check for multiple required checkbox for same
                 // field as it seems checkValidity forces every required
                 // checkbox to be checked, instead of looking at other
@@ -582,8 +586,9 @@ export class Form extends Interaction {
                     const checkboxes = inputEls.filter(
                         (el) => el.required && el.type === "checkbox"
                     );
-                    return !checkboxes.some((checkbox) => checkbox.checkValidity());
-
+                    if (!checkboxes.some((checkbox) => checkbox.checkValidity())) {
+                        invalidInputs.push(inputEl);
+                    }
                     // Special cases for dates and datetimes
                     // FIXME this seems like dead code, the inputs do not use
                     // those classes, their parent does (but it seemed to work
@@ -595,19 +600,19 @@ export class Form extends Interaction {
                     // !compatibility
                     const date = parseDate(inputEl.value);
                     if (!date || !date.isValid) {
-                        return true;
+                        invalidInputs.push(inputEl);
                     }
                 } else if (inputEl.matches(".s_website_form_datetime, .o_website_form_datetime")) {
                     // !compatibility
                     const date = parseDateTime(inputEl.value);
                     if (!date || !date.isValid) {
-                        return true;
+                        invalidInputs.push(inputEl);
                     }
-                } else if (inputEl.type === "file" && !this.isFileInputValid(inputEl)) {
-                    return true;
+                } else if (inputEl.type === "file" && !(await this.isFileInputValid(inputEl))) {
+                    invalidInputs.push(inputEl);
                 } else if (this.requirementFunction(fieldEl) === false) {
                     this.updateStatusInline(fieldEl.dataset.errorMessage, inputEl);
-                    return true;
+                    invalidInputs.push(inputEl);
                 } else if (inputEl.hasAttribute("maxlength") && inputEl.hasAttribute("minlength")) {
                     const maxChars = inputEl.maxLength;
                     const minChars = inputEl.minLength;
@@ -620,21 +625,21 @@ export class Form extends Interaction {
                             ),
                             inputEl
                         );
-                        return true;
+                        invalidInputs.push(inputEl);
                     }
+                } else if (!inputEl.checkValidity()) {
+                    // Note that checkValidity also takes care of the case where
+                    // the input is disabled, in which case, it is considered
+                    // valid (as the data will not be sent anyway).
+                    // This takes care of conditionally-hidden fields (whose
+                    // inputs are disabled while they are hidden) which should
+                    // not require validation while they are hidden. Indeed,
+                    // their purpose is to be able to enter additional data when
+                    // some condition is fulfilled. If such a field is required,
+                    // it is only required when visible for example.
+                    invalidInputs.push(inputEl);
                 }
-
-                // Note that checkValidity also takes care of the case where
-                // the input is disabled, in which case, it is considered
-                // valid (as the data will not be sent anyway).
-                // This takes care of conditionally-hidden fields (whose
-                // inputs are disabled while they are hidden) which should
-                // not require validation while they are hidden. Indeed,
-                // their purpose is to be able to enter additional data when
-                // some condition is fulfilled. If such a field is required,
-                // it is only required when visible for example.
-                return !inputEl.checkValidity();
-            });
+            }
 
             // Update field color if invalid or erroneous
             const controlEls = fieldEl.querySelectorAll(
@@ -738,7 +743,7 @@ export class Form extends Interaction {
      * @param {HTMLElement} inputEl an input of type file
      * @returns {Boolean} true if the input is valid, false otherwise.
      */
-    isFileInputValid(inputEl) {
+    async isFileInputValid(inputEl) {
         // Note: the `maxFilesNumber` and `maxFileSize` data-attributes may
         // not always be present, if the Form comes from an older version
         // for example.
@@ -767,6 +772,37 @@ export class Form extends Interaction {
                     this.updateStatusInline(errorMessage, inputEl);
                     return false;
                 }
+            }
+        }
+        // Checking the files type.
+        const allowedMimetypes = inputEl.accept ? inputEl.accept.split(",") : [];
+        if (allowedMimetypes.length) {
+            const fileChecks = Object.values(inputEl.files).map(async (file) => {
+                // first 1024 bytes are enough to guess the mimetype
+                const buffer = await file.slice(0, 1024).arrayBuffer();
+                const bytes = new Uint8Array(buffer);
+                const file_data = btoa(String.fromCharCode(...bytes));
+                const result = await rpc("/web/binary/guess_mimetype", {
+                    file_data: file_data,
+                });
+                const mimetype = result.mimetype;
+                if (
+                    mimetype &&
+                    !allowedMimetypes.includes(mimetype) &&
+                    !allowedMimetypes.includes(mimetype.split("/")[0] + "/*")
+                ) {
+                    return file.name; // return invalid file name
+                }
+                return null;
+            });
+            const invalidFiles = (await Promise.all(fileChecks)).filter(Boolean);
+            if (invalidFiles.length) {
+                const errorMessage = _t(
+                    "The following file(s) have invalid type: %(fileNames)s. Allowed type(s): %(allowedMimeTypes)s.",
+                    { fileNames: invalidFiles, allowedMimeTypes: allowedMimetypes }
+                );
+                this.updateStatusInline(errorMessage, inputEl);
+                return false;
             }
         }
         return true;

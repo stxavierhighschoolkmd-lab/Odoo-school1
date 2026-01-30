@@ -14,6 +14,7 @@ from odoo.http import Controller, request, route
 from odoo.http.stream import STATIC_CACHE_LONG, Stream
 from odoo.tools import file_open, file_path, replace_exceptions, str2bool
 from odoo.tools.image import image_guess_size_from_field_name
+from odoo.tools.mimetypes import guess_mimetype
 
 from odoo.addons.base.models.assetsbundle import ANY_UNIQUE
 
@@ -315,3 +316,17 @@ class Binary(Controller):
                     font = base64.b64encode(font_file.read())
                 fonts.append(font)
         return fonts
+
+    @route('/web/binary/guess_mimetype', type='jsonrpc', auth='public')
+    def get_mimetype(self, file_data=None):
+        """This route will return the mimetype of a file based on its content.
+
+        :param str file_data: base64 encoded file data
+        :return: mimetype of the file
+        :rtype: dict
+        """
+        MAX_PAYLOAD_SIZE = 2048
+        if not isinstance(file_data, str) or len(file_data) > MAX_PAYLOAD_SIZE:
+            raise UserError(_("Invalid file data: must be a base64 encoded string of maximum %d characters", MAX_PAYLOAD_SIZE))
+        mimetype = guess_mimetype(base64.b64decode(file_data, validate=True))
+        return {'mimetype': mimetype}
