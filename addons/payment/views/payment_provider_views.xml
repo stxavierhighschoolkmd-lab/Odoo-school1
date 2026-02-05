@@ -99,6 +99,7 @@
                                            options="{'no_create': True}"/>
                                 </group>
                                 <group string="Payment Followup" name="payment_followup" invisible="1"/>
+                                <group name="payment_followup_bank_details" invisible="1"/>
                             </group>
                         </page>
                         <page string="Messages"

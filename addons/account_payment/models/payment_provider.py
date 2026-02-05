@@ -31,6 +31,14 @@ class PaymentProvider(models.Model):
         help="Only allow this payment provider when the partner's pricelist matches one of these.",
         comodel_name='product.pricelist',
     )
+    bank_account_id = fields.Many2one(
+        string="Bank Account",
+        comodel_name="res.partner.bank",
+        domain="[('partner_id', '=', company_partner_id)]",
+        default=lambda self: self.env.company.partner_id.bank_ids[:1],
+        copy=False,
+    )
+    company_partner_id = fields.Many2one(comodel_name="res.partner", related="company_id.partner_id")
 
     #=== COMPUTE METHODS ===#
 

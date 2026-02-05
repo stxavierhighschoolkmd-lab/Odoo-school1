@@ -64,17 +64,58 @@
                 <div class="card flex-grow-1">
                     <div id="o_payment_status_message_details" class="card-body">
                         <t>$0</t>
-                        <t t-if="tx._get_communication()">
-                            <hr class="w-100"/>
-                            <strong class="mt-auto">Communication: </strong>
-                            <span t-out="tx._get_communication()"/>
-                        </t>
+                        <t
+                            t-call="payment_custom.custom_pending_payment_instructions"
+                            payment_tx="tx"
+                        />
                     </div>
                 </div>
             </div>
             <t t-else="">$0</t>
         </xpath>
 
+    </template>
+
+    <template id="custom_pending_payment_instructions">
+        <div class="d-flex flex-column gap-3 pt-2 pb-3">
+            <span
+                id="pending_payment_confirmation_msg"
+                t-if="is_confirmation and payment_tx.provider_id.sudo().custom_mode == 'wire_transfer'"
+            >
+                Your order will be confirmed after payment is received.
+            </span>
+            <t
+                t-set="pending_payment_instructions"
+                t-value="payment_tx.provider_id.sudo()._get_custom_provider_bank_details()"
+            />
+            <t t-if="pending_payment_instructions">
+                <div>
+                    <b>Beneficiary: </b>
+                    <pre
+                        class="user-select-all d-inline"
+                        t-out="pending_payment_instructions['beneficiary']"
+                    />
+                </div>
+                <div>
+                    <b>Bank Account: </b>
+                    <pre
+                        class="user-select-all d-inline"
+                        t-out="pending_payment_instructions['bank_account']"
+                    />
+                </div>
+            </t>
+            <div>
+                <b>Amount: </b>
+                <pre class="user-select-all d-inline" t-field="payment_tx.amount"/>
+            </div>
+            <t t-set="communication" t-value="payment_tx._get_communication()"/>
+            <t t-if="communication">
+                <div>
+                    <b>Communication: </b>
+                    <pre class="user-select-all d-inline" t-out="communication"/>
+                </div>
+            </t>
+        </div>
     </template>
 
 </odoo>
