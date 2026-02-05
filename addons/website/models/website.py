@@ -6,6 +6,7 @@ import hashlib
 import inspect
 import json
 import logging
+import markupsafe
 import re
 import requests
 import threading
@@ -1296,6 +1297,45 @@ class Website(models.CachedModel):
             inc += 1
             page_temp = page_url + (inc and "-%s" % inc or "")
         return page_temp
+
+    def _get_odoo_tracking_script(self, main_object):
+        if (
+            main_object._name in {'ir.ui.view', 'website.page'}
+            and not main_object.track
+            # or self.env['ir.http'].is_a_bot  # removed as this uses the request lib
+        ):
+            return ""
+        return markupsafe.Markup(f"""
+            const tracker = {{
+                endpoint: `/website/odoo_track`,
+                startTime: Date.now(),
+                send(data) {{
+                    const payload = {{
+                        ...data,
+                        csrf_token: odoo.csrf_token,
+                        res_model: '{main_object._name}',
+                        res_id: {main_object.id},
+                        url: window.location.href,
+                        path: window.location.pathname,
+                        referrer: document.referrer,
+                    }}
+
+                    fetch(this.endpoint, {{
+                        method: 'POST',
+                        body: JSON.stringify({{ params: {{...payload}} }}),
+                        keepalive: true,
+                        headers: {{ 'Content-Type': 'application/json' }}
+                    }});
+                }},
+                init() {{
+                    // Track Pageview after 2 seconds (attempt to filter out bots)
+                    setTimeout(() => {{
+                        this.send({{ event: 'pageview' }});
+                    }}, 2000);
+                }},
+            }}
+            tracker.init();
+        """)
 
     def _get_plausible_script_url(self):
         return self.env['ir.config_parameter'].sudo().get_str(

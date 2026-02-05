@@ -355,6 +355,15 @@ class WebsitePage(models.Model):
         """
         return True
 
+    def _get_extra_tracking_values(self, **kwargs):
+        etv = super()._get_extra_tracking_values(**kwargs)
+        if (
+            kwargs.get('res_model') == self._name
+            and (res_id := kwargs.get('res_id'))
+        ):
+            etv['page_id'] = res_id
+        return etv
+
     @api.model
     def _post_process_response_from_cache(self, request, response) -> None:
         """ A hook called after a response is retrieved from the cache. This

@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
+from odoo.tools import SQL
 
 
 class WebsiteVisitor(models.Model):
@@ -49,7 +50,28 @@ class WebsiteVisitor(models.Model):
             visitor.visitor_product_count = visitor_info["product_count"]
             visitor.product_count = len(visitor_info["product_ids"])
 
+    def _get_additional_track_query_parts(self, **kwargs):
+        select_extra, cols_extra, vals_extra = super()._get_additional_track_query_parts(**kwargs)
+        if product_id := kwargs.get('product_id'):
+            return (
+                SQL(
+                    "%(og_select)s, %(product_id)s AS product_id",
+                    og_select=select_extra,
+                    product_id=product_id,
+                ),
+                SQL(
+                    "%(og_cols)s, product_id",
+                    og_cols=cols_extra,
+                ),
+                SQL(
+                    "%(og_vals)s, product_id::integer",
+                    og_vals=vals_extra,
+                ),
+            )
+        return select_extra, cols_extra, vals_extra
+
     def _add_viewed_product(self, product_id):
+        # Remove this?
         """Add a website_track with a page marked as viewed."""
         self.ensure_one()
         if product_id and self.env["product.product"].browse(product_id)._is_variant_possible():

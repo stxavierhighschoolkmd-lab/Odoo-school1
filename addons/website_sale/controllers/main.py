@@ -2064,6 +2064,9 @@ class WebsiteSale(payment_portal.PaymentPortal):
     # --------------------------------------------------------------------------
     @route("/shop/products/recently_viewed_update", type="jsonrpc", auth="public", website=True)
     def products_recently_viewed_update(self, product_id, **_kwargs):
+        # Remove This?
+        # Consider using the standard tracking route with the product_id field
+        # but there shouldn't (?) be a URL
         res = {}
         visitor_sudo = request.env["website.visitor"]._get_visitor_from_request(force_create=True)
         visitor_sudo._add_viewed_product(product_id)

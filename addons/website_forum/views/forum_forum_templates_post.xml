@@ -184,7 +184,7 @@
 </template>
 
 <!-- Specific Post Layout -->
-<template id="post_description_full" name="Question Navigation">
+<template id="post_description_full" name="Question Navigation" track="True">
     <t t-set="_page_name" t-valuef="single_question"/>
     <t t-set="_question_creator" t-value="question.create_uid.id"/>
 
