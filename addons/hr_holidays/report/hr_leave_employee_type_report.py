@@ -1,199 +1,161 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models, tools, _
+from odoo import api, fields, models
+from odoo.tools import SQL
 
 
 class HrLeaveEmployeeTypeReport(models.Model):
     _name = 'hr.leave.employee.type.report'
     _description = 'Time Off Summary / Report'
     _auto = False
-    _order = "date_from DESC, employee_id"
+    _order = "employee_id"
 
     employee_id = fields.Many2one('hr.employee', string="Employee", readonly=True)
     active_employee = fields.Boolean(readonly=True)
     number_of_days = fields.Float('Number of Days', readonly=True, aggregator="sum")
     number_of_hours = fields.Float('Number of Hours', readonly=True, aggregator="sum")
     department_id = fields.Many2one('hr.department', string='Department', readonly=True)
+    manager_id = fields.Many2one(related="employee_id.parent_id", string="Manager", readonly=True)
+    job_id = fields.Many2one(related="employee_id.current_version_id.job_id", string="Job Position", readonly=True)
+    working_schedule = fields.Many2one(
+        related="employee_id.current_version_id.resource_calendar_id",
+        string="Working Schedule", readonly=True)
     work_entry_type_id = fields.Many2one("hr.work.entry.type", string="Time Off Type", readonly=True)
     holiday_status = fields.Selection([
-        ('taken', 'Taken'), #taken = validated
+        ('allocated', 'Allocated'),
         ('left', 'Left'),
-        ('planned', 'Planned')
     ])
-    state = fields.Selection([
-        ('cancel', 'Cancelled'),
-        ('confirm', 'To Approve'),
-        ('refuse', 'Refused'),
-        ('validate1', 'Second Approval'),
-        ('validate', 'Approved')
-        ], string='Status', readonly=True)
-    date_from = fields.Datetime('Start Date', readonly=True)
-    date_to = fields.Datetime('End Date', readonly=True)
     company_id = fields.Many2one('res.company', string="Company", readonly=True)
 
-    def init(self):
-        tools.drop_view_if_exists(self.env.cr, 'hr_leave_employee_type_report')
+    @property
+    def _table_query(self):
+        return self._generate_balance_query()
 
-        self.env.cr.execute("""
-            CREATE or REPLACE view hr_leave_employee_type_report as (
-                WITH
-                /* Validated leaves */
-                validated_leaves as (
-                    SELECT
-						l.employee_id as employee_id,
-						l.number_of_days as number_of_days,
-						l.number_of_hours as number_of_hours,
-						l.work_entry_type_id as work_entry_type_id,
-						l.date_from as date_from,
-						l.date_to as date_to
-                    FROM hr_leave l
-                    WHERE l.state IN ('validate', 'validate1')
-                ),
+    def _generate_balance_query(self):
+        today = fields.Date.today()
+        active_ids = self.env.context.get('active_ids')
+        domain = [('company_id', 'in', self.env.companies.ids)]
+        if active_ids:
+            domain.append(('id', 'in', active_ids))
+        employees = self.env['hr.employee'].search(domain)
+        if not employees:
+            return self._empty_query()
 
-                /* FIFO-ordered validated allocations */
-                ordered_allocations as (
-                    SELECT
-						allocation.id as allocation_id,
-						allocation.employee_id as employee_id,
-						employee.active as active_employee,
-						allocation.number_of_days as number_of_days,
-						allocation.number_of_hours_display as number_of_hours,
-						allocation.department_id as department_id,
-						allocation.work_entry_type_id as work_entry_type_id,
-						allocation.state as state,
-						allocation.date_from as date_from,
-						allocation.date_to as date_to,
-						allocation.employee_company_id as company_id,
-						ROW_NUMBER() OVER (
-							PARTITION BY allocation.employee_id, allocation.work_entry_type_id
-							ORDER BY allocation.date_from, allocation.id
-						) as fifo_rank,
-						SUM(allocation.number_of_days) OVER (
-							PARTITION BY allocation.employee_id, allocation.work_entry_type_id
-							ORDER BY allocation.date_from, allocation.id
-							ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-						) as cumulative_allocated_days,
-						SUM(allocation.number_of_hours_display) OVER (
-							PARTITION BY allocation.employee_id, allocation.work_entry_type_id
-							ORDER BY allocation.date_from, allocation.id
-							ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-						) as cumulative_allocated_hours
-                    FROM hr_leave_allocation allocation
-                    JOIN hr_employee employee ON (allocation.employee_id = employee.id)
-                    WHERE allocation.state = 'validate'
-                ),
+        # Fetch all valid allocations
+        allocations = self.env['hr.leave.allocation'].search([
+            ('employee_id', 'in', employees.ids),
+            ('state', '=', 'validate'),
+            ('date_from', '<=', today),
+            '|',
+            ('date_to', '=', False),
+            ('date_to', '>=', today),
+        ])
+        if not allocations:
+            return self._empty_query()
 
-                /* Leaves applicable to each allocation */
-                taken_per_allocation as (
-                    SELECT
-                        oa.allocation_id,
-                        SUM(vl.number_of_days) as taken_days,
-						SUM(vl.number_of_hours) as taken_hours
-                    FROM ordered_allocations oa
-                    LEFT JOIN validated_leaves vl
-                        ON vl.employee_id = oa.employee_id
-                        AND vl.work_entry_type_id = oa.work_entry_type_id
-                        AND vl.date_from <= COALESCE(oa.date_to, 'infinity')
-                        AND (
-                            oa.date_to IS NULL
-                            OR
-                            vl.date_to >= oa.date_from
-                        )
-                    GROUP BY oa.allocation_id
-                ),
+        work_entry_types = allocations.work_entry_type_id
+        consumed_leaves_by_employee = employees._get_consumed_leaves(work_entry_types)[0]
 
-                /* FIFO remaining balance per allocation */
-                fifo_balances as (
-                    SELECT
-                        oa.employee_id as employee_id,
-                        oa.active_employee as active_employee,
-                        GREATEST(oa.number_of_days - GREATEST(
-							COALESCE(tpa.taken_days, 0) - (oa.cumulative_allocated_days - oa.number_of_days), 0),
-						0) as number_of_days,
-						GREATEST(oa.number_of_hours - GREATEST(
-							COALESCE(tpa.taken_hours, 0) - (oa.cumulative_allocated_hours - oa.number_of_hours), 0),
-						0) as number_of_hours,
-                        oa.department_id as department_id,
-                        oa.work_entry_type_id as work_entry_type_id,
-                        oa.state as state,
-                        oa.date_from as date_from,
-                        oa.date_to as date_to,
-                        oa.company_id as company_id
-                    FROM ordered_allocations oa
-                    LEFT JOIN taken_per_allocation tpa
-                        ON tpa.allocation_id = oa.allocation_id
-                )
+        records = []
+        row_id = 1
+        for employee in employees:
+            hours_per_day = employee.resource_calendar_id.hours_per_day or 8.0
+            for work_entry_type in consumed_leaves_by_employee[employee]:
+                if not work_entry_type.requires_allocation or work_entry_type.hide_on_dashboard or not work_entry_type.active:
+                    continue
+                allocated_days = 0
+                allocated_hours = 0
+                remaining_days = 0
+                remaining_hours = 0
+                for allocation in consumed_leaves_by_employee[employee][work_entry_type]:
+                    if not allocation:
+                        continue
+                    # Only count allocations valid as of today (same as dashboard)
+                    if allocation.date_from <= today and (not allocation.date_to or allocation.date_to >= today):
+                        allocation_data = consumed_leaves_by_employee[employee][work_entry_type][allocation]
+                        allocated_days += allocation.number_of_days
+                        allocated_hours += allocation.number_of_hours_display
+                        if work_entry_type.unit_of_measure == 'hour':
+                            remaining_hours += allocation_data['virtual_remaining_leaves']
+                            remaining_days += allocation_data['virtual_remaining_leaves'] / hours_per_day
+                        else:
+                            remaining_days += allocation_data['virtual_remaining_leaves']
+                            remaining_hours += allocation_data['virtual_remaining_leaves'] * hours_per_day
 
-                /* Final unified result */
-                SELECT
-                    row_number() OVER (ORDER BY leaves.employee_id, leaves.date_from) as id,
-					leaves.employee_id as employee_id,
-					leaves.active_employee as active_employee,
-					leaves.number_of_days as number_of_days,
-					leaves.number_of_hours as number_of_hours,
-					leaves.department_id as department_id,
-					leaves.work_entry_type_id as work_entry_type_id,
-					leaves.state as state,
-					leaves.date_from as date_from,
-					leaves.date_to as date_to,
-					leaves.holiday_status as holiday_status,
-					leaves.company_id as company_id
-                FROM (
-                    /* Remaining leave balances */
-                    SELECT
-						fb.employee_id as employee_id,
-						fb.active_employee as active_employee,
-						fb.number_of_days as number_of_days,
-						fb.number_of_hours as number_of_hours,
-						fb.department_id as department_id,
-						fb.work_entry_type_id as work_entry_type_id,
-						fb.state as state,
-						fb.date_from as date_from,
-						fb.date_to as date_to,
-						'left' as holiday_status,
-						fb.company_id as company_id
-                    FROM fifo_balances fb
-                    WHERE fb.number_of_days >= 0
+                if allocated_days == 0 and allocated_hours == 0:
+                    continue
+                department_id = employee.department_id.id or False
+                company_id = employee.company_id.id
+                records.extend([(
+                    row_id,
+                    employee.id,
+                    employee.active,
+                    allocated_days,
+                    allocated_hours,
+                    department_id,
+                    work_entry_type.id,
+                    'allocated',
+                    company_id,
+                ), (
+                    row_id + 1,
+                    employee.id,
+                    employee.active,
+                    max(0.0, remaining_days),
+                    max(0.0, remaining_hours),
+                    department_id,
+                    work_entry_type.id,
+                    'left',
+                    company_id,
+                )])
+                row_id += 2
+        if not records:
+            return self._empty_query()
 
-                    /* Planned and taken leave requests */
-                    UNION ALL SELECT
-						request.employee_id as employee_id,
-						employee.active as active_employee,
-						request.number_of_days as number_of_days,
-						request.number_of_hours as number_of_hours,
-						request.department_id as department_id,
-						request.work_entry_type_id as work_entry_type_id,
-						request.state as state,
-						request.date_from as date_from,
-						request.date_to as date_to,
-						CASE
-							WHEN request.state IN ('validate', 'validate1') THEN 'taken'
-							WHEN request.state = 'confirm' THEN 'planned'
-						END as holiday_status,
-						request.employee_company_id as company_id
-                    FROM hr_leave as request
-                    JOIN hr_employee as employee ON (request.employee_id = employee.id)
-                    WHERE request.state IN ('confirm', 'validate', 'validate1')
-                ) leaves
-            );
+        return SQL(
+            """
+            WITH report_records (
+                id, employee_id, active_employee,
+                number_of_days, number_of_hours,
+                department_id, work_entry_type_id,
+                holiday_status, company_id
+            ) AS (
+                VALUES %(values)s
+            )
+            SELECT * FROM report_records
+            """,
+            values=SQL(', ').join(records),
+        )
+
+    def _empty_query(self):
+        return SQL("""
+            SELECT
+                NULL::INTEGER AS id,
+                NULL::INTEGER AS employee_id,
+                NULL::BOOLEAN AS active_employee,
+                NULL::REAL AS number_of_days,
+                NULL::REAL AS number_of_hours,
+                NULL::INTEGER AS department_id,
+                NULL::INTEGER AS work_entry_type_id,
+                NULL::VARCHAR AS holiday_status,
+                NULL::INTEGER AS company_id
+            WHERE FALSE
         """)
 
     @api.model
     def action_time_off_analysis(self):
         domain = [('company_id', 'in', self.env.companies.ids)]
         if self.env.context.get('active_ids'):
-            domain = [('employee_id', 'in', self.env.context.get('active_ids', [])),
-                      ('state', '!=', 'cancel')]
+            domain = [('employee_id', 'in', self.env.context.get('active_ids', []))]
 
         return {
-            'name': _('Balance'),
+            'name': self.env._('Balance'),
             'type': 'ir.actions.act_window',
             'res_model': 'hr.leave.employee.type.report',
             'view_mode': 'pivot',
             'search_view_id': [self.env.ref('hr_holidays.view_search_hr_holidays_employee_type_report').id],
             'domain': domain,
-            'help': _("""
+            'help': self.env._("""
                 <p class="o_view_nocontent_empty_folder">
                     No Balance yet!
                 </p>
@@ -202,9 +164,9 @@ class HrLeaveEmployeeTypeReport(models.Model):
                 </p>
             """, self.env.ref("hr_holidays.hr_leave_allocation_action_form").id),
             'context': {
-                'search_default_year': True,
+                'search_default_left_balance': True,
                 'search_default_company': True,
                 'search_default_employee': True,
                 'group_expand': True,
-            }
+            },
         }
