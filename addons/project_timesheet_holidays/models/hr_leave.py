@@ -42,12 +42,30 @@ class HrLeave(models.Model):
 
             employee_timezone = ZoneInfo(tz)
 
+<<<<<<< 9fca84b6ff791e04b81eaf57f8b7a2889da2f59f
             if leave_version_sudo.is_flexible and (leave.work_entry_type_request_unit == 'hour' or leave.work_entry_type_request_unit == 'half_day' or leave.date_from.date() == leave.date_to.date()):
                 leave_date = leave.date_from.astimezone(employee_timezone).date()
                 if leave.work_entry_type_request_unit == 'hour':
+||||||| cbeda611697e3c31ae46b582b98b781b684634e0
+            if calendar.flexible_hours and (leave.leave_type_request_unit == 'hour' or leave.leave_type_request_unit == 'half_day' or leave.date_from.date() == leave.date_to.date()):
+                leave_date = leave.date_from.astimezone(calendar_timezone).date()
+                if leave.leave_type_request_unit == 'hour':
+=======
+            if calendar.flexible_hours and leave.date_from.date() == leave.date_to.date():
+                leave_date = leave.date_from.astimezone(calendar_timezone).date()
+                if leave.leave_type_request_unit == 'hour':
+>>>>>>> 9e8ba6e6854e87eee0623f41d640a42ea288faf6
                     hours = leave.request_hour_to - leave.request_hour_from
+<<<<<<< 9fca84b6ff791e04b81eaf57f8b7a2889da2f59f
                 elif leave.work_entry_type_request_unit == 'half_day':
                     hours = leave_version_sudo.hours_per_day / 2
+||||||| cbeda611697e3c31ae46b582b98b781b684634e0
+                elif leave.leave_type_request_unit == 'half_day':
+                    hours = calendar.hours_per_day / 2
+=======
+                elif leave.leave_type_request_unit == 'half_day' and leave.request_date_from_period == leave.request_date_to_period:
+                    hours = calendar.hours_per_day / 2
+>>>>>>> 9e8ba6e6854e87eee0623f41d640a42ea288faf6
                 else:  # Single-day leave
                     hours = leave_version_sudo.hours_per_day
                 work_hours_data = [(leave_date, hours)]
