@@ -18,7 +18,7 @@ import {
 } from "@html_editor/main/media/image_post_process_plugin";
 import { _t } from "@web/core/l10n/translation";
 import { BuilderAction } from "@html_builder/core/builder_action";
-import { getFetchedMimetype } from "@html_editor/utils/image";
+import { getMimetypeBeforeShape } from "@html_builder/utils/image";
 
 /**
  * @typedef {((dataset: DOMStringMap) => string)[]} default_shape_handlers
@@ -112,7 +112,7 @@ export class ImageShapeOptionPlugin extends Plugin {
         if (!dataset.originalId) {
             return false;
         }
-        return isImageSupportedForProcessing(await getFetchedMimetype(img, dataset));
+        return isImageSupportedForProcessing(await getMimetypeBeforeShape(img));
     }
     async getShapeSvgText(shapeName) {
         // Compatibility with old shapes.
