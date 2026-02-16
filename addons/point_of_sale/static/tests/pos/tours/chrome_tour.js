@@ -315,6 +315,57 @@ registry.category("web_tour.tours").add("test_ctrl_number_ignored", {
         ].flat(),
 });
 
+registry
+    .category("web_tour.tours")
+    .add("test_bank_account_statements_creation_for_config_opening_statement", {
+        steps: () =>
+            [
+                Chrome.startPoS(),
+                ProductScreen.enterOpeningAmount("100.00"),
+                Dialog.confirm("Open Register"),
+                ProductScreen.addOrderline("Monitor Stand", "2", "10"),
+                ProductScreen.clickPayButton(),
+                PaymentScreen.validateButtonIsHighlighted(true),
+                PaymentScreen.clickValidate(),
+                ReceiptScreen.clickNextOrder(),
+                ProductScreen.isShown(),
+            ].flat(),
+    });
+
+registry
+    .category("web_tour.tours")
+    .add("test_bank_account_statements_creation_for_config_cash_in_out_statements", {
+        steps: () =>
+            [
+                Chrome.startPoS(),
+                ProductScreen.addOrderline("Monitor Stand", "2", "10"),
+                ProductScreen.clickPayButton(),
+                PaymentScreen.validateButtonIsHighlighted(true),
+                PaymentScreen.clickValidate(),
+                ReceiptScreen.clickNextOrder(),
+                ProductScreen.isShown(),
+                Chrome.doCashMove("10", "Cash Out"),
+            ].flat(),
+    });
+
+registry
+    .category("web_tour.tours")
+    .add("test_bank_account_statements_creation_for_config_closing_session_statements", {
+        steps: () =>
+            [
+                Chrome.startPoS(),
+                ProductScreen.addOrderline("Monitor Stand", "2", "10"),
+                ProductScreen.clickPayButton(),
+                PaymentScreen.validateButtonIsHighlighted(true),
+                PaymentScreen.clickValidate(),
+                ReceiptScreen.clickNextOrder(),
+                ProductScreen.isShown(),
+                Chrome.clickMenuOption("Close Register"),
+                ProductScreen.closeWithCashAmount("150"),
+                Dialog.confirm("Close Register"),
+            ].flat(),
+    });
+
 registry.category("web_tour.tours").add("test_set_opening_note_without_cash_method", {
     steps: () =>
         [

@@ -3699,6 +3699,71 @@ class TestUi(TestPointOfSaleHttpCommon):
         self.main_pos_config.with_user(self.pos_user).open_ui()
         self.start_pos_tour('test_combo_no_free_item')
 
+    def test_bank_account_statements_creation_for_config(self):
+        new_pos_config = self.env['pos.config'].create({
+            'name': 'New Pos Config',
+            'module_pos_restaurant': False,
+            'cash_control': True,
+        })
+        cash_journal = self.env['account.journal'].create({
+            'name': 'Cash Journal',
+            'type': 'cash',
+            'company_id': self.env.company.id,
+        })
+        cash_method = self.env['pos.payment.method'].create({
+            'name': 'Cash Payment Method',
+            'company_id': self.env.company.id,
+            'journal_id': cash_journal.id,
+        })
+        new_pos_config.write({
+            'payment_method_ids': [(6, 0, [cash_method.id])],
+        })
+        new_pos_config.with_user(self.pos_user).open_ui()
+        current_session = new_pos_config.current_session_id
+        self.assertEqual(cash_journal.current_statement_balance, 0.0)
+        # Simulate the opening of a session which should trigger the creation of a bank statement
+        # with an opening balance of 100 for the cash journal
+        self.start_pos_tour(
+            'test_bank_account_statements_creation_for_config_opening_statement',
+            pos_config=new_pos_config,
+        )
+        self.assertEqual(cash_journal.current_statement_balance, 100.0)
+        self.assertEqual(cash_journal.last_statement_id.name, 'Initial cash deposit')
+        self.assertEqual(len(cash_journal.last_statement_id.line_ids), 1)
+        self.assertEqual(cash_journal.last_statement_id.line_ids[0].amount, 100.0)
+        self.assertEqual(cash_journal.last_statement_id.line_ids[0].payment_ref, 'Opening cash balance')
+        self.pos_user.write({
+            'group_ids': [
+                (4, self.env.ref('account.group_account_basic').id),
+            ],
+        })
+        # Simulate a cash out of 10, which should trigger the creation of a bank statement line and
+        # update the statement balance accordingly
+        self.start_pos_tour(
+            'test_bank_account_statements_creation_for_config_cash_in_out_statements',
+            pos_config=new_pos_config,
+        )
+        self.assertEqual(cash_journal.current_statement_balance, 90.0)
+        self.assertEqual(cash_journal.last_statement_id.name, f'Cash in/Cash out {current_session.name}')
+        self.assertEqual(len(cash_journal.last_statement_id.line_ids), 1)
+        self.assertEqual(cash_journal.last_statement_id.line_ids[0].amount, -10.0)
+        self.assertEqual(cash_journal.last_statement_id.line_ids[0].payment_ref, f'{current_session.name}-out-Cash Out')
+        # Simulate the closing of the session which should trigger the creation of a closing bank
+        # statement with a closing balance of 150 for the cash journal
+        self.start_pos_tour(
+            'test_bank_account_statements_creation_for_config_closing_session_statements',
+            pos_config=new_pos_config,
+        )
+        current_session.post_closing_cash_details(150)
+        current_session.close_session_from_ui()
+        cash_journal._compute_current_statement_balance()
+        self.assertEqual(cash_journal.current_statement_balance, 150.0)
+        self.assertEqual(cash_journal.last_statement_id.name, current_session.name)
+        self.assertEqual(cash_journal.last_statement_id.balance_end_real, 150.0)
+        self.assertEqual(len(cash_journal.last_statement_id.line_ids), 1)
+        self.assertEqual(cash_journal.last_statement_id.line_ids[0].amount, 60.0)
+        self.assertEqual(cash_journal.last_statement_id.line_ids[0].payment_ref, current_session.name)
+
     def test_not_available_pricelist_not_set_on_order(self):
         """ Test that when the pricelist is not available, it is not set on the order """
         not_available_pricelist, available_pricelist = self.env['product.pricelist'].create([{
