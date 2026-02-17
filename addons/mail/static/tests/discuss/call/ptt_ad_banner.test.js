@@ -32,7 +32,7 @@ test("display banner when ptt extension is not enabled", async () => {
     await contains("[title='Open Actions Menu']");
     await click("[title='Open Actions Menu']");
     await click(".o-dropdown-item:text('Voice & Video Settings')");
-    await click("button:text('Push-to-Talk')");
+    await click("button:text('Push-to-talk')");
     await click("[title*='Close Chat Window']");
     await click("button[title='New Meeting']");
     await click("button[title='Close panel']"); // invitation panel automatically open
