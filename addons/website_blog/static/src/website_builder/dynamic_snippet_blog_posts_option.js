@@ -12,14 +12,17 @@ export class DynamicSnippetBlogPostsOption extends BaseOptionComponent {
 
     setup() {
         super.setup();
-        const { fetchAuthors, getModelNameFilter } = this.dependencies.dynamicSnippetBlogPostsOption;
+        const { fetchAuthors, getModelNameFilter } =
+            this.dependencies.dynamicSnippetBlogPostsOption;
         this.modelNameFilter = getModelNameFilter();
         this.dynamicOptionParams = useDynamicSnippetOption(this.modelNameFilter);
         this.blogState = useState({
             authors: [],
+            fetchAuthors: () => {},
         });
         onWillStart(async () => {
             this.blogState.authors.push(...(await fetchAuthors()));
+            this.blogState.fetchAuthors = fetchAuthors;
         });
         this.templateKeyState = useDomState((el) => ({
             templateKey: el.dataset.templateKey,

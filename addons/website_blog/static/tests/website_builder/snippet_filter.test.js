@@ -1,10 +1,6 @@
 import { expect, test } from "@odoo/hoot";
 import { SelectMany2X } from "@html_builder/core/building_blocks/select_many2x";
-import {
-    contains,
-    onRpc,
-    patchWithCleanup,
-} from "@web/../tests/web_test_helpers";
+import { contains, onRpc, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import {
     defineWebsiteModels,
     setupWebsiteBuilderWithSnippet,
@@ -19,14 +15,14 @@ test("dynamic Snippet Blog Filter", async () => {
         async (args) =>
             new Promise((resolve) => {
                 resolve([]);
-            }),
+            })
     );
     onRpc(
         "/website/snippet/filter_templates",
         async (args) =>
             new Promise((resolve) => {
                 resolve([]);
-            }),
+            })
     );
 
     // Provide blogs, tags and authors for the filters
@@ -65,38 +61,29 @@ test("dynamic Snippet Blog Filter", async () => {
     await contains(":iframe .s_blog_posts").click();
 
     // Check for blog filter
-    expect(":iframe .s_blog_posts").not.toHaveAttribute(
-        "data-filter-by-blog-ids",
-    );
+    expect(":iframe .s_blog_posts").not.toHaveAttribute("data-filter-by-blog-ids");
     await contains("[data-label=Blogs] button.dropdown").click();
     await contains(".dropdown-item:contains(Test Blog 1)").click();
     expect(":iframe .s_blog_posts").toHaveAttribute(
         "data-filter-by-blog-ids",
-        '[{"id":1,"display_name":"Test Blog 1","name":"Test Blog 1"}]',
+        '[{"id":1,"display_name":"Test Blog 1","name":"Test Blog 1"}]'
     );
 
     // Check for tag filter
-    expect(":iframe .s_blog_posts").not.toHaveAttribute(
-        "data-filter-by-tag-ids",
-    );
+    expect(":iframe .s_blog_posts").not.toHaveAttribute("data-filter-by-tag-ids");
     await contains("[data-label=Tags] button.dropdown").click();
     await contains(".dropdown-item:contains(Adventure)").click();
     expect(":iframe .s_blog_posts").toHaveAttribute(
         "data-filter-by-tag-ids",
-        '[{"id":1,"display_name":"Adventure","name":"Adventure"}]',
+        '[{"id":1,"display_name":"Adventure","name":"Adventure"}]'
     );
 
     // Check for author filter
-    await contains("[data-label=Author] button.dropdown").click();
-    await contains(".dropdown-item:contains(All Authors)").click();
-    expect(":iframe .s_blog_posts").toHaveAttribute(
-        "data-filter-by-author-id",
-        "-1",
-    );
-    await contains("[data-label=Author] button.dropdown").click();
+    expect(":iframe .s_blog_posts").not.toHaveAttribute("data-filter-by-author-ids");
+    await contains("div[data-label=Authors] .dropdown").click();
     await contains(".dropdown-item:contains(Author 1)").click();
     expect(":iframe .s_blog_posts").toHaveAttribute(
-        "data-filter-by-author-id",
-        "1",
+        "data-filter-by-author-ids",
+        '[{"id":1,"name":"Author 1"}]'
     );
 });
