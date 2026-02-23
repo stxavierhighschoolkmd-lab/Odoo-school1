@@ -1019,6 +1019,10 @@ export function useInputBuilderComponent({
         }
     }
 
+    function revert() {
+        callOperation(applyOperation.revert);
+    }
+
     if (id) {
         useDependencyDefinition(
             id,
@@ -1034,6 +1038,7 @@ export function useInputBuilderComponent({
         state,
         commit,
         preview,
+        revert,
         onReady,
     };
 }
