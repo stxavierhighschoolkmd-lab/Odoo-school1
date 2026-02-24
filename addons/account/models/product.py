@@ -41,6 +41,10 @@ class ProductTemplate(models.Model):
         default=lambda self: self.env.companies.account_sale_tax_id or self.env.companies.root_id.sudo().account_sale_tax_id,
     )
     tax_string = fields.Char(compute='_compute_tax_string')
+    is_tax_included = fields.Boolean(
+        string="Tax Included",
+        help="Sales price is tax included.",
+    )
     supplier_taxes_id = fields.Many2many('account.tax', 'product_supplier_taxes_rel', 'prod_id', 'tax_id',
         string="Purchase Taxes",
         help="Default taxes used when buying the product",
@@ -111,18 +115,22 @@ class ProductTemplate(models.Model):
 
     def _construct_tax_string(self, price):
         currency = self.currency_id
-        res = self.taxes_id._filter_taxes_by_company(self.env.company).compute_all(
-            price, product=self, partner=self.env['res.partner']
+        
+        res = self.taxes_id._filter_taxes_by_company(self.env.company)._get_tax_details(
+            price,
+            1.0,
+            rounding_method='round_globally',
+            product=self,
+            product_uom=self.uom_id,
+            document_tax_mode='tax_included' if self.is_tax_included else 'tax_excluded',
         )
-        joined = []
-        included = res['total_included']
-        if currency.compare_amounts(included, price):
-            joined.append(_('%(amount)s Incl. Taxes', amount=format_amount(self.env, included, currency)))
-        excluded = res['total_excluded']
-        if currency.compare_amounts(excluded, price):
-            joined.append(_('%(amount)s Excl. Taxes', amount=format_amount(self.env, excluded, currency)))
-        if joined:
-            tax_string = f"(= {', '.join(joined)})"
+        if self.is_tax_included:
+            values = {'amount': res['total_excluded'], 'text': 'Excl. Taxes'}
+        else:
+            values = {'amount': res['total_included'], 'text': 'Incl. Taxes',}
+
+        if self.taxes_id:
+            tax_string = (_('%(amount)s %(text)s', amount=format_amount(self.env, values['amount'], currency), text=values['text']))
         else:
             tax_string = " "
         return tax_string
@@ -296,6 +304,25 @@ class ProductProduct(models.Model):
     def _compute_tax_string(self):
         for record in self:
             record.tax_string = record.product_tmpl_id._construct_tax_string(record.lst_price)
+
+    def _get_opposite_tax_mode_price(self, line, price_from_product):
+        '''Helper to get the opposite tax mode price_unit when switching between tax included and excluded for different models'''
+        self.ensure_one()
+        product = self
+        total_price_mapping = {
+            'tax_included': 'total_excluded',
+            'tax_excluded': 'total_included',
+        }
+        document_tax_mode = 'tax_included' if product.is_tax_included else 'tax_excluded'
+        price = line.tax_ids._filter_taxes_by_company(self.env.company)._get_tax_details(
+            price_from_product,
+            1.0,
+            rounding_method='round_globally',
+            product=product,
+            product_uom=product.uom_id,
+            document_tax_mode=document_tax_mode,
+        )[total_price_mapping[document_tax_mode]]
+        return price
 
     # -------------------------------------------------------------------------
     # EDI

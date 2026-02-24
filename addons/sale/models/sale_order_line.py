@@ -208,6 +208,7 @@ class SaleOrderLine(models.Model):
         check_company=True,
         domain="[('type_tax_use', '=', 'sale'), ('country_id', '=', tax_country_id)]",
     )
+    document_tax_mode = fields.Selection(related='order_id.document_tax_mode')
 
     # Tech field caching pricelist rule used for price & discount computation
     pricelist_item_id = fields.Many2one(
@@ -658,7 +659,7 @@ class SaleOrderLine(models.Model):
                     **line._get_pricelist_kwargs(),
                 )
 
-    @api.depends("product_id", "product_uom_id", "product_uom_qty")
+    @api.depends("product_id", "product_uom_id", "product_uom_qty", "document_tax_mode")
     def _compute_price_unit(self):
         def has_manual_price(line):
             # `line.currency_id` can be False for NewId records
@@ -721,9 +722,14 @@ class SaleOrderLine(models.Model):
         line = self.with_company(self.company_id)
         price = line._get_display_price()
         product_taxes = line.product_id.taxes_id._filter_taxes_by_company(line.company_id)
-        price_unit = line.product_id._get_tax_included_unit_price_from_price(
+        product_tax_mode = 'tax_included' if line.product_id.is_tax_included else 'tax_excluded'
+        price_from_product = line.product_id._get_tax_included_unit_price_from_price(
             price, product_taxes=product_taxes, fiscal_position=line.order_id.fiscal_position_id
         )
+        if product_tax_mode == line.document_tax_mode:
+            price_unit = price_from_product
+        else:
+            price_unit = line.product_id._get_opposite_tax_mode_price(line, price_from_product)
         line.update({"price_unit": price_unit, "technical_price_unit": price_unit})
 
     def _get_order_date(self):
@@ -929,6 +935,7 @@ class SaleOrderLine(models.Model):
             "currency_id": self.order_id.currency_id or company.currency_id,
             "rate": self.order_id.currency_rate,
             "name": self.name,
+            "document_tax_mode": self.order_id.document_tax_mode,
         }
         if self._is_global_discount():
             base_values["special_type"] = "global_discount"

@@ -1196,6 +1196,7 @@
                                   name="invoice_tab"
                                   string="Invoice Lines"
                                   invisible="move_type == 'entry'">
+                                <field name="document_tax_mode" class="overlap_badge_tab" widget="badges_selection" nolabel="True" readonly="disable_tax_mode_selection"/>
                                 <field name="invoice_line_ids"
                                        widget="product_label_section_and_note_field_o2m"
                                        mode="list,kanban"
@@ -1277,10 +1278,10 @@
                                                optional="show"
                                                groups="account.group_partial_purchase_deductibility"/>
                                         <field name="price_subtotal"
-                                               column_invisible="parent.move_type not in ['in_invoice', 'in_refund', 'in_receipt'] and parent.company_price_include == 'tax_included'"
+                                               column_invisible="parent.document_tax_mode == 'tax_included'"
                                                string="Amount"/>
                                         <field name="price_total"
-                                               column_invisible="parent.move_type in ['in_invoice', 'in_refund', 'in_receipt'] or parent.company_price_include == 'tax_excluded'"
+                                               column_invisible="parent.document_tax_mode == 'tax_excluded'"
                                                string="Amount"/>
                                         <widget name="section_state"/>
                                         <!-- Others fields -->
@@ -1291,6 +1292,7 @@
                                         <field name="display_type" force_save="1" column_invisible="True"/>
                                         <field name="collapse_prices" column_invisible="True"/>
                                         <field name="collapse_composition" column_invisible="True"/>
+                                        <field name="document_tax_mode" column_invisible="True"/>
                                     </list>
                                     <kanban class="o_kanban_mobile">
                                         <!-- Displayed fields -->

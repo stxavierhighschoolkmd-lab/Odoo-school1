@@ -13,6 +13,7 @@ class ProductTemplate(models.Model):
     def _construct_tax_string(self, price):
         """ Updates the tax string computation to include the withheld amount when withholding taxes are involved. """
         # OVERRIDE 'account'
+        tax_string = super()._construct_tax_string(price)
         company_taxes = self.taxes_id.filtered(lambda t: t.company_id == self.env.company)
 
         def _get_withheld_amount():
@@ -42,26 +43,8 @@ class ProductTemplate(models.Model):
                     wth_total -= tax_data['tax_amount_currency']
             return wth_total
 
-        # Reimplement the tax string by taking into account the withholding taxes.
-        # First step; compute the amounts excluding withholding taxes.
-        res = company_taxes.compute_all(
-            price, product=self, partner=self.env['res.partner']
-        )
-        joined = []
-        included = res['total_included']
-        excluded = res['total_excluded']
-        # Second step, compute the withholding tax amounts
         withheld_amount = _get_withheld_amount()
+        if not self.currency_id.is_zero(withheld_amount):
+            tax_string = f"(= {', '.join([tax_string, self.env._('%(amount)s Tax Withheld', amount=format_amount(self.env, withheld_amount, self.currency_id))])})"
 
-        currency = self.currency_id
-        if currency.compare_amounts(included, price):
-            joined.append(self.env._('%(amount)s Incl. Taxes', amount=format_amount(self.env, included, currency)))
-        if currency.compare_amounts(excluded, price):
-            joined.append(self.env._('%(amount)s Excl. Taxes', amount=format_amount(self.env, excluded, currency)))
-        if not currency.is_zero(withheld_amount):
-            joined.append(self.env._('%(amount)s Tax Withheld', amount=format_amount(self.env, withheld_amount, currency)))
-        if joined:
-            tax_string = f"(= {', '.join(joined)})"
-        else:
-            tax_string = " "
         return tax_string

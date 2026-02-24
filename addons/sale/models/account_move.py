@@ -215,6 +215,14 @@ class AccountMove(models.Model):
             self.line_ids.sale_line_ids
             and all(sale_line.is_downpayment for sale_line in self.line_ids.sale_line_ids)
         ) or False
+    
+    def _is_global_discount(self):
+        # OVERRIDE
+        self.ensure_one()
+        return (
+            self.line_ids.sale_line_ids
+            and all(sale_line._is_global_discount for sale_line in self.line_ids.sale_line_ids)
+        ) or False
 
     def _get_sale_order_invoiced_amount(self, order):
         """Return the invoiced amounts for a given order.

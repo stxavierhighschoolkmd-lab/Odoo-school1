@@ -80,6 +80,7 @@
                     </page>
                 </page>
                 <div name="list_price_per_uom_id" position="after">
+                    <field name="is_tax_included" widget="boolean_toggle"/>
                     <label for="taxes_id" invisible="type == 'combo'"/>
                     <div name="taxes_div" class="o_input_box" invisible="type == 'combo'">
                         <field
@@ -93,6 +94,7 @@
                                 'search_default_domestictax': 1,
                                 'append_fields': ['company_id'],
                             }"
+                            style="flex: 0 0 35%%; width: 35%%;"
                         />
                         <field name="tax_string" class="o_input_box_overlay_end o_input_box_overlay_inline"/>
                     </div>

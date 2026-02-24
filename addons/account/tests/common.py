@@ -98,6 +98,7 @@ class AccountTestInvoicingCommon(ProductCommon):
             list_price=1000.0,
             standard_price=800.0,
             uom_id=cls.uom_unit.id,
+            company_id=cls.env.company.id,
         )
         cls.product_b = cls._create_product(
             name='product_b',
@@ -108,6 +109,7 @@ class AccountTestInvoicingCommon(ProductCommon):
             property_account_expense_id=cls.copy_account(cls.company_data['default_account_expense']).id,
             taxes_id=[Command.set((cls.tax_sale_a + cls.tax_sale_b).ids)],
             supplier_taxes_id=[Command.set((cls.tax_purchase_a + cls.tax_purchase_b).ids)],
+            company_id=cls.env.company.id,
         )
 
         # ==== Fiscal positions ====
