@@ -86,6 +86,11 @@ class ResourceCalendar(models.Model):
     work_resources_count = fields.Integer("Work Resources count", compute='_compute_work_resources_count')
     work_time_rate = fields.Float(string='Work Time Rate', compute='_compute_work_time_rate', store=True,
         help='Work time rate versus full time working schedule, should be between 0 and 100 %.')
+    reference_calendar_id = fields.Many2one(
+        'resource.calendar',
+        string="Reference Calendar",
+        check_company=True,
+        help="Reference working hours used to compute the full-time equivalent.")
 
     # --------------------------------------------------
     # Constrains
@@ -120,10 +125,13 @@ class ResourceCalendar(models.Model):
                 continue
             calendar.attendance_ids = calendar.attendance_ids_1st_week + calendar.attendance_ids_2nd_week
 
-    @api.depends('hours_per_week', 'company_id.resource_calendar_id.hours_per_week')
+    @api.depends('reference_calendar_id', 'reference_calendar_id.hours_per_week', 'company_id.resource_calendar_id.hours_per_week')
     def _compute_full_time_required_hours(self):
-        for calendar in self.filtered("company_id"):
-            calendar.full_time_required_hours = calendar.company_id.resource_calendar_id.hours_per_week
+        for calendar in self:
+            if calendar.reference_calendar_id:
+                calendar.full_time_required_hours = calendar.reference_calendar_id.hours_per_week
+            elif calendar.company_id:
+                calendar.full_time_required_hours = calendar.company_id.resource_calendar_id.hours_per_week
 
     @api.depends('company_id')
     def _compute_attendance_ids(self):

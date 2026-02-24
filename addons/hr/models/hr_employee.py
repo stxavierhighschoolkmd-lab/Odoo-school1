@@ -205,6 +205,7 @@ class HrEmployee(models.Model):
     study_field = fields.Char("Field of Study", groups="hr.group_hr_user", tracking=True)
     emergency_contact = fields.Char(groups="hr.group_hr_user", tracking=True)
     emergency_phone = fields.Char(groups="hr.group_hr_user", tracking=True)
+    additional_note = fields.Text(string='Additional Note', groups="hr.group_hr_user", tracking=True)
     work_location_name = fields.Char("Work Location Name", compute="_compute_work_location_name")
     work_location_type = fields.Selection([
         ("home", "Home"),

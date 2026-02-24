@@ -154,6 +154,53 @@
                         <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                         <field name="employee_properties" columns="2"/>
                         <notebook>
+                            <page name="payroll_information" string="Payroll" groups="hr.group_hr_manager">
+                                <field name="currency_id" invisible="1"/>
+                                <group name="payroll_group">
+                                    <group name="contract" groups="hr.group_hr_user">
+                                        <div colspan="2" class="col-lg-6 w-100 mt-4 mb-3 o_horizontal_separator text-uppercase fw-bolder small d-flex">
+                                            <span>Contract Overview</span>
+                                            <field name="contract_template_id"
+                                                widget="contract_template_button"
+                                                class="btn btn-addr btn-link ms-auto text-end w-auto lh-1 h-100 p-0"
+                                                nolabel="1"/>
+                                        </div>
+                                        <label for="contract_date_start" string="Contract"/>
+                                        <div class="o_row" name="contract_dates">
+                                            <field name="contract_date_start" string="Start Date" placeholder="Not Employed" class="o_hr_narrow_field me-3"/>
+                                            <span invisible="not contract_date_start">to</span>
+                                            <field name="contract_date_end" string="End Date" placeholder="Indefinite" widget="date_dynamic_min" options="{'min_date_field': 'contract_date_start'}"
+                                                class="o_hr_narrow_field ms-3" invisible="not contract_date_start"/>
+                                            <widget name="button_new_contract"/>
+                                        </div>
+                                        <label for="wage"/>
+                                        <div class="o_row" name="wage">
+                                            <field name="wage" class="oe_inline o_hr_narrow_field" nolabel="1"/>
+                                        </div>
+                                        <field name="employee_type"/>
+                                        <separator name="schedule" string="Schedule"/>
+                                        <field name="resource_calendar_id" help="The default working hours are set in configuration." placeholder="Flexible"/>
+                                        <label for="hours_per_week" string="Hours Per Week" invisible="resource_calendar_id"/>
+                                        <div class="o_row" name="flexible_hours_per_week" invisible="resource_calendar_id">
+                                            <div invisible="not hours_per_week">
+                                                <field name="hours_per_week" class="o_hr_narrow_field" widget="float_time"/> / week
+                                            </div>
+                                            <div invisible="hours_per_week">
+                                                <field name="hours_per_week" class="o_hr_narrow_field" widget="optional_float_field" placeholder="Not limited"/>
+                                            </div>
+                                        </div>
+                                        <label for="hours_per_day" string="Average Hours" invisible="resource_calendar_id or not hours_per_week"/>
+                                        <div class="o_row" name="flexible_hours_per_day" invisible="resource_calendar_id or not hours_per_week">
+                                            <div invisible="not hours_per_day">
+                                                <field name="hours_per_day" class="o_hr_narrow_field" widget="float_time"/> / day
+                                            </div>
+                                            <div invisible="hours_per_day">
+                                                <field name="hours_per_day" class="o_hr_narrow_field" widget="optional_float_field" placeholder="Variable Hours"/>
+                                            </div>
+                                        </div>
+                                    </group>
+                                </group>
+                            </page>
                             <page name="work_information" string="Work">
                                 <div class="row" id="o_hr_work_information_container">
                                     <div id="o_work_information" class="o_hr_column col-lg-7 d-flex flex-column">
@@ -182,7 +229,7 @@
                                             <field name="sunday_location_id" placeholder="Unspecified" force_save="1"/>
                                         </group>
                                         <group string="Note" name="note" groups="hr.group_hr_user">
-                                            <field name="additional_note" placeholder="Provide additional information about this version..." colspan="2" nolabel="1"/>
+                                            <field name="additional_note" placeholder="Provide additional information about this employee..." colspan="2" nolabel="1"/>
                                         </group>
                                     </div>
                                     <div id="o_employee_org_chart" class="o_hr_column col-lg-5">
@@ -336,60 +383,6 @@
                                     <group string="Documents" name="hr_document_group">
                                         <field name="id_card"/>
                                         <field name="driving_license"/>
-                                    </group>
-                                </group>
-                            </page>
-                            <page name="payroll_information" string="Payroll" groups="hr.group_hr_manager">
-                                <field name="currency_id" invisible="1"/>
-                                <group name="payroll_group">
-                                    <group name="contract" groups="hr.group_hr_user">
-                                        <div colspan="2" class="col-lg-6 w-100 mt-4 mb-3 o_horizontal_separator text-uppercase fw-bolder small d-flex">
-                                            <span>Contract Overview</span>
-                                            <field name="contract_template_id"
-                                                widget="contract_template_button"
-                                                class="btn btn-addr btn-link ms-auto text-end w-auto lh-1 h-100 p-0"
-                                                nolabel="1"/>
-                                        </div>
-                                        <label for="contract_date_start" string="Contract"/>
-                                        <div class="o_row" name="contract_dates">
-                                            <field name="contract_date_start" string="Start Date" placeholder="Not Employed" class="o_hr_narrow_field me-3"/>
-                                            <span invisible="not contract_date_start">to</span>
-                                            <field name="contract_date_end" string="End Date" placeholder="Indefinite" widget="date_dynamic_min" options="{'min_date_field': 'contract_date_start'}"
-                                                class="o_hr_narrow_field ms-3" invisible="not contract_date_start"/>
-                                            <widget name="button_new_contract"/>
-                                        </div>
-                                        <label for="wage"/>
-                                        <div class="o_row" name="wage">
-                                            <field name="wage" class="oe_inline o_hr_narrow_field" nolabel="1"/>
-                                        </div>
-                                        <field name="employee_type"/>
-                                        <field name="contract_type_id" string="Contract Type" placeholder="Contract Type"
-                                               invisible="not has_country_contract_type" domain="[('country_id', '=', company_country_id)]"/>
-                                        <field name="contract_type_id" string="Contract Type" placeholder="Contract Type"
-                                               invisible="has_country_contract_type" domain="[('country_id', '=', False)]"/>
-                                        <field name="structure_type_id" string="Pay Category" placeholder="Employee will be excluded from Pay Runs"
-                                                domain="['|', ('country_id', '=', False), ('country_id', '=', company_country_id)]"/>
-
-                                        <separator name="schedule" string="Schedule"/>
-                                        <field name="resource_calendar_id" help="The default working hours are set in configuration." placeholder="Flexible"/>
-                                        <label for="hours_per_week" string="Hours Per Week" invisible="resource_calendar_id"/>
-                                        <div class="o_row" name="flexible_hours_per_week" invisible="resource_calendar_id">
-                                            <div invisible="not hours_per_week">
-                                                <field name="hours_per_week" class="o_hr_narrow_field" widget="float_time"/> / week
-                                            </div>
-                                            <div invisible="hours_per_week">
-                                                <field name="hours_per_week" class="o_hr_narrow_field" widget="optional_float_field" placeholder="Not limited"/>
-                                            </div>
-                                        </div>
-                                        <label for="hours_per_day" string="Average Hours" invisible="resource_calendar_id or not hours_per_week"/>
-                                        <div class="o_row" name="flexible_hours_per_day" invisible="resource_calendar_id or not hours_per_week">
-                                            <div invisible="not hours_per_day">
-                                                <field name="hours_per_day" class="o_hr_narrow_field" widget="float_time"/> / day
-                                            </div>
-                                            <div invisible="hours_per_day">
-                                                <field name="hours_per_day" class="o_hr_narrow_field" widget="optional_float_field" placeholder="Variable Hours"/>
-                                            </div>
-                                        </div>
                                     </group>
                                 </group>
                             </page>
