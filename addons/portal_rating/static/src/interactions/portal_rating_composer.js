@@ -69,17 +69,16 @@ export class RatingPopupComposer extends Interaction {
         }
 
         // Instantiate the "Portal Composer" widget and insert it into the modal
-        // TODO Exchange options through another mean ?
         const options = PortalComposer.prepareOptions(this.options);
-        // Change the text of send button
         options.send_button_label = options.default_message_id ? _t("Update review") : _t("Post review");
+        // Pass options via env so the PortalComposer interaction can read them in setup().
         this.env.portalComposerOptions = options;
         const locationEl = this.el.querySelector(".o_rating_popup_composer_modal .o_portal_chatter_composer");
-        // TODO maybe always put in this.options - and prepare in setup ???
         if (!locationEl) {
+            delete this.env.portalComposerOptions;
             return;
         }
-        this.composerEl = this.renderAt("portal.Composer", { widget: {options: this.env.portalComposerOptions }}, locationEl, "afterend")[0];
+        this.composerEl = this.renderAt("portal.Composer", { widget: { options } }, locationEl, "afterend")[0];
         delete this.env.portalComposerOptions;
         locationEl.remove();
         // Change the text of the button

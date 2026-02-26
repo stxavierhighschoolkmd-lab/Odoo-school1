@@ -4,6 +4,7 @@ import { convertBrToLineBreak } from "@mail/utils/common/format";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { rpc } from "@web/core/network/rpc";
 import { patch } from "@web/core/utils/patch";
+import { useEffect, useRef } from "@odoo/owl";
 
 Message.components = { ...Message.components, DropdownItem };
 
@@ -11,6 +12,19 @@ patch(Message.prototype, {
     setup() {
         super.setup(...arguments);
         this.state.editRating = false;
+        this.state.showFullBody = false;
+        this.state.isBodyClamped = false;
+        this.richBodyRef = useRef("reviewRichBody");
+        useEffect(() => {
+            const el = this.richBodyRef.el;
+            if (el) {
+                this.state.isBodyClamped = el.scrollHeight > el.clientHeight;
+            }
+        }, () => [this.message.id]);
+    },
+
+    toggleBodyExpand() {
+        this.state.showFullBody = !this.state.showFullBody;
     },
 
     get isEditing() {
