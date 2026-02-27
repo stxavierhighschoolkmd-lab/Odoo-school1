@@ -466,6 +466,7 @@ class TestRecruitment(TransactionCase):
         self.assertEqual(applicant.partner_id.email, 'applicant_diff@example.com', "Email should have been updated on the partner.")
         applicant.partner_phone = '987654321'
         self.assertEqual(applicant.partner_id.phone, '987654321', "Phone should have been updated on the partner.")
+<<<<<<< 4f32a0038273fa65a1f12a5eb0efee35c5bad000
 
     def test_send_mail_when_refuse_applicant(self):
         mail_template = self.env['mail.template'].create({
@@ -492,3 +493,35 @@ class TestRecruitment(TransactionCase):
         applicant_get_refuse_reason._prepare_send_refusal_mails()
         mail = self.env['mail.mail'].search([('subject', '=', 'Application refused: Mario')], limit=1)
         self.assertEqual(mail.partner_ids, app_1.partner_id)
+||||||| 8d5181a9d708ec0e4a537bb58163cafc55e7dd48
+=======
+
+    def test_default_template_applicant_refuse_reason_when_archived(self):
+        """
+        Ensure that an archived email template linked to a refuse reason
+        is not automatically set on the refuse wizard
+        """
+        email_template = self.env['mail.template'].create({
+            'model_id': self.env['ir.model']._get('hr.applicant').id,
+            'name': 'template1',
+        })
+        application = self.env['hr.applicant'].create({'partner_name': 'Test'})
+        refuse_reason = self.env['hr.applicant.refuse.reason'].create({
+            'name': 'Fired',
+            'template_id': email_template.id,
+        })
+        wizard = self.env['applicant.get.refuse.reason'].create({
+            'refuse_reason_id': refuse_reason.id,
+            'applicant_ids': [application.id],
+        })
+
+        self.assertEqual(wizard.template_id, email_template)
+
+        email_template.active = False
+        wizard = self.env['applicant.get.refuse.reason'].create({
+            'refuse_reason_id': refuse_reason.id,
+            'applicant_ids': [application.id],
+        })
+
+        self.assertFalse(wizard.template_id)
+>>>>>>> a4b9dc108d94e723501040e5f0acd040a281fcc4

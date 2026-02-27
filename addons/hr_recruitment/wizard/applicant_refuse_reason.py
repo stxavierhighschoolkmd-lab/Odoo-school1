@@ -18,7 +18,13 @@ class ApplicantGetRefuseReason(models.TransientModel):
     applicant_ids = fields.Many2many('hr.applicant')
     send_mail = fields.Boolean("Send Email", compute='_compute_send_mail', precompute=True, store=True, readonly=False)
     template_id = fields.Many2one('mail.template', string='Email Template',
+<<<<<<< 4f32a0038273fa65a1f12a5eb0efee35c5bad000
         compute='_compute_template_id', precompute=True, store=True, readonly=False,
+||||||| 8d5181a9d708ec0e4a537bb58163cafc55e7dd48
+        compute='_compute_send_mail', store=True, readonly=False,
+=======
+        compute='_compute_send_mail', store=True, readonly=False, context={'active_test': True},
+>>>>>>> a4b9dc108d94e723501040e5f0acd040a281fcc4
         domain="[('model', '=', 'hr.applicant')]")
     applicant_without_email = fields.Text(compute='_compute_applicant_without_email',
         string='Applicant(s) not having email')
@@ -46,7 +52,15 @@ class ApplicantGetRefuseReason(models.TransientModel):
     def _compute_send_mail(self):
         for wizard in self:
             template = wizard.refuse_reason_id.template_id
+<<<<<<< 4f32a0038273fa65a1f12a5eb0efee35c5bad000
             wizard.send_mail = template and not wizard.applicant_without_email
+||||||| 8d5181a9d708ec0e4a537bb58163cafc55e7dd48
+            wizard.send_mail = template and not wizard.applicant_without_email
+            wizard.template_id = template
+=======
+            wizard.send_mail = template.active and not wizard.applicant_without_email
+            wizard.template_id = template.active and template
+>>>>>>> a4b9dc108d94e723501040e5f0acd040a281fcc4
 
     @api.depends('applicant_ids')
     def _compute_applicant_without_email(self):
