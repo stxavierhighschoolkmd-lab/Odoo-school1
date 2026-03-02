@@ -94,3 +94,11 @@ class TestTaskTemplates(TestProjectCommon):
             task | child,
             "The search should find the non template task and its child",
         )
+
+    def test_subtask_count_excludes_templates(self):
+        self.env['project.task'].create({
+            'name': 'Template Subtask',
+            'parent_id': self.template_task.id,
+            'is_template': True,
+        })
+        self.assertEqual(self.template_task.subtask_count, 1, "Template subtasks should not be included in subtask_count.")
