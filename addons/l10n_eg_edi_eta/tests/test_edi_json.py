@@ -867,7 +867,7 @@ class TestEdiJson(TestEGEdiCommon):
             'odoo.addons.l10n_eg_edi_eta.models.account_edi_format.AccountEdiFormat._l10n_eg_edi_post_invoice_web_service',
             new=mocked_l10n_eg_edi_post_invoice_web_service,
         ):
-            taxes = self.env.ref(f'account.{self.env.company.id}_eg_standard_sale_14').ids + self.env.ref(f'account.{self.env.company.id}_eg_withholding_3_sale').ids
+            taxes = self.env.ref(f'account.{self.env.company.id}_eg_standard_sale_14').ids + self.env.ref(f'account.{self.env.company.id}_eg_withholding_services_deducted').ids
             invoice = self._create_invoice_eg(
                 move_type='out_invoice',
                 partner_id=self.partner_a.id,
@@ -918,16 +918,16 @@ class TestEdiJson(TestEGEdiCommon):
                                 'itemsDiscount': 0.0,
                                 'unitValue': {'currencySold': 'EGP', 'amountEGP': 100.0},
                                 'discount': {'rate': 0.0, 'amount': 0.0},
-                                'taxableItems': [{'taxType': 'T1', 'amount': 14.0, 'subType': 'V009', 'rate': 14.0}, {'taxType': 'T4', 'amount': 3.0, 'subType': 'W004', 'rate': 3.0}],
+                                'taxableItems': [{'taxType': 'T1', 'amount': 14.0, 'subType': 'V009', 'rate': 14.0}],
                                 'salesTotal': 100.0,
                                 'netTotal': 100.0,
-                                'total': 111.00,
+                                'total': 114.00,
                             },
                         ],
-                        'taxTotals': [{'taxType': 'T1', 'amount': 14.0}, {'amount': 3.0, 'taxType': 'T4'}],
+                        'taxTotals': [{'taxType': 'T1', 'amount': 14.0}],
                         'totalSalesAmount': 100.0,
                         'netAmount': 100.0,
-                        'totalAmount': 111.0,
+                        'totalAmount': 114.0,
                     },
                     'response': ETA_TEST_RESPONSE,
                 },
