@@ -71,7 +71,6 @@
         "views/website_base_unit_views.xml",
         "views/website_sale_menus.xml",
         "views/website_sale_visitor_views.xml",
-        "views/website_views.xml",
         # Website snippets
         "templates/snippets/snippets.xml",
         "templates/snippets/product_snippet_template_data.xml",

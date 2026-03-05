@@ -1208,33 +1208,6 @@
     </template>
 
     <template
-        id="website_sale.ecom_show_extra_fields"
-        inherit_id="website_sale.product"
-        name="Show Extra Fields"
-        active="True"
-    >
-        <xpath expr="//div[@id='product_details']" position="inside">
-            <t t-if="any([product.sudo()[field.name] for field in website.shop_extra_field_ids])">
-                <hr/>
-                <p class="text-muted">
-                    <t t-foreach="website.shop_extra_field_ids" t-as="field" t-if="product.sudo()[field.name]">
-                        <b><t t-out="field.label"/>: </b>
-                        <t t-if="field.field_id.ttype != 'binary'">
-                            <span t-out="product.sudo()[field.name]" t-options="{'widget': field.field_id.ttype}"/>
-                        </t>
-                        <t t-else=''>
-                            <a target='_blank' t-attf-href='/web/content/product.template/#{product.id}/#{field.name}?download=1'>
-                                <i class='fa fa-file'></i>
-                            </a>
-                        </t>
-                        <br/>
-                    </t>
-                </p>
-            </t>
-        </xpath>
-    </template>
-
-    <template
         id="product_add_to_compare"
         name="Add to comparison in product page"
         inherit_id="website_sale.cta_wrapper"
@@ -1325,21 +1298,40 @@
     <template id="product_attributes_body" inherit_id="website_sale.product" name="Product attributes table">
         <xpath expr="//div[@id='product_full_description']" position="after">
             <t t-set="attrib_categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
-            <t t-if="attrib_categories">
+            <t t-set="extra_fields_by_category" t-value="website.get_extra_spec_fields_by_category()"/>
+            <t t-if="attrib_categories or extra_fields_by_category or editable">
                 <section class="pt32 pb32" id="product_full_spec">
-                    <div class="container">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="m-0 h3">Specifications</h2>
-                        </div>
-                        <div id="product_specifications">
-                            <div class="row">
-                                <t t-foreach="attrib_categories" t-as="category">
-                                    <div class="col-lg-6">
-                                        <t t-call="website_sale.specifications_table"/>
-                                    </div>
-                                </t>
+                    <div class="container o_wsale_specss" t-attf-style="#{editable and 'min-height: 50px;' or ''}">
+                        <t t-if="attrib_categories or extra_fields_by_category">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2 class="m-0 h3">Specifications</h2>
                             </div>
-                        </div>
+                            <div id="product_specifications">
+                                <div class="row">
+                                    <!-- Categories that have attribute lines (may also have extra fields) -->
+                                    <t t-if="attrib_categories">
+                                        <t t-foreach="attrib_categories" t-as="category">
+                                            <div class="col-lg-6">
+                                                <t t-set="category_attrib_lines" t-value="attrib_categories[category]"/>
+                                                <t t-set="category_extra_fields" t-value="extra_fields_by_category.get(category, website.env['website.sale.extra.field'])"/>
+                                                <t t-call="website_sale.specifications_table"/>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <!-- Extra-field-only categories (no attribute lines) -->
+                                    <t t-foreach="extra_fields_by_category" t-as="ef_category">
+                                        <t t-if="not attrib_categories or ef_category not in attrib_categories">
+                                            <div class="col-lg-6">
+                                                <t t-set="category" t-value="ef_category"/>
+                                                <t t-set="category_attrib_lines" t-value="product.env['product.template.attribute.line']"/>
+                                                <t t-set="category_extra_fields" t-value="extra_fields_by_category[ef_category]"/>
+                                                <t t-call="website_sale.specifications_table"/>
+                                            </div>
+                                        </t>
+                                    </t>
+                                </div>
+                            </div>
+                        </t>
                     </div>
                 </section>
             </t>
@@ -1389,24 +1381,26 @@
         </xpath>
     </template>
 
-    <template id="specifications_table" name="Specifications Table">
+   <template id="specifications_table" name="Specifications Table">
+        <t t-set="total_categories" t-value="(len(attrib_categories) if attrib_categories else 0) + (len(extra_fields_by_category) if extra_fields_by_category else 0)"/>
         <table t-attf-class="table {{is_accordion and 'table-sm mb-0'}}">
-            <t t-if="len(attrib_categories) > 1 and not is_accordion">
+
+            <!-- Category header — only when there are multiple columns -->
+            <t t-if="total_categories &gt; 1 and not is_accordion">
                 <tr>
-                    <th class="text-start" colspan="2">
+                    <th class="ps-0" colspan="2">
                         <span t-if="category" t-field="category.name"/>
                         <span t-else="">Others</span>
                     </th>
                 </tr>
             </t>
+
+            <!-- Attribute lines: multi-value -->
             <tr
-                t-foreach="attrib_categories[category].filtered(lambda l: len(l.value_ids) > 1)"
+                t-foreach="category_attrib_lines.filtered(lambda l: len(l.value_ids) &gt; 1)"
                 t-as="ptal"
             >
-                <t
-                    t-set="hide_border_bottom_classes"
-                    t-value="'border-bottom-0' if ptal_last and is_accordion else ''"
-                />
+                <t t-set="hide_border_bottom_classes" t-value="'border-bottom-0' if ptal_last and is_accordion else ''"/>
                 <td t-attf-class="w-25 {{hide_border_bottom_classes}} ps-0">
                     <span t-field="ptal.attribute_id.name"/>
                 </td>
@@ -1416,16 +1410,12 @@
                     </t>
                 </td>
             </tr>
-            <t
-                t-set="single_value_attributes"
-                t-value="attrib_categories[category]._prepare_single_value_for_display()"
-            />
+
+            <!-- Attribute lines: single-value -->
+            <t t-set="single_value_attributes" t-value="category_attrib_lines._prepare_single_value_for_display()"/>
             <tr t-foreach="single_value_attributes" t-as="attribute">
-                <t
-                    t-set="hide_border_bottom_classes"
-                    t-value="'border-bottom-0' if attribute_last and is_accordion else ''"
-                />
-                <td t-attf-class="w-25 {{hide_border_bottom_classes}} ps-0 ">
+                <t t-set="hide_border_bottom_classes" t-value="'border-bottom-0' if attribute_last and is_accordion else ''"/>
+                <td t-attf-class="w-25 {{hide_border_bottom_classes}} ps-0">
                     <span t-field="attribute.name"/>
                 </td>
                 <td t-attf-class="w-75 {{hide_border_bottom_classes}} pe-0 text-muted text-end">
@@ -1434,6 +1424,26 @@
                     </t>
                 </td>
             </tr>
+
+            <!-- Extra fields added via builder — website-wide -->
+            <t t-if="category_extra_fields">
+                <tr t-foreach="category_extra_fields" t-as="extra_field">
+                    <td class="w-25 ps-0">
+                        <span t-out="extra_field.label"/>
+                    </td>
+                    <td class="w-75 pe-0 text-muted text-end">
+                        <t t-if="extra_field.field_id.ttype != 'binary'">
+                            <span t-out="product.sudo()[extra_field.name]"/>
+                        </t>
+                        <t t-else="">
+                            <a target="_blank" t-attf-href="/web/content/product.template/#{product.id}/#{extra_field.name}?download=1">
+                                <i class="fa fa-file"/>
+                            </a>
+                        </t>
+                    </td>
+                </tr>
+            </t>
+
         </table>
     </template>
 
