@@ -370,7 +370,8 @@ class AccountEdiXmlUBLHR(models.AbstractModel):
         logs = []
         lines_values = []
         for line_tree in tree.iterfind(xpath):
-            line_values = self.with_company(invoice.company_id)._retrieve_invoice_line_vals(line_tree, invoice.move_type, qty_factor)
+            line_values, line_logs = self.with_company(invoice.company_id)._retrieve_invoice_line_vals(line_tree, invoice.move_type, qty_factor)
+            logs += line_logs
             if line_values is None:
                 continue
 
@@ -381,11 +382,11 @@ class AccountEdiXmlUBLHR(models.AbstractModel):
             if not line_values['product_uom_id']:
                 line_values.pop('product_uom_id')  # if no uom, pop it so it's inferred from the product_id
             lines_values.append(line_values)
-            lines_values += self._retrieve_line_charges(invoice, line_values, line_values['tax_ids'])
+            lines_values += self._retrieve_line_allowance_charges(invoice, line_values, line_values['tax_ids'])
         return lines_values, logs
 
     def _retrieve_line_vals(self, record, tree, document_type=False, qty_factor=1):
-        line_values = super()._retrieve_line_vals(record, tree, document_type, qty_factor)
+        line_values, logs = super()._retrieve_line_vals(record, tree, document_type, qty_factor)
         kpd_category_code = tree.findtext('./{*}Item/{*}CommodityClassification/{*}ItemClassificationCode')
         if kpd_category_code:
             line_kpd_category = self.env['l10n_hr.kpd.category'].search([('name', '=', kpd_category_code)], limit=1)
@@ -393,7 +394,7 @@ class AccountEdiXmlUBLHR(models.AbstractModel):
                 line_values.update({
                     'l10n_hr_kpd_category_id': line_kpd_category.id,
                 })
-        return line_values
+        return line_values, logs
 
     def _retrieve_rejection_reference(self, attachment):
         string_to_find = b'Rejected</cbc:StatusReasonCode>'

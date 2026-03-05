@@ -125,6 +125,19 @@ class TestUblCiiCommon(AccountTestInvoicingCommon):
             **kwargs,
         })
 
+    @classmethod
+    def _create_allowance_charge_tax(cls, name, amount_type, amount, reason_code, reason, is_charge, **kwargs):
+        return cls.env['account.tax'].create({
+            'name': name,
+            'amount_type': amount_type,
+            'amount': amount,
+            'ubl_cii_type': 'allowance_charge',
+            'ubl_cii_charge_reason_code': reason_code if is_charge else False,
+            'ubl_cii_allowance_reason_code': reason_code if not is_charge else False,
+            'ubl_cii_allowance_charge_reason': reason,
+            **kwargs,
+        })
+
     # -------------------------------------------------------------------------
     # EXPORT HELPERS
     # -------------------------------------------------------------------------

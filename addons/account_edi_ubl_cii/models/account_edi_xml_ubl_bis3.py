@@ -198,14 +198,13 @@ class AccountEdiXmlUbl_Bis3(models.AbstractModel):
 
     def _ubl_default_tax_category_grouping_key(self, base_line, tax_data, vals, currency):
         # EXTENDS
-        # Recycling contribution taxes / excises should not appear anywhere as taxes but as allowances/charges.
+        # Allowance/Charge taxes should not appear anywhere as taxes.
         # Cash rounding lines should not appear as lines but in PayableRoundingAmount.
         # Since this method produces a default 0% tax automatically when no tax is set on the line by default,
         # we have to do something here to avoid it.
         if (
             self._ubl_is_cash_rounding_base_line(base_line)
-            or self._ubl_is_recycling_contribution_tax(tax_data)
-            or self._ubl_is_excise_tax(tax_data)
+            or self._ubl_is_allowance_charge_tax(tax_data)
         ):
             return
         return super()._ubl_default_tax_category_grouping_key(base_line, tax_data, vals, currency)
@@ -219,16 +218,10 @@ class AccountEdiXmlUbl_Bis3(models.AbstractModel):
                 'base_line': vals['base_line'],
             },
         }
+        # Allowance/Charge from taxes with type 'allowance_charge' (includes recycling contribution taxes, excises).
         self._ubl_add_line_allowance_charge_nodes(sub_vals)
-
-        # Discount.
+        # Allowance/Charge for line discount
         self._ubl_add_line_allowance_charge_nodes_for_discount(sub_vals)
-
-        # Recycling contribution taxes.
-        self._ubl_add_line_allowance_charge_nodes_for_recycling_contribution_taxes(sub_vals)
-
-        # Excise taxes.
-        self._ubl_add_line_allowance_charge_nodes_for_excise_taxes(sub_vals)
 
     def _add_invoice_line_amount_nodes(self, line_node, vals):
         # OVERRIDE
@@ -771,7 +764,7 @@ class AccountEdiXmlUbl_Bis3(models.AbstractModel):
 
             if len(line_node['cac:Item']['cac:ClassifiedTaxCategory']) != 1:
                 # [UBL-SR-48]-Invoice lines shall have one and only one classified tax category.
-                # /!\ exception: possible to have any number of ecotaxes (fixed tax) with a regular percentage tax
+                # /!\ exception: possible to have any number of allowance/charge with a regular percentage tax
                 constraints['cen_en16931_tax_line'] = _("Each invoice line shall have one and only one tax.")
 
         for role in ('supplier', 'customer'):
