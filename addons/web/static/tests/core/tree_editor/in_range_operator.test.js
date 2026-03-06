@@ -276,7 +276,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
                     )
                 ),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last 7 days", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "last7Days", false, false]),
             domain: [
                 "&",
                 ["datetime_1", ">=", "2025-06-25 23:00:00"],
@@ -300,7 +300,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
                     )
                 ),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last 30 days", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "last30Days", false, false]),
             domain: [
                 "&",
                 ["datetime_1", ">=", "2025-06-02 23:00:00"],
@@ -324,7 +324,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
                     )
                 ),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "month to date", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "monthToDate", false, false]),
             domain: [
                 "&",
                 ["datetime_1", ">=", "2025-06-30 23:00:00"],
@@ -348,7 +348,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
                     )
                 ),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last month", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "lastMonth", false, false]),
             domain: [
                 "&",
                 ["datetime_1", ">=", "2025-05-31 23:00:00"],
@@ -372,7 +372,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
                     )
                 ),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "year to date", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "yearToDate", false, false]),
             domain: [
                 "&",
                 ["datetime_1", ">=", "2024-12-31 23:00:00"],
@@ -396,7 +396,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
                     )
                 ),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last 12 months", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "last12Months", false, false]),
             domain: [
                 "&",
                 ["datetime_1", ">=", "2024-06-30 23:00:00"],
@@ -538,7 +538,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
                 ),
                 condition("date_1", "<", expression(`context_today().strftime("%Y-%m-%d")`)),
             ]),
-            tree: condition("date_1", "in range", ["date", "last 7 days", false, false]),
+            tree: condition("date_1", "in range", ["date", "last7Days", false, false]),
             domain: ["&", ["date_1", ">=", "2025-06-26"], ["date_1", "<", "2025-07-03"]],
         },
         {
@@ -550,7 +550,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
                 ),
                 condition("date_1", "<", expression(`context_today().strftime("%Y-%m-%d")`)),
             ]),
-            tree: condition("date_1", "in range", ["date", "last 30 days", false, false]),
+            tree: condition("date_1", "in range", ["date", "last30Days", false, false]),
             domain: ["&", ["date_1", ">=", "2025-06-03"], ["date_1", "<", "2025-07-03"]],
         },
         {
@@ -566,7 +566,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
                     expression(`(context_today() + relativedelta(days = 1)).strftime('%Y-%m-%d')`)
                 ),
             ]),
-            tree: condition("date_1", "in range", ["date", "month to date", false, false]),
+            tree: condition("date_1", "in range", ["date", "monthToDate", false, false]),
             domain: ["&", ["date_1", ">=", "2025-07-01"], ["date_1", "<", "2025-07-04"]],
         },
         {
@@ -584,7 +584,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
                     expression(`(context_today() + relativedelta(day = 1)).strftime('%Y-%m-%d')`)
                 ),
             ]),
-            tree: condition("date_1", "in range", ["date", "last month", false, false]),
+            tree: condition("date_1", "in range", ["date", "lastMonth", false, false]),
             domain: ["&", ["date_1", ">=", "2025-06-01"], ["date_1", "<", "2025-07-01"]],
         },
         {
@@ -602,7 +602,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
                     expression(`(context_today() + relativedelta(days = 1)).strftime('%Y-%m-%d')`)
                 ),
             ]),
-            tree: condition("date_1", "in range", ["date", "year to date", false, false]),
+            tree: condition("date_1", "in range", ["date", "yearToDate", false, false]),
             domain: ["&", ["date_1", ">=", "2025-01-01"], ["date_1", "<", "2025-07-04"]],
         },
         {
@@ -620,7 +620,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
                     expression(`(context_today() + relativedelta(day = 1)).strftime('%Y-%m-%d')`)
                 ),
             ]),
-            tree: condition("date_1", "in range", ["date", "last 12 months", false, false]),
+            tree: condition("date_1", "in range", ["date", "last12Months", false, false]),
             domain: ["&", ["date_1", ">=", "2024-07-01"], ["date_1", "<", "2025-07-01"]],
         },
         {
@@ -869,7 +869,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
                 condition("datetime_1", ">=", "today -7d"),
                 condition("datetime_1", "<", "today"),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last 7 days", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "last7Days", false, false]),
             domain: ["&", ["datetime_1", ">=", "today -7d"], ["datetime_1", "<", "today"]],
         },
         {
@@ -877,7 +877,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
                 condition("datetime_1", ">=", "today -30d"),
                 condition("datetime_1", "<", "today"),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last 30 days", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "last30Days", false, false]),
             domain: ["&", ["datetime_1", ">=", "today -30d"], ["datetime_1", "<", "today"]],
         },
         {
@@ -885,7 +885,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
                 condition("datetime_1", ">=", "today =1d"),
                 condition("datetime_1", "<", "today +1d"),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "month to date", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "monthToDate", false, false]),
             domain: ["&", ["datetime_1", ">=", "today =1d"], ["datetime_1", "<", "today +1d"]],
         },
         {
@@ -893,7 +893,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
                 condition("datetime_1", ">=", "today =1d -1m"),
                 condition("datetime_1", "<", "today =1d"),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last month", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "lastMonth", false, false]),
             domain: ["&", ["datetime_1", ">=", "today =1d -1m"], ["datetime_1", "<", "today =1d"]],
         },
         {
@@ -901,7 +901,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
                 condition("datetime_1", ">=", "today =1m =1d"),
                 condition("datetime_1", "<", "today +1d"),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "year to date", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "yearToDate", false, false]),
             domain: ["&", ["datetime_1", ">=", "today =1m =1d"], ["datetime_1", "<", "today +1d"]],
         },
         {
@@ -909,7 +909,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
                 condition("datetime_1", ">=", "today =1d -12m"),
                 condition("datetime_1", "<", "today =1d"),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last 12 months", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "last12Months", false, false]),
             domain: ["&", ["datetime_1", ">=", "today =1d -12m"], ["datetime_1", "<", "today =1d"]],
         },
         {
@@ -1038,7 +1038,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
                 condition("date_1", ">=", "today -7d"),
                 condition("date_1", "<", "today"),
             ]),
-            tree: condition("date_1", "in range", ["date", "last 7 days", false, false]),
+            tree: condition("date_1", "in range", ["date", "last7Days", false, false]),
             domain: ["&", ["date_1", ">=", "today -7d"], ["date_1", "<", "today"]],
         },
         {
@@ -1046,7 +1046,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
                 condition("date_1", ">=", "today -30d"),
                 condition("date_1", "<", "today"),
             ]),
-            tree: condition("date_1", "in range", ["date", "last 30 days", false, false]),
+            tree: condition("date_1", "in range", ["date", "last30Days", false, false]),
             domain: ["&", ["date_1", ">=", "today -30d"], ["date_1", "<", "today"]],
         },
         {
@@ -1054,7 +1054,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
                 condition("date_1", ">=", "today =1d"),
                 condition("date_1", "<", "today +1d"),
             ]),
-            tree: condition("date_1", "in range", ["date", "month to date", false, false]),
+            tree: condition("date_1", "in range", ["date", "monthToDate", false, false]),
             domain: ["&", ["date_1", ">=", "today =1d"], ["date_1", "<", "today +1d"]],
         },
         {
@@ -1062,7 +1062,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
                 condition("date_1", ">=", "today =1d -1m"),
                 condition("date_1", "<", "today =1d"),
             ]),
-            tree: condition("date_1", "in range", ["date", "last month", false, false]),
+            tree: condition("date_1", "in range", ["date", "lastMonth", false, false]),
             domain: ["&", ["date_1", ">=", "today =1d -1m"], ["date_1", "<", "today =1d"]],
         },
         {
@@ -1070,7 +1070,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
                 condition("date_1", ">=", "today =1m =1d"),
                 condition("date_1", "<", "today +1d"),
             ]),
-            tree: condition("date_1", "in range", ["date", "year to date", false, false]),
+            tree: condition("date_1", "in range", ["date", "yearToDate", false, false]),
             domain: ["&", ["date_1", ">=", "today =1m =1d"], ["date_1", "<", "today +1d"]],
         },
         {
@@ -1078,7 +1078,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
                 condition("date_1", ">=", "today =1d -12m"),
                 condition("date_1", "<", "today =1d"),
             ]),
-            tree: condition("date_1", "in range", ["date", "last 12 months", false, false]),
+            tree: condition("date_1", "in range", ["date", "last12Months", false, false]),
             domain: ["&", ["date_1", ">=", "today =1d -12m"], ["date_1", "<", "today =1d"]],
         },
         {

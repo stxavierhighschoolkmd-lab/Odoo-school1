@@ -504,7 +504,7 @@ test(`date: "in range" operator`, async () => {
         "Custom range",
     ]);
 
-    await selectValue("last 7 days");
+    await selectValue("last7Days");
     expect(getCurrentValue()).toBe("Last 7 days");
     expect.verifySteps([
         formatExpr(
@@ -512,7 +512,7 @@ test(`date: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("last 30 days");
+    await selectValue("last30Days");
     expect(getCurrentValue()).toBe("Last 30 days");
     expect.verifySteps([
         formatExpr(
@@ -520,7 +520,7 @@ test(`date: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("month to date");
+    await selectValue("monthToDate");
     expect(getCurrentValue()).toBe("Month to date");
     expect.verifySteps([
         formatExpr(
@@ -528,7 +528,7 @@ test(`date: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("last month");
+    await selectValue("lastMonth");
     expect(getCurrentValue()).toBe("Last month");
     expect.verifySteps([
         formatExpr(
@@ -536,7 +536,7 @@ test(`date: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("year to date");
+    await selectValue("yearToDate");
     expect(getCurrentValue()).toBe("Year to date");
     expect.verifySteps([
         formatExpr(
@@ -544,7 +544,7 @@ test(`date: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("last 12 months");
+    await selectValue("last12Months");
     expect(getCurrentValue()).toBe("Last 12 months");
     expect.verifySteps([
         formatExpr(
@@ -607,7 +607,7 @@ test(`datetime: "in range" operator`, async () => {
         "Custom range",
     ]);
 
-    await selectValue("last 7 days");
+    await selectValue("last7Days");
     expect(getCurrentValue()).toBe("Last 7 days");
     expect.verifySteps([
         formatExpr(
@@ -619,7 +619,7 @@ test(`datetime: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("last 30 days");
+    await selectValue("last30Days");
     expect(getCurrentValue()).toBe("Last 30 days");
     expect.verifySteps([
         formatExpr(
@@ -631,7 +631,7 @@ test(`datetime: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("month to date");
+    await selectValue("monthToDate");
     expect(getCurrentValue()).toBe("Month to date");
     expect.verifySteps([
         formatExpr(
@@ -643,7 +643,7 @@ test(`datetime: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("last month");
+    await selectValue("lastMonth");
     expect(getCurrentValue()).toBe("Last month");
     expect.verifySteps([
         formatExpr(
@@ -655,7 +655,7 @@ test(`datetime: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("year to date");
+    await selectValue("yearToDate");
     expect(getCurrentValue()).toBe("Year to date");
     expect.verifySteps([
         formatExpr(
@@ -667,7 +667,7 @@ test(`datetime: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("last 12 months");
+    await selectValue("last12Months");
     expect(getCurrentValue()).toBe("Last 12 months");
     expect.verifySteps([
         formatExpr(

@@ -36,12 +36,12 @@ export class InRange extends Component {
     static template = "web.TreeEditor.InRange";
     static options = [
         ["today", _t("Today")],
-        ["last 7 days", _t("Last 7 days")],
-        ["last 30 days", _t("Last 30 days")],
-        ["month to date", _t("Month to date")],
-        ["last month", _t("Last month")],
-        ["year to date", _t("Year to date")],
-        ["last 12 months", _t("Last 12 months")],
+        ["last7Days", _t("Last 7 days")],
+        ["last30Days", _t("Last 30 days")],
+        ["monthToDate", _t("Month to date")],
+        ["lastMonth", _t("Last month")],
+        ["yearToDate", _t("Year to date")],
+        ["last12months", _t("Last 12 months")],
         ["custom range", _t("Custom range")],
     ];
     updateValueType(newValueType) {

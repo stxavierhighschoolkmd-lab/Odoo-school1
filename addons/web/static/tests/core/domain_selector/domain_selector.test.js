@@ -2557,31 +2557,31 @@ test(`datetime: "in range" operator`, async () => {
         "Custom range",
     ]);
 
-    await selectValue("last 7 days");
+    await selectValue("last7Days");
     expect(getCurrentValue()).toBe("Last 7 days");
     expect.verifySteps([`["&", ("datetime", ">=", "today -7d"), ("datetime", "<", "today")]`]);
 
-    await selectValue("last 30 days");
+    await selectValue("last30Days");
     expect(getCurrentValue()).toBe("Last 30 days");
     expect.verifySteps([`["&", ("datetime", ">=", "today -30d"), ("datetime", "<", "today")]`]);
 
-    await selectValue("month to date");
+    await selectValue("monthToDate");
     expect(getCurrentValue()).toBe("Month to date");
     expect.verifySteps([`["&", ("datetime", ">=", "today =1d"), ("datetime", "<", "today +1d")]`]);
 
-    await selectValue("last month");
+    await selectValue("lastMonth");
     expect(getCurrentValue()).toBe("Last month");
     expect.verifySteps([
         `["&", ("datetime", ">=", "today =1d -1m"), ("datetime", "<", "today =1d")]`,
     ]);
 
-    await selectValue("year to date");
+    await selectValue("yearToDate");
     expect(getCurrentValue()).toBe("Year to date");
     expect.verifySteps([
         `["&", ("datetime", ">=", "today =1m =1d"), ("datetime", "<", "today +1d")]`,
     ]);
 
-    await selectValue("last 12 months");
+    await selectValue("last12Months");
     expect(getCurrentValue()).toBe("Last 12 months");
     expect.verifySteps([
         `["&", ("datetime", ">=", "today =1d -12m"), ("datetime", "<", "today =1d")]`,
@@ -2634,27 +2634,27 @@ test(`date: "in range" operator`, async () => {
         "Custom range",
     ]);
 
-    await selectValue("last 7 days");
+    await selectValue("last7Days");
     expect(getCurrentValue()).toBe("Last 7 days");
     expect.verifySteps([`["&", ("date", ">=", "today -7d"), ("date", "<", "today")]`]);
 
-    await selectValue("last 30 days");
+    await selectValue("last30Days");
     expect(getCurrentValue()).toBe("Last 30 days");
     expect.verifySteps([`["&", ("date", ">=", "today -30d"), ("date", "<", "today")]`]);
 
-    await selectValue("month to date");
+    await selectValue("monthToDate");
     expect(getCurrentValue()).toBe("Month to date");
     expect.verifySteps([`["&", ("date", ">=", "today =1d"), ("date", "<", "today +1d")]`]);
 
-    await selectValue("last month");
+    await selectValue("lastMonth");
     expect(getCurrentValue()).toBe("Last month");
     expect.verifySteps([`["&", ("date", ">=", "today =1d -1m"), ("date", "<", "today =1d")]`]);
 
-    await selectValue("year to date");
+    await selectValue("yearToDate");
     expect(getCurrentValue()).toBe("Year to date");
     expect.verifySteps([`["&", ("date", ">=", "today =1m =1d"), ("date", "<", "today +1d")]`]);
 
-    await selectValue("last 12 months");
+    await selectValue("last12Months");
     expect(getCurrentValue()).toBe("Last 12 months");
     expect.verifySteps([`["&", ("date", ">=", "today =1d -12m"), ("date", "<", "today =1d")]`]);
 
@@ -2845,14 +2845,14 @@ test("properties field: date & datetime", async () => {
         {
             fields: ["product", "product_properties", "datetime_properties"],
             operator: "in range",
-            treeValue: "last 12 months",
+            treeValue: "last12Months",
             expectedDomain:
                 '[("product_id", "any", ["&", ("properties.datetime_properties", ">=", "today =1d -12m"), ("properties.datetime_properties", "<", "today =1d")])]',
         },
         {
             fields: ["product", "product_properties", "date_properties"],
             operator: "in range",
-            treeValue: "year to date",
+            treeValue: "yearToDate",
             expectedDomain: `[("product_id", "any", ["&", ("properties.date_properties", ">=", "today =1m =1d"), ("properties.date_properties", "<", "today +1d")])]`,
         },
     ];
