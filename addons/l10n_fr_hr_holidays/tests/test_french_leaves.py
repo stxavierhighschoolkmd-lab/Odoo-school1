@@ -198,6 +198,9 @@ class TestFrenchLeaves(TransactionCase):
         company_calendar = self.env['resource.calendar'].create({
             'name': 'Company Calendar',
             'schedule_type': 'variable',
+            'hours_per_day': 8,
+            'days_per_week': 4,
+            'hours_per_week': 32,
             # TODO ZIRAH: Make a recurrency
             'attendance_ids': [
                 (5, 0, 0),
@@ -374,6 +377,9 @@ class TestFrenchLeaves(TransactionCase):
         self.company.resource_calendar_id = self.env['resource.calendar'].create({
             'name': 'Company Calendar - 2 weeks with different working hours for each week',
             'schedule_type': 'variable',
+            'hours_per_day': 8,
+            'days_per_week': 5,
+            'hours_per_week': 32,
             # TODO ZIRAH: Make a recurrency
             'attendance_ids': [
                 (5, 0, 0),
