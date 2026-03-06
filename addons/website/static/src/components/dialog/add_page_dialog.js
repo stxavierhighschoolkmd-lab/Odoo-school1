@@ -7,14 +7,17 @@ import { renderToElement } from "@web/core/utils/render";
 import { useAutofocus, useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { WebsiteDialog } from "@website/components/dialog/dialog";
-import { handleMatrixKeyNavigation } from "@html_builder/utils/backend_utils";
+import {
+    handleMatrixKeyNavigation,
+    showMatrixNotification,
+} from "@html_builder/utils/backend_utils";
 import { Switch } from "@html_editor/components/switch/switch";
 import {
     applyTextHighlight,
     removeTextHighlight,
     getObservedEls,
 } from "@website/js/highlight_utils";
-import { Component, onWillStart, onMounted, status } from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount, status } from "@odoo/owl";
 import { onceAllImagesLoaded } from "@website/utils/images";
 
 const NO_OP = () => {};
@@ -320,12 +323,17 @@ class AddPageTemplatePreviews extends Component {
 
     setup() {
         super.setup();
+        this.notification = useService("notification");
         this.backendDirection = localization.direction;
         this.frontendDirection = document
             .querySelector("iframe:not(.o_ignore_in_tour)")
             .contentDocument.querySelector(".o_rtl")
             ? "rtl"
             : "ltr";
+
+        onWillUnmount(() => {
+            this.closeDialogDescription?.();
+        });
     }
 
     get columns() {
@@ -336,6 +344,10 @@ class AddPageTemplatePreviews extends Component {
             currentColumnIndex = (currentColumnIndex + 1) % result.length;
         }
         return result;
+    }
+
+    showDialogDescription(ev) {
+        this.closeDialogDescription ||= showMatrixNotification(this.notification, ev.currentTarget);
     }
 }
 

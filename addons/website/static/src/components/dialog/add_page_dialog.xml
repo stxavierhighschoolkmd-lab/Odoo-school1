@@ -48,7 +48,7 @@
 
 <t t-name="website.AddPageTemplatePreviews">
     <div class="container-fluid py-3 py-xl-4">
-        <div class="row g-0" t-att-class="{ 'flex-row-reverse': this.frontendDirection !== this.backendDirection }">
+        <div class="row g-0" t-att-class="{ 'flex-row-reverse': this.frontendDirection !== this.backendDirection }" t-on-focusin="this.showDialogDescription">
             <div t-if="this.props.isCustom and !this.props.templates.length" class="col-12 alert alert-info d-flex">
                 <i class="fa fa-2x fa-info-circle me-3"/>
                 To add your page to this category, open the page properties: "Site -&gt; Properties".<br/>
@@ -103,11 +103,7 @@
             <div t-custom-ref="panes" class="position-relative flex-grow-1 flex-shrink-1 bg-200"
                  t-att-dir="this.frontendDirection"
                  aria-role="application"
-                 aria-roledescription="New page template"
-                 aria-describedby="o_page_templates_pane_description">
-                <div id="o_page_templates_pane_description" class="visually-hidden">
-                    Navigate around the blocks with <kbd>Tab</kbd> or the arrow keys. Select with <kbd>Enter</kbd> or <kbd>Space</kbd>.
-                </div>
+                 aria-roledescription="New page template">
                 <t t-foreach="this.state.pages" t-as="page" t-key="page.id">
                     <div t-att-data-id="page.id"
                         t-att-id="'pane_' + page.id"

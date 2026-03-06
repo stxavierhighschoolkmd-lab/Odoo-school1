@@ -3,16 +3,13 @@
 
 
 <t t-name="html_builder.SnippetViewer">
-    <div id="o_snippet_viewer_description" class="visually-hidden">
-        Navigate around the blocks with <kbd>Tab</kbd> or the arrow keys. Select with <kbd>Enter</kbd> or <kbd>Space</kbd>.
-    </div>
     <div t-custom-ref="content"
          class="row g-0 o_snippets_preview_row"
          t-att-class="{ 'flex-row-reverse': props.frontendDirection !== backendDirection }"
          t-att-dir="props.frontendDirection"
+         t-on-focusin="this.showViewerDescription"
          aria-role="application"
-         aria-roledescription="Block Viewer"
-         aria-describedby="o_snippet_viewer_description">
+         aria-roledescription="Block Viewer">
         <div class="col-lg-6" t-foreach="this.getSnippetColumns()" t-as="snippetsColumn" t-key="snippetsColumn_index">
             <t t-foreach="snippetsColumn" t-as="snippet" t-key="snippet.id">
                 <div t-on-click="() => this.onClick(snippet)"

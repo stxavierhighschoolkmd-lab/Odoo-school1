@@ -1,6 +1,9 @@
 import { useRef } from "@web/owl2/utils";
-import { Component, markup } from "@odoo/owl";
-import { handleMatrixKeyNavigation } from "@html_builder/utils/backend_utils";
+import { Component, markup, onWillUnmount } from "@odoo/owl";
+import {
+    handleMatrixKeyNavigation,
+    showMatrixNotification,
+} from "@html_builder/utils/backend_utils";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
 import { localization } from "@web/core/l10n/localization";
 import { _t } from "@web/core/l10n/translation";
@@ -22,8 +25,13 @@ export class SnippetViewer extends Component {
 
     setup() {
         this.dialog = useService("dialog");
+        this.notification = useService("notification");
         this.content = useRef("content");
         this.backendDirection = localization.direction;
+
+        onWillUnmount(() => {
+            this.closeViewerDescription?.();
+        });
     }
 
     getRenameBtnLabel(snippetName) {
@@ -86,6 +94,10 @@ export class SnippetViewer extends Component {
             containerEl: ev.currentTarget.closest(".o_snippets_preview_row"),
             focusedItemSelector: ".o_snippet_preview_wrap",
         });
+    }
+
+    showViewerDescription(ev) {
+        this.closeViewerDescription ||= showMatrixNotification(this.notification, ev.currentTarget);
     }
 
     getContent(elem) {

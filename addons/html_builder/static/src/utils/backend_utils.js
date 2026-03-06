@@ -1,3 +1,4 @@
+import { markup } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
 import { localization } from "@web/core/l10n/localization";
@@ -112,5 +113,17 @@ export function handleMatrixKeyNavigation(
             behavior: reducedMotion ? "instant" : "smooth",
         });
         nextFocusedEl.focus();
+    }
+}
+
+export function showMatrixNotification(notificationService, containerEl) {
+    const cacheKey = matrixCache.getKey(containerEl);
+    if (!(cacheKey in matrixCache.cache) || !matrixCache.cache[cacheKey][0][0].isConnected) {
+        return notificationService.add(
+            markup(
+                `Navigate around the blocks with the arrow keys <span aria-hidden="true"><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd></span>. Confirm your selection with <kbd>Enter</kbd>.`
+            ),
+            { type: "info", autocloseDelay: 6000 }
+        );
     }
 }
