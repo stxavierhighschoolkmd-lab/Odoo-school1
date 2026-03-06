@@ -6,11 +6,13 @@ import collections
 import datetime
 import re
 import typing
+import babel.dates
 from collections import defaultdict
 from random import randint
 from zoneinfo import ZoneInfo
 
 from werkzeug import urls
+from contextlib import suppress
 
 from odoo import api, fields, models, tools, _, Command
 from odoo.exceptions import RedirectWarning, UserError, ValidationError
@@ -37,8 +39,15 @@ def _lang_get(self):
     return self.env['res.lang'].get_installed()
 
 
+def _is_babel_supported_timezone(tz):
+    with suppress(LookupError):
+        babel.dates.get_timezone(tz)
+        return True
+    return False
+
+
 # put POSIX 'Etc/*' entries at the end to avoid confusing users - see bug 1086728
-_tzs = [(tz, tz) for tz in sorted(all_timezones, key=lambda tz: tz if not tz.startswith('Etc/') else '_')]
+_tzs = [(tz, tz) for tz in sorted(filter(_is_babel_supported_timezone, all_timezones), key=lambda tz: tz if not tz.startswith('Etc/') else '_')]
 def _tz_get(self):
     return _tzs
 
