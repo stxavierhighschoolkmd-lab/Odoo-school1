@@ -225,7 +225,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
             ]),
             tree: condition("datetime_1", "in range", [
                 "datetime",
-                "custom range",
+                "daterange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -385,22 +385,22 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
                     "datetime_1",
                     ">=",
                     expression(
-                        `datetime.datetime.combine(context_today() + relativedelta(day = 1, months = -12), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")`
+                        `datetime.datetime.combine(context_today() + relativedelta(days = -365), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")`
                     )
                 ),
                 condition(
                     "datetime_1",
                     "<",
                     expression(
-                        `datetime.datetime.combine(context_today() + relativedelta(day = 1), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")`
+                        `datetime.datetime.combine(context_today(), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")`
                     )
                 ),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last12Months", false, false]),
+            tree: condition("datetime_1", "in range", ["datetime", "last365Days", false, false]),
             domain: [
                 "&",
-                ["datetime_1", ">=", "2024-06-30 23:00:00"],
-                ["datetime_1", "<", "2025-06-30 23:00:00"],
+                ["datetime_1", ">=", "2024-07-02 23:00:00"],
+                ["datetime_1", "<", "2025-07-02 23:00:00"],
             ],
         },
         {
@@ -415,7 +415,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
             tree: condition(
                 "datetime_1",
                 "in range",
-                ["datetime", "custom range", "2025-07-02 00:00:00", "2025-07-03 00:00:00"],
+                ["datetime", "dateRange", "2025-07-02 00:00:00", "2025-07-03 00:00:00"],
                 true
             ),
             domain: [
@@ -436,7 +436,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
             ),
             tree: condition("m2o.datetime_2", "in range", [
                 "datetime",
-                "custom range",
+                "dateRange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -467,7 +467,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
                 "any",
                 condition("datetime_2", "in range", [
                     "datetime",
-                    "custom range",
+                    "dateRange",
                     "2025-07-02 00:00:00",
                     "2025-07-03 00:00:00",
                 ]),
@@ -507,7 +507,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
             ]),
             tree: condition("date_1", "in range", [
                 "date",
-                "custom range",
+                "dateRange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -611,17 +611,13 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
                     "date_1",
                     ">=",
                     expression(
-                        `(context_today() + relativedelta(day = 1, months = -12)).strftime('%Y-%m-%d')`
+                        `(context_today() + relativedelta(days = -365)).strftime('%Y-%m-%d')`
                     )
                 ),
-                condition(
-                    "date_1",
-                    "<",
-                    expression(`(context_today() + relativedelta(day = 1)).strftime('%Y-%m-%d')`)
-                ),
+                condition("date_1", "<", expression(`(context_today()).strftime('%Y-%m-%d')`)),
             ]),
-            tree: condition("date_1", "in range", ["date", "last12Months", false, false]),
-            domain: ["&", ["date_1", ">=", "2024-07-01"], ["date_1", "<", "2025-07-01"]],
+            tree: condition("date_1", "in range", ["date", "last365Days", false, false]),
+            domain: ["&", ["date_1", ">=", "2024-07-03"], ["date_1", "<", "2025-07-03"]],
         },
         {
             tree_py: connector(
@@ -635,7 +631,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
             tree: condition(
                 "date_1",
                 "in range",
-                ["date", "custom range", "2025-07-02 00:00:00", "2025-07-03 00:00:00"],
+                ["date", "dateRange", "2025-07-02 00:00:00", "2025-07-03 00:00:00"],
                 true
             ),
             domain: [
@@ -656,7 +652,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
             ),
             tree: condition("m2o.date_2", "in range", [
                 "date",
-                "custom range",
+                "dateRange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -687,7 +683,7 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
                 "any",
                 condition("date_2", "in range", [
                     "date",
-                    "custom range",
+                    "dateRange",
                     "2025-07-02 00:00:00",
                     "2025-07-03 00:00:00",
                 ]),
@@ -846,7 +842,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
             ]),
             tree: condition("datetime_1", "in range", [
                 "datetime",
-                "custom range",
+                "daterange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -906,11 +902,11 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
         },
         {
             tree_py: connector("&", [
-                condition("datetime_1", ">=", "today =1d -12m"),
-                condition("datetime_1", "<", "today =1d"),
+                condition("datetime_1", ">=", "today -365d"),
+                condition("datetime_1", "<", "today"),
             ]),
-            tree: condition("datetime_1", "in range", ["datetime", "last12Months", false, false]),
-            domain: ["&", ["datetime_1", ">=", "today =1d -12m"], ["datetime_1", "<", "today =1d"]],
+            tree: condition("datetime_1", "in range", ["datetime", "last365Days", false, false]),
+            domain: ["&", ["datetime_1", ">=", "today -365d"], ["datetime_1", "<", "today"]],
         },
         {
             tree_py: connector(
@@ -924,7 +920,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
             tree: condition(
                 "datetime_1",
                 "in range",
-                ["datetime", "custom range", "2025-07-02 00:00:00", "2025-07-03 00:00:00"],
+                ["datetime", "dateRange", "2025-07-02 00:00:00", "2025-07-03 00:00:00"],
                 true
             ),
             domain: [
@@ -945,7 +941,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
             ),
             tree: condition("m2o.datetime_2", "in range", [
                 "datetime",
-                "custom range",
+                "dateRange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -976,7 +972,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
                 "any",
                 condition("datetime_2", "in range", [
                     "datetime",
-                    "custom range",
+                    "dateRange",
                     "2025-07-02 00:00:00",
                     "2025-07-03 00:00:00",
                 ]),
@@ -1015,7 +1011,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
             ]),
             tree: condition("date_1", "in range", [
                 "date",
-                "custom range",
+                "dateRange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -1075,11 +1071,11 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
         },
         {
             tree_py: connector("&", [
-                condition("date_1", ">=", "today =1d -12m"),
-                condition("date_1", "<", "today =1d"),
+                condition("date_1", ">=", "today -365d"),
+                condition("date_1", "<", "today"),
             ]),
-            tree: condition("date_1", "in range", ["date", "last12Months", false, false]),
-            domain: ["&", ["date_1", ">=", "today =1d -12m"], ["date_1", "<", "today =1d"]],
+            tree: condition("date_1", "in range", ["date", "last365Days", false, false]),
+            domain: ["&", ["date_1", ">=", "today -365d"], ["date_1", "<", "today"]],
         },
         {
             tree_py: connector(
@@ -1093,7 +1089,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
             tree: condition(
                 "date_1",
                 "in range",
-                ["date", "custom range", "2025-07-02 00:00:00", "2025-07-03 00:00:00"],
+                ["date", "dateRange", "2025-07-02 00:00:00", "2025-07-03 00:00:00"],
                 true
             ),
             domain: [
@@ -1114,7 +1110,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
             ),
             tree: condition("m2o.date_2", "in range", [
                 "date",
-                "custom range",
+                "dateRange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -1145,7 +1141,7 @@ test(`"in range" operator: introduction/elimination for date fields`, async () =
                 "any",
                 condition("date_2", "in range", [
                     "date",
-                    "custom range",
+                    "dateRange",
                     "2025-07-02 00:00:00",
                     "2025-07-03 00:00:00",
                 ]),

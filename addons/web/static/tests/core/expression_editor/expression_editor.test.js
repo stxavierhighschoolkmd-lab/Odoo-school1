@@ -500,8 +500,8 @@ test(`date: "in range" operator`, async () => {
         "Month to date",
         "Last month",
         "Year to date",
-        "Last 12 months",
-        "Custom range",
+        "Last 365 days",
+        "Date range",
     ]);
 
     await selectValue("last7Days");
@@ -544,16 +544,16 @@ test(`date: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("last12Months");
-    expect(getCurrentValue()).toBe("Last 12 months");
+    await selectValue("last365Days");
+    expect(getCurrentValue()).toBe("Last 365 days");
     expect.verifySteps([
         formatExpr(
-            `date >= (context_today() + relativedelta(day = 1, months = -12)).strftime("%Y-%m-%d") and date < (context_today() + relativedelta(day = 1)).strftime("%Y-%m-%d")`
+            `date >= (context_today() + relativedelta(days = -365)).strftime("%Y-%m-%d") and date < (context_today()).strftime("%Y-%m-%d")`
         ),
     ]);
 
-    await selectValue("custom range");
-    expect(queryOne(`${SELECTORS.valueEditor} select`).value).toBe('"custom range"');
+    await selectValue("dateRange");
+    expect(queryOne(`${SELECTORS.valueEditor} select`).value).toBe('"dateRange"');
     expect.verifySteps([formatExpr(`date >= "2023-04-20" and date <= "2023-04-20"`)]);
 
     await contains(".o_datetime_input:last").click();
@@ -603,8 +603,8 @@ test(`datetime: "in range" operator`, async () => {
         "Month to date",
         "Last month",
         "Year to date",
-        "Last 12 months",
-        "Custom range",
+        "Last 365 days",
+        "Date range",
     ]);
 
     await selectValue("last7Days");
@@ -667,20 +667,20 @@ test(`datetime: "in range" operator`, async () => {
         ),
     ]);
 
-    await selectValue("last12Months");
-    expect(getCurrentValue()).toBe("Last 12 months");
+    await selectValue("last365Days");
+    expect(getCurrentValue()).toBe("Last 365 days");
     expect.verifySteps([
         formatExpr(
             `
-                datetime >= datetime.datetime.combine(context_today() + relativedelta(day = 1, months = -12), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")
+                datetime >= datetime.datetime.combine(context_today() + relativedelta(days = -365), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")
                     and
-                datetime < datetime.datetime.combine(context_today() + relativedelta(day = 1), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")
+                datetime < datetime.datetime.combine(context_today(), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")
             `
         ),
     ]);
 
-    await selectValue("custom range");
-    expect(queryOne(`${SELECTORS.valueEditor} select`).value).toBe('"custom range"');
+    await selectValue("dateRange");
+    expect(queryOne(`${SELECTORS.valueEditor} select`).value).toBe('"dateRange"');
     expect.verifySteps([
         formatExpr(`datetime >= "2023-04-20 00:00:00" and datetime <= "2023-04-20 23:59:59"`),
     ]);

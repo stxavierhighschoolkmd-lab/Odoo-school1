@@ -41,14 +41,14 @@ export class InRange extends Component {
         ["monthToDate", _t("Month to date")],
         ["lastMonth", _t("Last month")],
         ["yearToDate", _t("Year to date")],
-        ["last12months", _t("Last 12 months")],
-        ["custom range", _t("Custom range")],
+        ["last365Days", _t("Last 365 days")],
+        ["dateRange", _t("Date range")],
     ];
     updateValueType(newValueType) {
         const [fieldType, currentValueType] = this.props.value;
         if (currentValueType !== newValueType) {
             const values =
-                newValueType === "custom range"
+                newValueType === "dateRange"
                     ? this.props.betweenEditorInfo.defaultValue()
                     : [false, false];
             return this.props.update([fieldType, newValueType, ...values]);
