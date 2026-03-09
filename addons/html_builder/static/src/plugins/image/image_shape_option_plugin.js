@@ -19,6 +19,7 @@ import {
 import { _t } from "@web/core/l10n/translation";
 import { BuilderAction } from "@html_builder/core/builder_action";
 import { getMimetypeBeforeShape } from "@html_builder/utils/image";
+import { withSequence } from "@html_editor/utils/resource";
 
 /**
  * @typedef {((dataset: DOMStringMap) => string)[]} default_shape_handlers
@@ -74,6 +75,7 @@ export class ImageShapeOptionPlugin extends Plugin {
         process_image_warmup_handlers: this.processImageWarmup.bind(this),
         process_image_post_handlers: this.processImagePost.bind(this),
         hover_effect_allowed_predicates: (el) => this.canHaveHoverEffect(el),
+        on_media_dialog_saved_handlers: withSequence(5, this.onMediaDialogSavedHandlers.bind(this)),
     };
     setup() {
         this.shapeSvgTextCache = {};
@@ -82,6 +84,26 @@ export class ImageShapeOptionPlugin extends Plugin {
         for (const shapeId of Object.keys(this.imageShapes)) {
             const oldShapeId = shapeId.replace("html_builder", "web_editor");
             this.imageShapes[oldShapeId] = this.imageShapes[shapeId];
+        }
+    }
+    async onMediaDialogSavedHandlers(elements, { node }) {
+        if (!node || !node.dataset.shape) {
+            return;
+        }
+        for (const element of elements) {
+            if (!element || !element.tagName === "IMG") {
+                continue;
+            }
+            const data = await loadImageInfo(element);
+            if (!data.originalSrc) {
+                continue;
+            }
+            element.dataset.shape = node.dataset.shape;
+            for (const shapeInfo of ["shapeColors", "shapeFlip", "shapeRotate"]) {
+                if (node.dataset[shapeInfo]) {
+                    element.dataset[shapeInfo] = node.dataset[shapeInfo];
+                }
+            }
         }
     }
     async canHaveHoverEffect(imgEl) {

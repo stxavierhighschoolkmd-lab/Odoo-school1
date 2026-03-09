@@ -704,3 +704,40 @@ test("Replacing a shaped image by an svg should also apply the shape on the svg"
         "html_builder/geometric/geo_shuriken"
     );
 });
+
+test("Shape should not be applied on replaced CORS-protected image", async () => {
+    const redirectSrc = "/web/image/0-redirect/foo.jpg";
+    const { waitSidebarUpdated } = await setupWebsiteBuilder(
+        `<div class="test-options-target">
+            <img src='${testSvgImgSrc}' data-mimetype="image/svg+xml" data-shape="html_builder/geometric/geo_shuriken" data-original-id="1665" data-original-src="/website/static/src/img/snippets_demo/s_text_image.jpg" data-mimetype-before-conversion="image/jpeg" data-shape-colors=";;;;" data-aspect-ratio="1/1" data-file-name="s_text_image.svg" data-attachment-id="1665">
+        </div>`
+    );
+    onRpc("/html_editor/get_image_info", () => ({
+        original: {
+            id: 1,
+            image_src: redirectSrc,
+            mimetype: "image/jpeg",
+        },
+    }));
+    onRpc(redirectSrc, () => {
+        throw new Error("simulated cors error");
+    });
+    onRpc("ir.attachment", "search_read", () => [
+        {
+            id: 1,
+            name: "logo",
+            mimetype: "image/jpeg",
+            image_src: redirectSrc,
+            access_token: false,
+            public: true,
+        },
+    ]);
+    await contains(":iframe img").click();
+    await contains("[data-action-id=replaceMedia]").click();
+    await contains("img.o_we_attachment_highlight").click();
+    await waitSidebarUpdated();
+    const imgEl = queryFirst(":iframe .test-options-target img");
+    expect(imgEl).toHaveAttribute("src", redirectSrc);
+    expect(imgEl).not.toHaveAttribute("data-shape");
+    expect(imgEl).not.toHaveAttribute("data-shape-colors");
+});

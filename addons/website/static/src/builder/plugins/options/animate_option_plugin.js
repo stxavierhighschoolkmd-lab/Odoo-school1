@@ -24,10 +24,19 @@ import { EmphasizeAnimatedText } from "./emphasize_animated_text";
  * @typedef {((editingElement: HTMLElement) => Promise<void>)[]} set_hover_effect_handlers
  */
 
+/**
+ * @typedef {((el: HTMLElement) => Promise<boolean>)[]} hover_effect_allowed_predicates
+ */
+
 export class AnimateOptionPlugin extends Plugin {
     static id = "animateOption";
     static dependencies = ["history", "selection", "split"];
-    static shared = ["forceAnimation", "getDirectionsItems", "getEffectsItems"];
+    static shared = [
+        "forceAnimation",
+        "getDirectionsItems",
+        "getEffectsItems",
+        "canHaveHoverEffect",
+    ];
     /** @type {import("plugins").WebsiteResources} */
     resources = {
         builder_options: [withSequence(ANIMATE, AnimateOption)],
@@ -63,10 +72,42 @@ export class AnimateOptionPlugin extends Plugin {
                 ".o_animated_text"
             ),
         lower_panel_entries: withSequence(10, { Component: EmphasizeAnimatedText }),
+        on_media_dialog_saved_handlers: withSequence(5, this.onMediaDialogSavedHandlers.bind(this)),
     };
 
     setup() {
         this.scrollingElement = getScrollingElement(this.document);
+    }
+
+    async canHaveHoverEffect(el) {
+        const proms = this.getResource("hover_effect_allowed_predicates").map((p) => p(el));
+        const settledProms = await Promise.all(proms);
+        return settledProms.length && settledProms.every(Boolean);
+    }
+
+    async onMediaDialogSavedHandlers(elements, { node }) {
+        if (!node || !node.dataset.hoverEffect) {
+            return;
+        }
+        for (const element of elements) {
+            if (!element || !element.tagName === "IMG") {
+                continue;
+            }
+            const canImgHaveHoverEffect = await this.canHaveHoverEffect(element);
+            if (!canImgHaveHoverEffect) {
+                continue;
+            }
+            element.dataset.hoverEffect = node.dataset.hoverEffect;
+            for (const hoverEffectInfo of [
+                "hoverEffectColor",
+                "hoverEffectStrokeWidth",
+                "hoverEffectIntensity",
+            ]) {
+                if (node.dataset[hoverEffectInfo]) {
+                    element.dataset[hoverEffectInfo] = node.dataset[hoverEffectInfo];
+                }
+            }
+        }
     }
 
     getEffectsItems(isActiveItem) {
