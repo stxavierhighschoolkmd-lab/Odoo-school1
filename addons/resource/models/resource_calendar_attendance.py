@@ -2,8 +2,11 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
+from dateutil.rrule import rrule, DAILY
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.fields import Domain
 from odoo.tools import format_time
 from odoo.tools.date_utils import float_to_time
 from odoo.tools.intervals import Intervals
@@ -23,6 +26,7 @@ class ResourceCalendarAttendance(models.Model):
     # value but can be manually overridden.
     duration_hours = fields.Float(compute='_compute_duration_hours', string='Hours', store=True, readonly=False)
     calendar_id = fields.Many2one("resource.calendar", string="Resource's Calendar", required=True, index=True, ondelete='cascade')
+    schedule_type = fields.Selection(related='calendar_id.schedule_type', readonly=True)
     duration_based = fields.Boolean(compute='_compute_duration_based', store=True)
     day_period = fields.Selection([
         ('morning', 'Morning'),
@@ -50,12 +54,12 @@ class ResourceCalendarAttendance(models.Model):
     recurrency_type = fields.Selection([
         ('days', 'Days'),
         ('weeks', 'Weeks'),
-    ])
+    ], default='weeks')
     interval = fields.Integer(string="Interval", help="Number of days or weeks between each occurrence.")
     end_type = fields.Selection([
         ('forever', 'Forever'),
-        ('times', 'Number of Occurences'),
-        ('date', 'Date')
+        ('times', 'Number of Occurrences'),
+        ('date', 'Until')
     ], default='forever', string="Recurrence End Condition")
     count = fields.Integer(string="Number of Repetitions", default=1)
     until = fields.Date(string="Recurrence End Date", compute="_compute_until", store=True, readonly=False)
@@ -178,7 +182,7 @@ class ResourceCalendarAttendance(models.Model):
             match attendance.end_type:
                 case 'date':
                     break  # It should already be set by the user
-                case 'times' if attendance.interval and attendance.count:
+                case 'times' if attendance.recurrency_type and attendance.interval and attendance.count:
                     attendance.until = attendance.date + timedelta(**{attendance.recurrency_type: attendance.interval * attendance.count})
                 case _:  # 'forever' or missing parameters
                     attendance.until = date.max
@@ -215,6 +219,8 @@ class ResourceCalendarAttendance(models.Model):
         :param date_obj: the date to get the attendances for (date object)
         """
         def is_recurrent_attendance_today(a):
+            if not a.interval:
+                return False
             return (a.recurrency and a.date <= date_obj <= a.until and (
                         (a.recurrency_type == 'days' and not (date_obj - a.date).days % a.interval) or
                         (a.recurrency_type == 'weeks' and not (date_obj - a.date).days % 7 and not ((date_obj - a.date).days // 7) % a.interval)
@@ -232,3 +238,60 @@ class ResourceCalendarAttendance(models.Model):
             return att.calendar_id.schedule_type != 'variable'
 
         return self.filtered(_is_between_dates)
+
+    @api.model
+    def get_attendances(self,date_from, date_to, fields_to_fetch, domain=None):
+        date_from = fields.Date.from_string(date_from)
+        date_to = fields.Date.from_string(date_to)
+        attendances_per_date = self._get_attendances_by_date(date_from, date_to, domain=domain)
+        formatted_attendances = defaultdict(self.browse)
+        for date, attendances in attendances_per_date.items():
+            new_formatted_attendances = attendances._read_format(fnames=fields_to_fetch)
+            for attendance in new_formatted_attendances:
+                if formatted_attendances[attendance['id']]:
+                    formatted_attendances[attendance['id']]['other_dates'].append(date)
+                else:
+                    attendance['date'] = date
+                    attendance['other_dates'] = []
+                    formatted_attendances[attendance['id']] = attendance
+        return list(formatted_attendances.values())
+
+    @api.model
+    def _get_attendances_by_date(self, date_from, date_to, domain=None):
+        """
+        Get the attendances between date_from and date_to, grouped by day, as a recordset of resource.calendar.attendance.
+            - For variable schedule, only attendances with a date are considered. If an attendance has a recurrency rule, it will be repeated on the corresponding days.
+            - For fixed schedule, only attendances without a date are considered. They will be grouped by their dayofweek and returned on the corresponding days.
+
+        :param date_from: start date of the period (included)
+        :param date_to: end date of the period (included)
+        :param domain: optional domain to filter attendances
+        """
+        attendances = self.search(
+            Domain.AND([
+                Domain.OR([
+                    Domain.AND([
+                        Domain('date', '<=', date_to),
+                        Domain('date', '>=', date_from),
+                        Domain('recurrency', '=', 'False')
+                    ]),
+                    Domain.AND([
+                        Domain('date', '<=', date_to),
+                        Domain('until', '>=', date_from)
+                    ])
+                ]),
+                domain or Domain.TRUE
+            ])
+        )
+        result = defaultdict(lambda: self.env['resource.calendar.attendance'])
+        if domain:
+            attendances = attendances.filtered_domain(domain)
+
+        recurrent_attendances = attendances.filtered("recurrency")
+        ad_hoc_attendances = (attendances - recurrent_attendances).grouped("date" if self.schedule_type == 'variable' else 'dayofweek')
+        for day in rrule(DAILY, date_from, until=date_to):
+            key = day.date() if self.schedule_type == 'variable' else str(day.weekday())
+            result[day.date()] = ad_hoc_attendances.get(key, self.env['resource.calendar.attendance'])
+            result[day.date()] += recurrent_attendances._filter_by_date(day.date())
+        return result
+

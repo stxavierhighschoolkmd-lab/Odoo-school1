@@ -12,6 +12,24 @@ export class ResourceCalendarAttendanceCalendarModel extends CalendarModel {
         });
     }
 
+    /**
+     * @override
+     */
+    fetchRecords(data) {
+        const { context, fieldNames, resModel, domain } = this.meta;
+        return this.orm.call(
+            resModel,
+            "get_attendances",
+            [
+                serializeDate(data.range.start),
+                serializeDate(data.range.end),
+                [...new Set([...fieldNames, ...Object.keys(this.meta.activeFields)])],
+                domain,
+            ],
+            { context }
+        );
+    }
+
     get hasMultiCreate() {
         return (
             !!this.meta.multiCreateView &&
@@ -69,9 +87,8 @@ export class ResourceCalendarAttendanceCalendarModel extends CalendarModel {
         data[this.meta.fieldMapping.date_start] = serializeDate(start);
         if ((!partialRecord.isAllDay || !this.hasAllDaySlot) && end) {
             data["duration_based"] = false;
-            // TODO ZIRAH: Is this safe?
-            data["hour_from"] = start?.hour + start?.minute / 60;
-            data["hour_to"] = end?.hour + end?.minute / 60;
+            data["hour_from"] = start.hour + start.minute / 60;
+            data["hour_to"] = end.hour + end.minute / 60;
         } else {
             data["duration_based"] = true;
             data["hour_from"] = 0;

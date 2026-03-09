@@ -90,6 +90,24 @@ export class ResourceCalendarAttendanceCalendarCommonRenderer extends CalendarCo
         info?.view?.calendar.select(date.toISO(), date.plus({ hours: 1 }).toISO());
     }
 
+    mapRecordsToEvents() {
+        const { records } = this.props.model.data;
+        const events = [];
+        Object.values(records).forEach((r) => {
+            if (r.rawRecord.other_dates.length) {
+                r.rawRecord.other_dates.forEach((date) => {
+                    const temp_record = this.props.model.normalizeRecord({
+                        ...r.rawRecord,
+                        date: date,
+                    });
+                    events.push(this.convertRecordToEvent(temp_record));
+                });
+            }
+            events.push(this.convertRecordToEvent(r));
+        });
+        return events;
+    }
+
     convertRecordToEvent(record) {
         const res = super.convertRecordToEvent(...arguments);
         res.forcedDuration = record.duration;
