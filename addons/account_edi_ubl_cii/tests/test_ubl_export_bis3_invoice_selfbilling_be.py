@@ -21,9 +21,30 @@ class TestUblExportBis3InvoiceSelfBillingBE(TestUblBis3Common, TestUblCiiBECommo
         subfolder_format, _subfolder_document, subfolder_country = super().subfolders()
         return subfolder_format, 'invoice_selfbilling', subfolder_country
 
+<<<<<<< 1d4344c2a0c7e66e6439f24093325ec397e38f02:addons/account_edi_ubl_cii/tests/test_ubl_export_bis3_invoice_selfbilling_be.py
     def test_invoice_selfbilling(self):
         tax_21 = self.percent_tax(21.0, type_tax_use='purchase')
         product = self._create_product(standard_price=100.0, supplier_taxes_id=tax_21.ids)
+||||||| ec2f03cabcfa56c198c3a448ef11f5df6aaa5838:addons/account_peppol_selfbilling/tests/test_ubl_import_bis3_self_billing_be.py
+    def test_export_selfbilling(self):
+        tax_21 = self.percent_tax(21.0)
+        product = self._create_product(lst_price=100.0, taxes_id=tax_21)
+=======
+    def test_export_selfbilling(self):
+        self.env['res.partner'].create({
+            'name': 'custom delivery address',
+            'parent_id': self.company.partner_id.id,
+            'type': 'delivery',
+            'street': 'Chaussée de Namur 40',
+            'city': 'Ramillies',
+            'zip': '1367',
+            'global_location_number': '0123456789',
+            'country_id': self.ref('base.be'),
+        })
+
+        tax_21 = self.percent_tax(21.0)
+        product = self._create_product(lst_price=100.0, taxes_id=tax_21)
+>>>>>>> c84fe84c743d9f4a9e7f71e21c4b9804f0c10a31:addons/account_peppol_selfbilling/tests/test_ubl_import_bis3_self_billing_be.py
         invoice = self._create_invoice_one_line(
             move_type='in_invoice',
             journal_id=self.self_billing_journal.id,
