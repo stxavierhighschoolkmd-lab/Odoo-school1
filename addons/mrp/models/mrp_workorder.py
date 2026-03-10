@@ -77,7 +77,7 @@ class MrpWorkorder(models.Model):
         help='Slot into workcenter calendar once planned',
         check_company=True, copy=False)
     date_start = fields.Datetime(
-        'Start',
+        'Planned Date',
         compute='_compute_dates',
         inverse='_set_dates',
         store=True, copy=False)

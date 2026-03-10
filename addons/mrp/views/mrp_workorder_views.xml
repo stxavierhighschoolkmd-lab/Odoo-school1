@@ -176,37 +176,46 @@
             <field name="production_state" invisible="1"/>
             <field name="operation_id" invisible="1"/>
             <field name="sequence" invisible="1"/>
-            <header>
-                <field name="state" widget="statusbar" statusbar_visible="blocked,ready,progress,done"/>
-            </header>
             <sheet>
                 <field name="company_id" invisible="1"/>
                 <field name="product_tracking" invisible="1"/>
                 <field name="product_id" invisible="1"/>
+                <div class="d-flex o_wo_title flex-wrap-reverse flex-lg-nowrap justify-content-between align-items-center gap-2 mb-3 mb-lg-0">
+                    <h1 class="d-flex w-100">
+                        <field name="name" options="{'line_breaks': False}" readonly="state in ['cancel', 'done']" widget="text" class="text-truncate w-md-75 w-100 pe-2" placeholder="Workorder Title..."/>
+                    </h1>
+                    <div class="d-flex justify-content-end align-items-center px-1">
+                        <field name="state" widget="mo_view_list_dropdown" options="{'display': 'badge'}"/>
+                    </div>
+                </div>
                 <group>
-                    <group>
-                        <field name="name" readonly="state in ['cancel', 'done']" force_save="1"/>
-                        <field name="workcenter_id" readonly="state in ['cancel', 'done', 'progress']"/>
-                    </group>
                     <group>
                         <field name="product_id" readonly="1"/>
                         <field name="qty_remaining" string="Quantity" readonly="1" invisible="state == 'done'"/>
-                        <field name="qty_produced" string="Produced Quantity" groups="base.group_no_one" readonly="state == 'done' or product_tracking == 'serial'"/>
+                        <field name="workcenter_id" readonly="state in ['cancel', 'done', 'progress']"/>
                     </group>
-                </group>
-                <group>
                     <group>
-                        <field name="is_planned" invisible="1"/>
-                        <field name="date_start" readonly="state in ['cancel', 'done']"/>
-                        <field name="date_finished" readonly="state in ['cancel', 'done']"/>
-                        <field name="show_json_popover" invisible="1"/>
-                        <field name="json_popover" widget="mrp_workorder_popover" class="oe_inline mx-2" invisible="not show_json_popover"/>
+                        <div colspan="2" class="o_row" name="wo_date">
+                        <div class="o_cell d-flex">
+                        <label for="date_start" class="o_form_label"/>
+                        <field
+                            name="date_start"
+                            widget="daterange"
+                            options="{'end_date_field': 'date_finished', 'always_range': True}"
+                            readonly="state in ['cancel', 'done']"
+                            class="mx-2"
+                        />
+
+                        </div>
+                        <div class="o_cell d-flex my-auto">
+                        <label for="json_popover" string="" class="o_form_label"/>
+                        <field name="json_popover" string="" widget="mrp_workorder_popover" class="oe_inline mx-2" invisible="not show_json_popover"/>
+                        </div>
+                        </div>
                         <label for="duration_expected"/>
                         <div class="o_input_box">
-                            <field name="duration_expected" widget="float_time" options="{'unit': 'minutes', 'show_seconds': True}" readonly="state in ['cancel', 'done']"/>
+                            <field name="duration_expected" widget="float_time" options="{'unit': 'minutes','show_seconds': True}" readonly="state in ['cancel', 'done']"/>
                         </div>
-                    </group>
-                    <group>
                         <field name="production_id" force_save="1"/>
                     </group>
                 </group>
