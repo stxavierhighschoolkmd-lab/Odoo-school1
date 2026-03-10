@@ -65,6 +65,11 @@
                 &.s_popup {
                     min-height: 660px;
 
+                    // Adjust popup height for mobile preview (e.g., s_newsletter_benefits_popup)
+                    @include media-breakpoint-down(md) {
+                        min-height: 780px;
+                    }
+
                     > .modal {
                         --black-50: rgba(0, 0, 0, 0.25) !important;
                         display: block;
@@ -166,4 +171,27 @@
             color: $white;
         }
     }
+
+    &.o_is_mobile_preview_html {
+        > body {
+            width: 100%;
+            height: 100%;
+            scrollbar-width: thin;
+        }
+        .o_snippets_preview_row {
+            .o_snippet_preview_wrap {
+                &[data-label]:not([data-label=""])::before,
+                &.o_snippet_preview_install > .o_snippet_preview_install_btn {
+                    transform: scale(1.3);
+                }
+            }
+        }
+    }
+}
+
+.o_is_mobile_preview_iframe {
+    width: 50%;
+    height: 50%;
+    transform: scale(2);
+    transform-origin: top left;
 }
