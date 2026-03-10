@@ -170,6 +170,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
             self._filter_users_fields(
                 {
                     "active": False,
+                    "has_active_call": False,
                     "id": self.user_root.id,
                     "employee_ids": [],
                     "partner_id": self.partner_root.id,
@@ -177,6 +178,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
                 },
                 {
                     "employee_ids": [],
+                    "has_active_call": False,
                     "id": test_user.id,
                     "is_admin": False,
                     "is_livechat_manager": False,
@@ -186,6 +188,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
                     "share": False,
                 },
                 {
+                    "has_active_call": False,
                     "id": operator.id,
                     "employee_ids": [],
                     "partner_id": operator.partner_id.id,
@@ -303,6 +306,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
             self._filter_users_fields(
                 {
                     "active": False,
+                    "has_active_call": False,
                     "id": self.user_root.id,
                     "employee_ids": [],
                     "partner_id": self.partner_root.id,
@@ -310,6 +314,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
                 },
                 {
                     "employee_ids": [],
+                    "has_active_call": False,
                     "id": operator.id,
                     "is_admin": False,
                     "is_livechat_manager": False,

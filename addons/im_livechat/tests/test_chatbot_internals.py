@@ -380,6 +380,7 @@ class ChatbotCase(MailCommon, chatbot_common.ChatbotCase):
                         ),
                         "res.users": self._filter_users_fields({
                             "employee_ids": [],
+                            "has_active_call": False,
                             "id": self.user_employee.id,
                             "partner_id": self.partner_employee.id,
                         }),
