@@ -252,11 +252,12 @@ class TestHrAttendanceOvertime(HttpCase):
     def test_overtime_far_timezones(self):
         (self.jpn_employee | self.honolulu_employee).ruleset_id = self.ruleset
         # attendance from 10 to 21(japan time)
-        self.env['hr.attendance'].create({
+        att = self.env['hr.attendance'].create({
             'employee_id': self.jpn_employee.id,
             'check_in': datetime(2021, 1, 4, 1, 0),
             'check_out': datetime(2021, 1, 4, 12, 0),
         })
+        self.assertEqual(att.linked_overtime_ids.date, date(2021, 1, 4))
 
         # attendance from 7 to 18 (honolulu time)
         self.env['hr.attendance'].create({
@@ -1237,6 +1238,7 @@ class TestHrAttendanceOvertime(HttpCase):
         self.assertEqual(attendance.worked_hours, 4.0)
         self.assertEqual(attendance.overtime_hours, 0.0)
 
+<<<<<<< 387d759e061ea6752c1996d110bd583cdd120388
         overtime_attendance = self.env['hr.attendance'].create({
             'employee_id': self.europe_employee.id,
             'check_in': datetime(2026, 2, 5, 22, 0),
@@ -1285,3 +1287,53 @@ class TestHrAttendanceOvertime(HttpCase):
 
         self.assertEqual(overtime_attendance.worked_hours, 12.0)
         self.assertEqual(overtime_attendance.overtime_hours, 2.0)
+||||||| 5fd80a1fb8ef33cfa9261967cf14f6f0c421d45a
+        attendance_1, attendance_2 = self.env['hr.attendance'].create([{
+            'employee_id': self.employee.id,
+            'check_in': datetime(2020, 3, 4, 7, 0),
+            'check_out': datetime(2020, 3, 4, 18, 0)
+            }, {
+            'employee_id': self.employee.id,
+            'check_in': datetime(2020, 4, 4, 10, 0),
+            'check_out': datetime(2020, 4, 4, 19, 30)
+        }])
+        ruleset_1.action_regenerate_overtimes()
+        self.assertEqual(attendance_1.overtime_hours, 1)
+        self.assertEqual(attendance_2.overtime_hours, 0.5)
+=======
+        attendance_1, attendance_2 = self.env['hr.attendance'].create([{
+            'employee_id': self.employee.id,
+            'check_in': datetime(2020, 3, 4, 7, 0),
+            'check_out': datetime(2020, 3, 4, 18, 0)
+            }, {
+            'employee_id': self.employee.id,
+            'check_in': datetime(2020, 4, 4, 10, 0),
+            'check_out': datetime(2020, 4, 4, 19, 30)
+        }])
+        ruleset_1.action_regenerate_overtimes()
+        self.assertEqual(attendance_1.overtime_hours, 1)
+        self.assertEqual(attendance_2.overtime_hours, 0.5)
+
+    def test_attendance_expected_hours_compute(self):
+        att = self.env['hr.attendance'].create({
+            'employee_id': self.employee.id,
+            'check_in': datetime(2023, 1, 4, 7, 0),
+            'check_out': datetime(2023, 1, 4, 18, 0)
+        })
+        self.assertEqual(att.expected_hours, 8)
+        att.check_out = datetime(2023, 1, 4, 8, 0)
+        self.assertEqual(att.expected_hours, 1)  # This is because absence management is off
+
+        self.employee.ruleset_id.company_id.absence_management = True
+        att.check_out = datetime(2023, 1, 4, 9, 0)
+        self.assertEqual(att.expected_hours, 8)
+
+        self.assertEqual(att.overtime_hours, -6)
+        self.assertEqual(att.validated_overtime_hours, -6)
+        self.assertEqual(att.expected_hours, 8)
+
+        att.linked_overtime_ids.manual_duration = 10
+        self.assertEqual(att.overtime_hours, -6)
+        self.assertEqual(att.validated_overtime_hours, 10)
+        self.assertEqual(att.expected_hours, 8)
+>>>>>>> 193c97ece957ae8f4fc52dd4d25b1c12f833f8b7
