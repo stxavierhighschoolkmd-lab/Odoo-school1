@@ -67,12 +67,7 @@
                             </group>
                         </group>
                         <group name="resource_working_hours">
-                            <label for="full_time_required_hours" invisible="not company_id" groups="base.group_no_one"/>
-                            <label for="full_time_required_hours" string="Required Full Time" invisible="company_id" groups="base.group_no_one"/>
-                            <div groups="base.group_no_one">
-                                <field name="full_time_required_hours" style="width: 6ch;" widget="float_time" readonly="company_id"/>
-                                <span>hours/week</span>
-                            </div>
+                            <field name="reference_calendar_id"/>
                             <label for="work_time_rate" string="Work Time Rate" groups="base.group_no_one"/>
                             <div groups="base.group_no_one">
                                 <field name="work_time_rate" nolabel="1" style="width: 6ch; " widget="percentage"/>
