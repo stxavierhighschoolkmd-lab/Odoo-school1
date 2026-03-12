@@ -512,6 +512,42 @@ comment-->1000.0</TaxExclusiveAmount></xpath>"""
                 (invoices[:2]).ubl_cii_xml_id.mapped('name'),
             )
 
+    def test_export_xml(self):
+        partners = self.env['res.partner'].create([{
+            'name': 'GP Partner',
+            'country_id': self.env.ref('base.gp').id,
+            'invoice_edi_format': edi_format,
+            'vat': 'HR01234567896',
+        } for edi_format in ['ubl_bis3', False]])
+        invoices = [self._create_invoice(partner_id=partner.id, post=True, invoice_line_ids=[
+            self._prepare_invoice_line(product_id=self.product_a.id, price_unit=100)])
+            for partner in partners]
+        self.env['account.move'].create([
+            {
+                'partner_id': partner.id,
+                'move_type': 'out_invoice',
+                'invoice_line_ids': [
+                    Command.create({
+                        'product_id': self.product_a.id,
+                        'quantity': 1,
+                        'price_unit': 100,
+                    }),
+                ],
+            }
+            for partner in partners
+        ])
+        print_items = invoices[1].get_extra_print_items()
+        self.assertEqual(print_items, [])
+        print_items = invoices[0].get_extra_print_items()
+        self.assertEqual(
+            print_items[0]['url'],
+            f'/account/download_invoice_documents/{invoices[0].id}/ubl?allow_fallback=true',
+        )
+        url = print_items[0]['url']
+        self.authenticate(self.env.user.login, self.env.user.login)
+        res = self.url_open(url)
+        self.assertEqual(res.status_code, 200)
+
     def test_payment_means_code_in_facturx_xml(self):
         bank_ing = self.env['res.bank'].create({'name': 'ING', 'bic': 'BBRUBEBB'})
         partner_bank = self.env['res.partner.bank'].create({
