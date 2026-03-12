@@ -18,7 +18,6 @@ import {
     isParagraphRelatedElement,
     isProtected,
     isProtecting,
-    isShrunkBlock,
     isVisibleTextNode,
     listElementSelector,
 } from "@html_editor/utils/dom_info";
@@ -512,9 +511,10 @@ export class ListPlugin extends Plugin {
             unwrapContents(element);
         } else {
             // Otherwise, wrap its content in a new <p> element.
-            const paragraph = this.dependencies.baseContainer.createBaseContainer();
+            const paragraph = this.dependencies.baseContainer.createBaseContainer({
+                children: [...element.childNodes],
+            });
             element.replaceWith(paragraph);
-            paragraph.replaceChildren(...element.childNodes);
         }
     }
 
@@ -735,14 +735,9 @@ export class ListPlugin extends Plugin {
         const ul = li.parentNode;
         const children = childNodes(li);
         if (!children.every(isBlock)) {
-            const baseContainer = this.dependencies.baseContainer.createBaseContainer();
-            for (const child of children) {
-                cursors.update(callbacksForCursorUpdate.append(baseContainer, child));
-                baseContainer.append(child);
-            }
-            if (isShrunkBlock(baseContainer)) {
-                baseContainer.append(this.document.createElement("br"));
-            }
+            const baseContainer = this.dependencies.baseContainer.createBaseContainer({
+                children: [...children],
+            });
             li.append(baseContainer);
             cursors.remapNode(li, baseContainer);
         }
