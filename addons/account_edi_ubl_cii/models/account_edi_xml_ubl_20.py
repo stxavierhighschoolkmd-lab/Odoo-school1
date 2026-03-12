@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
 from lxml import etree
+from markupsafe import Markup
 
 from odoo import models, _
 from odoo.tools import html2plaintext, cleanup_xml_node
+from odoo.addons.account_edi_ubl_cii.tools.ubl_20_optional_fields import PEPPOL_INVOICE_OPTIONAL_FIELDS, PEPPOL_INVOICE_OPTIONAL_LINE_FIELDS, PEPPOL_CREDIT_NOTE_OPTIONAL_FIELDS, PEPPOL_CREDIT_NOTE_OPTIONAL_LINE_FIELDS
+from odoo.addons.account_edi_ubl_cii.tools.dict_to_xml import dict_to_xml
+
 
 UBL_NAMESPACES = {
     'cbc': "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
@@ -523,6 +527,7 @@ class AccountEdiXmlUBL20(models.AbstractModel):
         return {
             'currency': line.currency_id,
             'currency_dp': self._get_currency_decimal_places(line.currency_id),
+            '__id': line,
             'id': line_id + 1,
             'line_quantity': line.quantity,
             'line_quantity_attrs': {'unitCode': uom},
@@ -800,8 +805,109 @@ class AccountEdiXmlUBL20(models.AbstractModel):
         })
         return constraints
 
+    def _get_document_nsmap(self, vals):
+        return {
+            None: {
+                'invoice': "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+                'credit_note': "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2",
+                'debit_note': "urn:oasis:names:specification:ubl:schema:xsd:DebitNote-2",
+                'order': "urn:oasis:names:specification:ubl:schema:xsd:Order-2",
+            }[vals['document_type']],
+            'cac': "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
+            'cbc': "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+            'ext': "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2",
+        }
+
+    def _add_invoice_optional_nodes(self, vals):
+        if (vals['document_type'] == 'invoice'):
+            self.add_invoice_optional_nodes(vals, PEPPOL_INVOICE_OPTIONAL_FIELDS)
+        elif (vals['document_type'] == 'credit_note'):
+            self.add_invoice_optional_nodes(vals, PEPPOL_CREDIT_NOTE_OPTIONAL_FIELDS)
+
+    def _add_invoice_line_optional_nodes(self, line_node, vals):
+        if (vals['document_type'] == 'invoice'):
+            self.add_invoice_line_optional_nodes(line_node, vals, PEPPOL_INVOICE_OPTIONAL_LINE_FIELDS)
+        elif (vals['document_type'] == 'credit_note'):
+            self.add_invoice_line_optional_nodes(line_node, vals, PEPPOL_CREDIT_NOTE_OPTIONAL_LINE_FIELDS)
+
+    def add_invoice_optional_nodes(self, vals, optional_fields):
+        move = vals['invoice']
+        node = {}
+        invoice_optional_fields = {key: move[key] for key in move._fields if key.startswith("x_studio_peppol") and move[key] and key in optional_fields}
+        for field in invoice_optional_fields:
+            config = optional_fields[field]
+            path = config.get("path")
+
+            if path is None:
+                vals['vals'][config["native_key"]] = config["attrs"](move)
+                continue
+            attrs = optional_fields[field]["attrs"](move)
+            current = node
+            for tag in path:
+                if tag not in current:
+                    current[tag] = {}
+                current = current[tag]
+            current.update(attrs)
+
+        vals['vals']['injected_dict'] = node
+
+    def add_invoice_line_optional_nodes(self, line_node, vals, optional_line_fields):
+        move_line = line_node.pop('__id')
+        line_node_dict = {}
+        item_node_dict = {}
+
+        move_line_optional_fields = {
+            key: move_line[key]
+            for key in move_line._fields
+            if key.startswith("x_studio_peppol") and move_line[key] and key in optional_line_fields
+        }
+
+        for field in move_line_optional_fields:
+            config = optional_line_fields[field]
+            path = config["path"]
+            attrs = config["attrs"](move_line)
+            target = config.get("target", "line")
+
+            current = item_node_dict if target == "item" else line_node_dict
+            for tag in path:
+                if tag not in current:
+                    current[tag] = {}
+                current = current[tag]
+            current.update(attrs)
+
+        line_node['injected_dict'] = line_node_dict
+        line_node['injected_item_dict'] = item_node_dict
+
+    def _inject_optional_nodes(self, vals):
+        # Backport to allow optional fields with studio
+        nsmap = self._get_document_nsmap(vals)
+        self._add_invoice_optional_nodes(vals)
+
+        root = dict_to_xml(vals['vals'].pop('injected_dict'), nsmap=nsmap, tag='_root')
+
+        vals['vals']['injected_xml'] = [
+            Markup(etree.tostring(child, encoding='unicode'))
+            for child in (root if root is not None else [])
+        ]
+
+        for line_val in vals['vals']['line_vals']:
+            self._add_invoice_line_optional_nodes(line_val, vals)
+
+            line_root = dict_to_xml(line_val.pop('injected_dict'), nsmap=nsmap, tag='_root')
+            line_val['injected_xml'] = [
+                Markup(etree.tostring(child, encoding='unicode'))
+                for child in (list(line_root) if line_root is not None else [])
+            ]
+
+            item_root = dict_to_xml(line_val.pop('injected_item_dict'), nsmap=nsmap, tag='_root')
+            line_val['injected_item_xml'] = [
+                Markup(etree.tostring(child, encoding='unicode'))
+                for child in (list(item_root) if item_root is not None else [])
+            ]
+
     def _export_invoice(self, invoice):
         vals = self._export_invoice_vals(invoice.with_context(lang=invoice.partner_id.lang))
+        self._inject_optional_nodes(vals)
         errors = [constraint for constraint in self._export_invoice_constraints(invoice, vals).values() if constraint]
         xml_content = self.env['ir.qweb']._render(vals['main_template'], vals)
         return etree.tostring(cleanup_xml_node(xml_content), xml_declaration=True, encoding='UTF-8'), set(errors)
