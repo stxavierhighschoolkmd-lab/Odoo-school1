@@ -2,7 +2,7 @@ from lxml import etree
 from odoo.tools.xml_utils import remove_control_characters
 
 
-def dict_to_xml(node, *, nsmap={}, template=None, render_empty_nodes=False, tag=None, path=None):
+def dict_to_xml(node, *, nsmap={}, template=None, render_empty_nodes=False, tag=None, path=None, _is_root=True):
     """ Helper to render a Python dict as an XML node.
 
     The dict is expected to be of the form:
@@ -36,6 +36,7 @@ def dict_to_xml(node, *, nsmap={}, template=None, render_empty_nodes=False, tag=
     :param render_empty_nodes: (optional) If True, empty nodes will be rendered in the XML tree.
     :param tag: (optional) The tag of the node to render (needed only for recursive calls).
     :param path: (optional) The path of the currently rendered node in the XML tree (needed only for recursive calls).
+    :param _is_root: [BACKPORT](optional) Internal flag to avoid redeclaring namespaces in child nodes.
     :return: The rendered XML node as an lxml.Element.
     """
     def convert_tag_to_lxml_convention(tag):
@@ -57,7 +58,7 @@ def dict_to_xml(node, *, nsmap={}, template=None, render_empty_nodes=False, tag=
     if path is None:
         path = tag
 
-    element = etree.Element(convert_tag_to_lxml_convention(tag), nsmap=nsmap)
+    element = etree.Element(convert_tag_to_lxml_convention(tag), nsmap=nsmap if _is_root else {})
 
     # Add attributes
     for attr_name, attr_value in node.items():
@@ -87,6 +88,7 @@ def dict_to_xml(node, *, nsmap={}, template=None, render_empty_nodes=False, tag=
                         render_empty_nodes=render_empty_nodes,
                         tag=child_tag,
                         path=f'{path}/{child_tag}',
+                        _is_root=False,
                     )
                     if child_element is not None:
                         element.append(child_element)

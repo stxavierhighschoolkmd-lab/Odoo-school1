@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 from collections import defaultdict
 from lxml import etree
 from markupsafe import Markup
@@ -880,13 +881,18 @@ class AccountEdiXmlUBL20(models.AbstractModel):
 
     def _inject_optional_nodes(self, vals):
         # Backport to allow optional fields with studio
+        def _element_to_markup(element):
+            xml_string = etree.tostring(element, encoding='unicode')
+            xml_string = re.sub(r'\s+xmlns(?::\w+)?="[^"]*"', '', xml_string)
+            return Markup(xml_string)
+
         nsmap = self._get_document_nsmap(vals)
         self._add_invoice_optional_nodes(vals)
 
         root = dict_to_xml(vals['vals'].pop('injected_dict'), nsmap=nsmap, tag='_root')
 
         vals['vals']['injected_xml'] = [
-            Markup(etree.tostring(child, encoding='unicode'))
+            _element_to_markup(child)
             for child in (root if root is not None else [])
         ]
 
@@ -895,13 +901,13 @@ class AccountEdiXmlUBL20(models.AbstractModel):
 
             line_root = dict_to_xml(line_val.pop('injected_dict'), nsmap=nsmap, tag='_root')
             line_val['injected_xml'] = [
-                Markup(etree.tostring(child, encoding='unicode'))
+                _element_to_markup(child)
                 for child in (list(line_root) if line_root is not None else [])
             ]
 
             item_root = dict_to_xml(line_val.pop('injected_item_dict'), nsmap=nsmap, tag='_root')
             line_val['injected_item_xml'] = [
-                Markup(etree.tostring(child, encoding='unicode'))
+                _element_to_markup(child)
                 for child in (list(item_root) if item_root is not None else [])
             ]
 
