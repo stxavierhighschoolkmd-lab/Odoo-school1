@@ -149,6 +149,8 @@ class MrpWorkorder(models.Model):
     remaining_time = fields.Float('Remaining Working Time', compute='_compute_remaining_time',
                                   help="The remaining time to finish this work order.")
     color = fields.Integer('Color', related="production_id.id")
+    picking_type_id = fields.Many2one(related='production_id.picking_type_id')
+    wo_properties = fields.Properties('Properties', definition='picking_type_id.wo_properties_definition', copy=True)
 
     @api.depends('qty_ready')
     def _compute_state(self):
