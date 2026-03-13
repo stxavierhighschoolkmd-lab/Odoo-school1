@@ -253,15 +253,23 @@
                         </field>
                 </page>
                 <page string="Components" name="components">
-                    <field name="move_raw_ids" readonly="1">
-                        <list>
+                    <field name="move_raw_ids" readonly="state in ['done', 'cancel']">
+                        <list editable="bottom">
+                            <control>
+                                <button
+                                    string="Add component"
+                                    name="action_add_from_catalog_wo"
+                                    type="object"
+                                    class="btn-link"
+                                    context="{'order_id': parent.id}"/>
+                            </control>
                             <field name="state" column_invisible="True"/>
-                            <field name="product_id" readonly="state == 'done'"/>
-                            <field name="product_qty" string="To Consume"/>
-                            <field name="quantity" string="Quantity"/>
+                            <field name="product_id" readonly="1"/>
+                            <field name="product_qty" readonly="1" string="Demand"/>
+                            <field name="quantity" readonly="1" string="Quantity"/>
                             <field name="picked" string="Consumed"/>
-                            <field name="product_qty_available" string="On Hand" invisible="not is_storable"/>
-                            <field name="product_virtual_available" string="Forecasted" invisible="not is_storable"/>
+                            <field name="product_qty_available" string="On Hand" optional="hide" invisible="not is_storable"/>
+                            <field name="product_virtual_available" string="Forecasted" optional="hide" invisible="not is_storable"/>
                         </list>
                     </field>
                 </page>
