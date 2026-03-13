@@ -43,6 +43,7 @@ import {
     models,
     mountWithCleanup,
     onRpc,
+    serverState,
 } from "@web/../tests/web_test_helpers";
 import { SELECTORS } from "./domain_selector_helpers";
 
@@ -2531,6 +2532,7 @@ test("selection: placeholders for in operator", async () => {
 });
 
 test(`datetime: "in range" operator`, async () => {
+    serverState.debug = "1";
     mockDate("2023-04-20 17:00:00", 0);
     await makeDomainSelector({
         domain: `[("id", "=", 1)]`,
@@ -2555,6 +2557,7 @@ test(`datetime: "in range" operator`, async () => {
         "Year to date",
         "Last 365 days",
         "Date range",
+        "Relative range",
     ]);
 
     await selectValue("last7Days");
@@ -2585,6 +2588,10 @@ test(`datetime: "in range" operator`, async () => {
     expect(getCurrentValue()).toBe("Last 365 days");
     expect.verifySteps([`["&", ("datetime", ">=", "today -365d"), ("datetime", "<", "today")]`]);
 
+    await selectValue("relativeRange");
+    expect(`${SELECTORS.valueEditor} select:first`).toHaveValue('"relativeRange"');
+    expect.verifySteps([`["&", ("datetime", ">=", "today -1d"), ("datetime", "<", "today")]`]);
+
     await selectValue("dateRange");
     expect(queryOne(`${SELECTORS.valueEditor} select`).value).toBe('"dateRange"');
     expect.verifySteps([
@@ -2606,6 +2613,7 @@ test(`datetime: "in range" operator`, async () => {
 });
 
 test(`date: "in range" operator`, async () => {
+    serverState.debug = "1";
     mockDate("2023-04-20 17:00:00", 0);
     await makeDomainSelector({
         domain: `[("id", "=", 1)]`,
@@ -2630,6 +2638,7 @@ test(`date: "in range" operator`, async () => {
         "Year to date",
         "Last 365 days",
         "Date range",
+        "Relative range",
     ]);
 
     await selectValue("last7Days");
@@ -2655,6 +2664,10 @@ test(`date: "in range" operator`, async () => {
     await selectValue("last365Days");
     expect(getCurrentValue()).toBe("Last 365 days");
     expect.verifySteps([`["&", ("date", ">=", "today -365d"), ("date", "<", "today")]`]);
+
+    await selectValue("relativeRange");
+    expect(`${SELECTORS.valueEditor} select:first`).toHaveValue('"relativeRange"');
+    expect.verifySteps([`["&", ("date", ">=", "today -1d"), ("date", "<", "today")]`]);
 
     await selectValue("dateRange");
     expect(queryOne(`${SELECTORS.valueEditor} select`).value).toBe('"dateRange"');
@@ -2733,6 +2746,7 @@ test(`swith from [(0, "=", 1)] to other condition`, async () => {
 
 test("properties field: date & datetime", async () => {
     mockDate("2077-01-02 10:00:00", 0);
+    serverState.debug = "1";
     Partner._fields.properties = fields.Properties({
         string: "partner_properties",
         definition_record: "product_id",
@@ -2852,6 +2866,12 @@ test("properties field: date & datetime", async () => {
             operator: "in range",
             treeValue: "yearToDate",
             expectedDomain: `[("product_id", "any", ["&", ("properties.date_properties", ">=", "today =1m =1d"), ("properties.date_properties", "<", "today +1d")])]`,
+        },
+        {
+            fields: ["product", "product_properties", "date_properties"],
+            operator: "in range",
+            treeValue: "relativeRange",
+            expectedDomain: `[("product_id", "any", ["&", ("properties.date_properties", ">=", "today -1d"), ("properties.date_properties", "<", "today")])]`,
         },
     ];
     for (const value of values) {

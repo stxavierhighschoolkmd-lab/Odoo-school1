@@ -474,6 +474,7 @@ test(`"in range" operator`, async () => {
 });
 
 test(`date: "in range" operator`, async () => {
+    serverState.debug = "1";
     mockDate("2023-04-20 17:00:00", 0);
     await makeExpressionEditor({
         expression: `id`,
@@ -502,6 +503,7 @@ test(`date: "in range" operator`, async () => {
         "Year to date",
         "Last 365 days",
         "Date range",
+        "Relative range",
     ]);
 
     await selectValue("last7Days");
@@ -552,6 +554,34 @@ test(`date: "in range" operator`, async () => {
         ),
     ]);
 
+    await selectValue("relativeRange");
+    expect(`${SELECTORS.valueEditor} select:first`).toHaveValue('"relativeRange"');
+    expect.verifySteps([
+        formatExpr(
+            `date >= (context_today() + relativedelta(days = -1)).strftime("%Y-%m-%d") and date < (context_today()).strftime("%Y-%m-%d")`
+        ),
+    ]);
+
+    await contains(`${SELECTORS.valueEditor} input[type="number"]`).edit(-5, { instantly: true });
+    await contains(`${SELECTORS.valueEditor} select:last`).select('"month"');
+    expect.verifySteps([
+        formatExpr(
+            'date >= (context_today() + relativedelta(days = -5)).strftime("%Y-%m-%d") and date < context_today().strftime("%Y-%m-%d")'
+        ),
+        formatExpr(
+            'date >= (context_today() + relativedelta(months = -5)).strftime("%Y-%m-%d") and date < context_today().strftime("%Y-%m-%d")'
+        ),
+    ]);
+
+    // Important that it stays a relative range with 0 to make key nav work on number input
+    await contains(`${SELECTORS.valueEditor} input[type="number"]`).edit("0");
+    await animationFrame();
+    expect.verifySteps([
+        formatExpr(
+            'date > context_today().strftime("%Y-%m-%d") and date <= (context_today() + relativedelta(months = 0)).strftime("%Y-%m-%d")'
+        ),
+    ]);
+
     await selectValue("dateRange");
     expect(queryOne(`${SELECTORS.valueEditor} select`).value).toBe('"dateRange"');
     expect.verifySteps([formatExpr(`date >= "2023-04-20" and date <= "2023-04-20"`)]);
@@ -573,6 +603,7 @@ test(`date: "in range" operator`, async () => {
 });
 
 test(`datetime: "in range" operator`, async () => {
+    serverState.debug = "1";
     mockDate("2023-04-20 17:00:00", 0);
     await makeExpressionEditor({
         expression: `id`,
@@ -605,6 +636,7 @@ test(`datetime: "in range" operator`, async () => {
         "Year to date",
         "Last 365 days",
         "Date range",
+        "Relative range",
     ]);
 
     await selectValue("last7Days");
@@ -666,6 +698,38 @@ test(`datetime: "in range" operator`, async () => {
             `
         ),
     ]);
+
+    await selectValue("relativeRange");
+    expect(`${SELECTORS.valueEditor} select:first`).toHaveValue('"relativeRange"');
+    expect.verifySteps([
+        formatExpr(
+            `
+                datetime >= datetime.datetime.combine(context_today() + relativedelta(days = -1), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S") 
+                    and
+                datetime < datetime.datetime.combine(context_today(), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")
+            `
+        ),
+    ]);
+
+    await contains(`${SELECTORS.valueEditor} input[type="number"]`).edit(-5, { instantly: true });
+    await contains(`${SELECTORS.valueEditor} select:last`).select('"month"');
+    expect.verifySteps([
+        formatExpr(
+            'datetime >= datetime.datetime.combine(context_today() + relativedelta(days = -5), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S") and datetime < datetime.datetime.combine(context_today(), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")'
+        ),
+        formatExpr(
+            'datetime >= datetime.datetime.combine(context_today() + relativedelta(months = -5), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S") and datetime < datetime.datetime.combine(context_today(), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")'
+        ),
+    ]);
+
+    // // Important that it stays a relative range with 0 to make key nav work on number input
+    // await contains(`${SELECTORS.valueEditor} input[type="number"]`).edit("0");
+    // await animationFrame();
+    // expect.verifySteps([
+    //     formatExpr(
+    //         'datetime > datetime.datetime.combine(context_today(), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S") and datetime <= datetime.datetime.combine(context_today() + relativedelta(months = 0), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")'
+    //     ),
+    // ]);
 
     await selectValue("last365Days");
     expect(getCurrentValue()).toBe("Last 365 days");

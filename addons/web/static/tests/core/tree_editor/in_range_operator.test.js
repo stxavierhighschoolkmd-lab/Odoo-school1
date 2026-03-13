@@ -72,6 +72,12 @@ test(`"in range" operator: no introduction for complex paths (generateSmartDates
         },
         {
             tree_py: connector("&", [
+                condition("m2o.dt_2", ">=", "today -5d"),
+                condition("m2o.dt_2", "<", "today"),
+            ]),
+        },
+        {
+            tree_py: connector("&", [
                 condition("m2o.date_2", ">=", "2025-07-02 00:00:00"),
                 condition("m2o.date_2", "<=", "2025-07-03 00:00:00"),
             ]),
@@ -225,7 +231,7 @@ test(`"in range" operator: introduction/elimination for datetime fields (generat
             ]),
             tree: condition("datetime_1", "in range", [
                 "datetime",
-                "daterange",
+                "dateRange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
@@ -619,6 +625,29 @@ test(`"in range" operator: introduction/elimination for date fields (generateSma
             tree: condition("date_1", "in range", ["date", "last365Days", false, false]),
             domain: ["&", ["date_1", ">=", "2024-07-03"], ["date_1", "<", "2025-07-03"]],
         },
+        // {
+        //     tree_py: connector(
+        //         "&",
+        //         [
+        //             condition(
+        //                 "date_1",
+        //                 ">",
+        //                 expression(
+        //                     `(context_today() + relativedelta(days = -7)).strftime('%Y-%m-%d')`
+        //                 )
+        //             ),
+        //             condition("date_1", "<=", "context_today().strftime('%Y-%m-%d')"),
+        //         ],
+        //         true
+        //     ),
+        //     tree: condition("date_1", "in range", ["date", "relativeRange", "8", "days"], true),
+        //     domain: [
+        //         "!",
+        //         "&",
+        //         ["date_1", ">=", "2025-07-02 00:00:00"],
+        //         ["date_1", "<=", "2025-07-03 00:00:00"],
+        //     ],
+        // },
         {
             tree_py: connector(
                 "&",
@@ -842,7 +871,7 @@ test(`"in range" operator: introduction/elimination for datetime fields`, async 
             ]),
             tree: condition("datetime_1", "in range", [
                 "datetime",
-                "daterange",
+                "dateRange",
                 "2025-07-02 00:00:00",
                 "2025-07-03 00:00:00",
             ]),
