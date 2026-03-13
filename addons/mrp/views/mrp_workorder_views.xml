@@ -216,6 +216,9 @@
                         <div class="o_input_box">
                             <field name="duration_expected" widget="float_time" options="{'unit': 'minutes','show_seconds': True}" readonly="state in ['cancel', 'done']"/>
                         </div>
+                        <field name="remaining_time" decoration-danger="remaining_time &lt; 0"
+                                string="Time Remaining" widget="float_time" options="{'unit': 'minutes', 'show_seconds': True}" readonly="1"
+                                invisible="state in ['cancel', 'done']"/>
                         <field name="production_id" force_save="1"/>
                     </group>
                 </group>
@@ -236,7 +239,7 @@
                                     <group>
                                         <field name="date_start"/>
                                         <field name="date_end"/>
-                                        <field name="duration" widget="float_time" options="{'unit': 'minutes', 'show_seconds': True}"/>
+                                        <field name="duration" widget="float_time" options="{'unit': 'minutes', 'show_seconds': True}" sum="Time Spent"/>
                                         <field name="company_id" invisible="1"/>
                                     </group>
                                     <group>
@@ -248,10 +251,6 @@
                                 </group>
                             </form>
                         </field>
-                        <div>
-                            <label for="duration" class="pe-2"/>
-                            <field name="duration" widget="float_time" options="{'unit': 'minutes', 'show_seconds': True}" readonly="1"/>
-                        </div>
                 </page>
                 <page string="Components" name="components">
                     <field name="move_raw_ids" readonly="1">
