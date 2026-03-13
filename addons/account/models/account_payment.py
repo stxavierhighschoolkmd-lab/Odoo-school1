@@ -36,6 +36,7 @@ class AccountPayment(models.Model):
     state = fields.Selection(
         selection=[
             ('draft', "Draft"),
+            ('process', "Processing"),
             ('paid', "Paid"),
             ('reconciled', "Reconciled"),
             ('canceled', "Canceled"),
@@ -265,7 +266,7 @@ class AccountPayment(models.Model):
         """ This method is used to know in which edition we are: Community or Enterprise
             and fetch the payment states accordingly.
         """
-        return ['paid', 'reconciled'] if self.env['account.move']._get_invoice_in_payment_state() == 'paid' else ['paid']
+        return ['process', 'paid', 'reconciled'] if self.env['account.move']._get_invoice_in_payment_state() == 'paid' else ['process', 'paid']
 
     def _get_aml_default_display_name_list(self):
         """ Hook allowing custom values when constructing the default label to set on the journal items.
@@ -424,7 +425,7 @@ class AccountPayment(models.Model):
     @api.depends('move_id.name', 'state')
     def _compute_name(self):
         for payment in self:
-            if payment.id and (not payment.name or payment.move_id and payment.name != payment.move_id.name) and payment.state in ('paid', 'reconciled'):
+            if payment.id and (not payment.name or payment.move_id and payment.name != payment.move_id.name) and payment.state in ('process', 'paid', 'reconciled'):
                 payment.name = (
                     payment.move_id.name
                     or self.env['ir.sequence'].with_company(payment.company_id).next_by_code(
@@ -1178,6 +1179,10 @@ class AccountPayment(models.Model):
         draft_moves = self.move_id.filtered(lambda m: m.state == 'draft')
         draft_moves.unlink()
         (self.move_id - draft_moves).button_cancel()
+
+    def action_print_receipt(self):
+        report_action = self.env.ref("account.action_report_payment_receipt")
+        return report_action.report_action(self)
 
     def button_request_cancel(self):
         return self.move_id.button_request_cancel()
