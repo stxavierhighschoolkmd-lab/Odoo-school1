@@ -81,8 +81,22 @@
                         />
                         <div class="o_wsale_product_sub justify-content-between gap-2">
                             <!-- Price(s) -->
-                            <div class="product_price" aria-label="Price information">
+                            <div
+                                aria-label="Price information"
+                                class="product_price d-flex flex-wrap gap-1"
+                            >
                                 <t t-call="website_sale.price_dynamic_filter_template_product_product"/>
+                                <t
+                                    t-set="base_unit_price"
+                                    t-value="product._get_base_unit_price(data['price'])"
+                                />
+                                <small
+                                    t-if="base_unit_price
+                                          and product_variant.env['res.groups']._is_feature_enabled('website_sale.group_show_uom_price')"
+                                    class="text-muted"
+                                >
+                                    <t t-call="website_sale.base_unit_price"/>
+                                </small>
                             </div>
                             <!-- Actions -->
                             <div class="o_wsale_product_btn">
