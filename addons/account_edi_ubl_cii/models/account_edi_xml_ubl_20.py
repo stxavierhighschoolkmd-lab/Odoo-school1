@@ -528,7 +528,8 @@ class AccountEdiXmlUBL20(models.AbstractModel):
         return {
             'currency': line.currency_id,
             'currency_dp': self._get_currency_decimal_places(line.currency_id),
-            '__id': line,
+            # BACKPORT
+            '__temp_id': line,
             'id': line_id + 1,
             'line_quantity': line.quantity,
             'line_quantity_attrs': {'unitCode': uom},
@@ -853,63 +854,60 @@ class AccountEdiXmlUBL20(models.AbstractModel):
         vals['vals']['injected_dict'] = node
 
     def add_invoice_line_optional_nodes(self, line_node, vals, optional_line_fields):
-        move_line = line_node.pop('__id')
         line_node_dict = {}
         item_node_dict = {}
 
-        move_line_optional_fields = {
-            key: move_line[key]
-            for key in move_line._fields
-            if key.startswith("x_studio_peppol") and move_line[key] and key in optional_line_fields
-        }
+        if (move_line := line_node.pop('__temp_id', False)):
+            move_line_optional_fields = {
+                key: move_line[key]
+                for key in move_line._fields
+                if key.startswith("x_studio_peppol") and move_line[key] and key in optional_line_fields
+            }
 
-        for field in move_line_optional_fields:
-            config = optional_line_fields[field]
-            path = config["path"]
-            attrs = config["attrs"](move_line)
-            target = config.get("target", "line")
+            for field in move_line_optional_fields:
+                config = optional_line_fields[field]
+                path = config["path"]
+                attrs = config["attrs"](move_line)
+                target = config.get("target", "line")
 
-            current = item_node_dict if target == "item" else line_node_dict
-            for tag in path:
-                if tag not in current:
-                    current[tag] = {}
-                current = current[tag]
-            current.update(attrs)
-
-        line_node['injected_dict'] = line_node_dict
-        line_node['injected_item_dict'] = item_node_dict
+                current = item_node_dict if target == "item" else line_node_dict
+                for tag in path:
+                    if tag not in current:
+                        current[tag] = {}
+                    current = current[tag]
+                current.update(attrs)
+            line_node['injected_dict'] = line_node_dict
+            line_node['injected_item_dict'] = item_node_dict
+        else:
+            line_node['injected_dict'] = {}
+            line_node['injected_item_dict'] = {}
 
     def _inject_optional_nodes(self, vals):
-        # Backport to allow optional fields with studio
         def _element_to_markup(element):
             xml_string = etree.tostring(element, encoding='unicode')
             xml_string = re.sub(r'\s+xmlns(?::\w+)?="[^"]*"', '', xml_string)
             return Markup(xml_string)
 
+        def _process_injected_dict(data_dict, dict_key, xml_key, nsmap):
+            injected_dict = data_dict.pop(dict_key, None)
+            if injected_dict:
+                root = dict_to_xml(injected_dict, nsmap=nsmap, tag='_root')
+                data_dict[xml_key] = [
+                    _element_to_markup(child)
+                    for child in (root if root is not None else [])
+                ]
+            else:
+                data_dict[xml_key] = []
+
         nsmap = self._get_document_nsmap(vals)
         self._add_invoice_optional_nodes(vals)
 
-        root = dict_to_xml(vals['vals'].pop('injected_dict'), nsmap=nsmap, tag='_root')
-
-        vals['vals']['injected_xml'] = [
-            _element_to_markup(child)
-            for child in (root if root is not None else [])
-        ]
+        _process_injected_dict(vals['vals'], 'injected_dict', 'injected_xml', nsmap)
 
         for line_val in vals['vals']['line_vals']:
             self._add_invoice_line_optional_nodes(line_val, vals)
-
-            line_root = dict_to_xml(line_val.pop('injected_dict'), nsmap=nsmap, tag='_root')
-            line_val['injected_xml'] = [
-                _element_to_markup(child)
-                for child in (list(line_root) if line_root is not None else [])
-            ]
-
-            item_root = dict_to_xml(line_val.pop('injected_item_dict'), nsmap=nsmap, tag='_root')
-            line_val['injected_item_xml'] = [
-                _element_to_markup(child)
-                for child in (list(item_root) if item_root is not None else [])
-            ]
+            _process_injected_dict(line_val, 'injected_dict', 'injected_xml', nsmap)
+            _process_injected_dict(line_val, 'injected_item_dict', 'injected_item_xml', nsmap)
 
     def _export_invoice(self, invoice):
         vals = self._export_invoice_vals(invoice.with_context(lang=invoice.partner_id.lang))
