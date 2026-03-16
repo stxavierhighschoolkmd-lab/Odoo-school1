@@ -3,7 +3,7 @@ import { Plugin } from "@html_editor/plugin";
 import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 import { baseContainerGlobalSelector } from "@html_editor/utils/base_container";
 import { closestBlock } from "@html_editor/utils/blocks";
-import { isEmptyBlock, isParagraphRelatedElement } from "@html_editor/utils/dom_info";
+import { isEmptyBlock, isParagraphRelatedElement, isTextNode } from "@html_editor/utils/dom_info";
 import {
     childNodes,
     children,
@@ -341,21 +341,34 @@ export class ToggleBlockPlugin extends Plugin {
             }
         } else {
             nextEl = content.firstChild;
+<<<<<<< b1cd6d141710dbf23e52224d4de3fbb043796574
             if (nextEl.matches?.(toggleSelector)) {
+||||||| 5c14dcfe91861f9ff5429820bbe232edb860c408
+            if (systemNodeSelectors && nextEl?.matches(systemNodeSelectors)) {
+                nextEl.remove();
+                nextEl = content.firstChild;
+            }
+            if (nextEl.matches?.(toggleSelector)) {
+=======
+            if (systemNodeSelectors && nextEl?.matches?.(systemNodeSelectors)) {
+                nextEl.remove();
+                nextEl = content.firstChild;
+            }
+            if (nextEl?.matches?.(toggleSelector)) {
+>>>>>>> 146c88aa04f426d92ed9a9a975cb403a9c87bf46
                 this.explodeToggle(nextEl);
                 nextEl = content.firstChild;
             }
         }
-        if (!isParagraphRelatedElement(nextEl)) {
-            return;
+        if (nextEl && (isTextNode(nextEl) || isParagraphRelatedElement(nextEl))) {
+            title.append(nextEl);
+            this.dependencies.selection.setCursorEnd(block);
+            this.dependencies.delete.deleteForward(
+                this.dependencies.selection.getEditableSelection(),
+                "character"
+            );
+            return true;
         }
-        title.append(nextEl);
-        this.dependencies.selection.setCursorEnd(block);
-        this.dependencies.delete.deleteForward(
-            this.dependencies.selection.getEditableSelection(),
-            "character"
-        );
-        return true;
     }
 
     handleDeleteForwardBeforeToggle({ startContainer, startOffset }) {
