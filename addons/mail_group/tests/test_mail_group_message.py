@@ -111,6 +111,9 @@ class TestMailGroupMessage(TestMailListCommon):
         with self.assertRaises(AccessError, msg='Portal should not have access to pending messages'):
             self.test_group_msg_1_pending.with_user(self.user_portal).check_access('read')
 
+        # TOFIX: The following crashes because base.group_partner_manager
+        # implies base.group_user, which is disjoint from base.group_portal.
+        # Does it make any sense (a portal user being a partner manager) ?
         self.user_portal.group_ids |= user_group
         with self.assertRaises(AccessError, msg='Non moderator should have access to only accepted message'):
             self.test_group_msg_1_pending.with_user(self.user_portal).check_access('read')
