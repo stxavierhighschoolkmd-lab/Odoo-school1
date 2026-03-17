@@ -309,7 +309,7 @@ class TestWebsiteAllPerformance(TestWebsitePerformanceCommon, TestWebsitePriceLi
             'res_users': 1,
             'res_partner': 2,
             'product_category': 1,
-            'product_pricelist_item': 2,
+            'product_pricelist_item': 1,
             'account_tax': 1,
             'res_currency': 1,
             'account_account_tag': 1,
