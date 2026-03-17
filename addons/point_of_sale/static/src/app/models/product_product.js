@@ -206,7 +206,11 @@ export class ProductProduct extends Base {
 
     getPricelistRule(pricelist, quantity) {
         const rules = !pricelist ? [] : this.cachedPricelistRules[pricelist?.id] || [];
-        return rules.find((rule) => !rule.min_quantity || quantity >= rule.min_quantity);
+        return rules.find(
+            (rule) =>
+                (!rule.product_id || rule.product_id.id === this.id) &&
+                quantity >= (rule.min_quantity || 0)
+        );
     }
     getImageUrl() {
         return (
