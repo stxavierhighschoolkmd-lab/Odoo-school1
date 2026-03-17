@@ -22,6 +22,7 @@ import { getOrderLineValues } from "./card_utils";
 import { initLNA } from "@point_of_sale/app/utils/init_lna";
 import { GeneratePrinterData } from "@point_of_sale/app/utils/printer/generate_printer_data";
 import { SnoozedProductTracker } from "@point_of_sale/app/models/utils/snooze_tracker";
+import { InfoPopup } from "@pos_self_order/app/components/info_popup/info_popup";
 
 const { DateTime } = luxon;
 
@@ -57,7 +58,6 @@ export class SelfOrder extends Reactive {
 
         // data
         this.models = this.data.models;
-        this.session = this.models["pos.session"].getFirst();
         this.config = this.models["pos.config"].getFirst();
         this.company = this.config.company_id;
         this.currency = this.config.currency_id;
@@ -114,7 +114,6 @@ export class SelfOrder extends Reactive {
         if (this.config.self_ordering_mode === "kiosk") {
             this.data.connectWebSocket("STATUS", ({ status }) => {
                 if (status === "closed") {
-                    this.pos_session = [];
                     this.ordering = false;
                 } else {
                     // reload to get potential new settings
@@ -195,6 +194,14 @@ export class SelfOrder extends Reactive {
         return this.config.use_presets && presets.length > 0
             ? this.currentOrder?.preset_id?.service_at
             : this.config.self_ordering_service_mode;
+    }
+
+    get session() {
+        return this.models["pos.session"].getFirst();
+    }
+
+    get isSessionOpened() {
+        return this.session?.state === "opened";
     }
 
     getAvailableCategories() {
@@ -547,16 +554,27 @@ export class SelfOrder extends Reactive {
     async initMobileData() {
         if (this.config.self_ordering_mode !== "qr_code") {
             if (
-                this.session &&
                 this.access_token &&
-                this.config.self_ordering_mode !== "consultation"
+                this.config.self_ordering_mode !== "consultation" &&
+                (this.session || this.models["pos.preset"].filter((p) => p.use_timing).length > 0)
             ) {
                 await this.getUserDataFromServer();
                 this.ordering = true;
-            }
-
-            if (!this.ordering) {
-                return;
+                if (!this.isSessionOpened) {
+                    this.dialog.add(InfoPopup, {
+                        text: _t(
+                            "The shop is currently closed but you can still place an order for later."
+                        ),
+                        buttons: [
+                            {
+                                text: _t("Close"),
+                                onClick: () => {
+                                    this.dialog.closeAll();
+                                },
+                            },
+                        ],
+                    });
+                }
             }
         }
     }

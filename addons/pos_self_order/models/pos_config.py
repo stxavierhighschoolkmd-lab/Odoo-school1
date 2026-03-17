@@ -109,10 +109,10 @@ class PosConfig(models.Model):
             'floor_ids', 'fiscal_position_ids', 'is_order_printer', 'iface_print_via_proxy', 'receipt_header',
             'receipt_footer', 'proxy_ip', 'current_session_id', 'pricelist_id', 'available_pricelist_ids',
             'default_fiscal_position_id', 'use_pricelist', 'module_pos_restaurant', 'is_header_or_footer',
-            'rounding_method', 'cash_rounding', 'only_round_cash_method', 'has_active_session',
-            'available_preset_ids', 'default_preset_id', 'use_presets', 'iface_tax_included',
-            'status', 'self_ordering_image_background_ids', 'preparation_printer_ids', 'default_receipt_printer_id',
-            'receipt_printer_ids', 'use_order_printer', 'other_devices', 'pos_snooze_ids',
+            'rounding_method', 'cash_rounding', 'only_round_cash_method', 'available_preset_ids', 'default_preset_id',
+            'use_presets', 'iface_tax_included', 'status', 'self_ordering_image_background_ids',
+            'preparation_printer_ids', 'default_receipt_printer_id', 'receipt_printer_ids', 'use_order_printer',
+            'other_devices', 'pos_snooze_ids',
         ]
 
     def _update_access_token(self):
@@ -363,7 +363,7 @@ class PosConfig(models.Model):
 
     def _compute_status(self):
         for record in self:
-            record.status = 'active' if record.has_active_session else 'inactive'
+            record.status = 'active' if record.current_session_id else 'inactive'
 
     def action_open_wizard(self):
         self.ensure_one()

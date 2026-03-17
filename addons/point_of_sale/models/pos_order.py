@@ -51,7 +51,7 @@ class PosOrder(models.Model):
 
     @api.model
     def _load_pos_data_domain(self, data, config):
-        return [('state', '=', 'draft'), ('config_id', '=', config.id)]
+        return [('config_id', '=', config.id), '|', ('state', '=', 'draft'), '&', ('state', 'in', ['paid', 'done']), ('preset_time', '>', fields.Datetime.now())]
 
     @api.model
     def _process_order(self, order, existing_order):
