@@ -21,7 +21,7 @@ export class PopupVisibilityPlugin extends Plugin {
         on_will_restore_containers_handlers: this.hidePopupsWithoutTarget.bind(this),
         on_target_revealed_handlers: this.hidePopupsWithoutTarget.bind(this),
         attribute_change_processors: (attributeChange) => {
-            const { target, attributeName, value } = attributeChange;
+            const { nodeId, attributeName, value } = attributeChange;
             // On hide/show of the popup, the `style` attribute of the modal in
             // the popup is changed. This also happens with the option
             // "Backdrop" on the popup. When reverting/re-applying commits that
@@ -29,12 +29,15 @@ export class PopupVisibilityPlugin extends Plugin {
             // whether the popup is hidden of not. Here, we keep the `display`
             // property in the `style` attribute unchanged when the history
             // revert/re-apply a commit that modified it.
-            if (attributeName === "style" && target.matches(".s_popup > .modal")) {
-                const re = /display: .*?;/;
-                const currentDisplay = target.attributes.style?.value.match(re)?.[0] ?? "";
-                attributeChange.value = re.test(value)
-                    ? value.replace(re, currentDisplay)
-                    : value + currentDisplay;
+            if (attributeName === "style") {
+                const target = this.dependencies.domMutation.getNodeById(nodeId);
+                if (target.matches(".s_popup > .modal")) {
+                    const re = /display: .*?;/;
+                    const currentDisplay = target.attributes.style?.value.match(re)?.[0] ?? "";
+                    attributeChange.value = re.test(value)
+                        ? value.replace(re, currentDisplay)
+                        : value + currentDisplay;
+                }
             }
             return attributeChange;
         },
