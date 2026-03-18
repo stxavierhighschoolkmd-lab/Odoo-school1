@@ -31,7 +31,7 @@ class WebsiteVisitor(models.Model):
     )
 
     def _compute_event_statistics(self):
-        self._aggregate_visitor_tracks(field_name='event_ids', model_name='event.event', count_field='visitor_event_count')
+        self._compute_visitor_statistics(rel_field='event_ids', rel_model='event.event', track_field='res_id', count_field='visitor_event_count')
 
     def _add_viewed_event(self, event_id):
         """ add a website_track with a page marked as viewed"""

@@ -295,13 +295,13 @@ class TestWebsiteAllPerformance(TestWebsitePerformanceCommon, TestWebsitePriceLi
         self.assertIn(f'<img src="/web/image/product.template/{self.productA.product_tmpl_id.id}/', html)
         self.assertIn(f'<img src="/web/image/product.image/{self.product_images.ids[1]}/', html)
 
-        query_count = 56  # To increase this number you must ask the permission to al
+        query_count = 49  # To increase this number you must ask the permission to al
         queries = {
             'orm_signaling_registry': 1,
             'website': 1,
             'res_company': 2,
             'product_pricelist': 4,
-            'product_template': 14,
+            'product_template': 5,
             'product_tag': 1,
             'product_public_category': 5,
             'product_product': 1,
@@ -313,10 +313,10 @@ class TestWebsiteAllPerformance(TestWebsitePerformanceCommon, TestWebsitePriceLi
             'account_tax': 1,
             'res_currency': 1,
             'account_account_tag': 1,
-            'product_ribbon': 0,
+            'product_ribbon': 1,
             'product_attribute_value': 3,
             'product_attribute': 1,
-            'ir_attachment': 3,
+            'ir_attachment': 4,
             'product_image': 3,
             'product_template_attribute_value': 1,
             'ir_ui_view': 2,
@@ -365,9 +365,7 @@ class TestWebsiteAllPerformance(TestWebsitePerformanceCommon, TestWebsitePriceLi
             queries['product_template_attribute_value'] += 2
 
         self.assertEqual(sum(queries.values()), query_count, 'Please learn to count.')
-        insert_tables_perf = {'website_visitor': 1}
-        query_count += 1
-        self._check_url_hot_query('/shop', query_count, queries, insert_tables_perf)
+        self._check_url_hot_query('/shop', query_count, queries)
 
 
 @tagged('post_install', '-at_install')
@@ -386,6 +384,4 @@ class TestWebsiteAllPerformanceShop(TestWebsiteAllPerformance):
             queries['product_template_attribute_value'] += 2
 
         self.assertEqual(sum(queries.values()), query_count, 'Please learn to count.')
-        insert_tables_perf = {'website_visitor': 1}
-        query_count += 1
-        self._check_url_hot_query('/shop', query_count, queries, insert_tables_perf)
+        self._check_url_hot_query('/shop', query_count, queries)

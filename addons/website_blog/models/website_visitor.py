@@ -15,7 +15,7 @@ class WebsiteVisitor(models.Model):
     )
 
     def _compute_blog_statistics(self):
-        self._aggregate_visitor_tracks(field_name='blog_post_ids', model_name='blog.post', count_field='visitor_blog_count')
+        self._compute_visitor_statistics(rel_field='blog_post_ids', rel_model='blog.post', track_field='res_id', count_field='visitor_blog_count')
 
     def _add_viewed_blog(self, blog_post_id):
         """ add a website_track with a page marked as viewed"""

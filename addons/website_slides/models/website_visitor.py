@@ -15,7 +15,7 @@ class WebsiteVisitor(models.Model):
     )
 
     def _compute_slide_statistics(self):
-        self._aggregate_visitor_tracks(field_name='slide_channel_ids', model_name='slide.channel', count_field='visitor_slide_count')
+        self._compute_visitor_statistics(rel_field='slide_channel_ids', rel_model='slide.channel', track_field='res_id', count_field='visitor_slide_count')
 
     def _add_viewed_slide(self, slide_channel_id):
         """ add a website_track with a page marked as viewed"""
