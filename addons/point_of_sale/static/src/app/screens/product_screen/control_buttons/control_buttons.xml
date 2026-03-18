@@ -4,7 +4,7 @@
         <!-- All buttons always displayed -->
         <SelectPartnerButton partner="this.partner" t-if="!this.props.showRemainingButtons"/>
         <t t-if="!this.props.showRemainingButtons || (this.ui.isSmall and this.props.showRemainingButtons)">
-            <InternalNoteButton label.translate="Note" class="this.buttonClass"/>
+            <InternalNoteButton label.translate="Note" class="this.buttonClass" icon="'fa fa-pencil'"/>
         </t>
         <button t-if="this.pos.config.use_presets and !this.props.showRemainingButtons"
             class="btn btn-secondary btn-lg border-0 text-truncate"
