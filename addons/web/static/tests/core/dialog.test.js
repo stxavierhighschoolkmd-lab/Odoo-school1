@@ -1,4 +1,4 @@
-import { destroy, expect, test } from "@odoo/hoot";
+import { destroy, expect, mockUserAgent, test } from "@odoo/hoot";
 import { keyDown, keyUp, press, queryAllTexts, queryOne, resize } from "@odoo/hoot-dom";
 import { animationFrame } from "@odoo/hoot-mock";
 import { Component, onMounted, useState, xml } from "@odoo/owl";
@@ -403,4 +403,27 @@ test("dialog's position is reset on resize", async () => {
         left: "0px",
         top: "0px",
     });
+});
+
+test.tags("mobile");
+test("back button closes dialog in mobile", async () => {
+    mockUserAgent("android");
+    class Parent extends Component {
+        static components = { Dialog };
+        static template = xml`
+            <Dialog title="'Wow(l) Effect'">
+                Hello!
+            </Dialog>
+        `;
+        static props = ["*"];
+    }
+    await makeDialogMockEnv({
+        dialogData: {
+            dismiss: () => expect.step("dismiss"),
+        },
+    });
+    await mountWithCleanup(Parent);
+    expect(".o_dialog").toHaveCount(1);
+    history.back();
+    expect.verifySteps(["dismiss"]);
 });
