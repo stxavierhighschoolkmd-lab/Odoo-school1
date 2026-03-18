@@ -45,6 +45,12 @@
             editableOnly="false"
             reloadTarget="true"
             groups='["website.group_website_designer"]'/>
+        <specifications_option
+            selector=".o_wsale_specss"
+            title="Specifications"
+            editableOnly="false"
+            reloadTarget="true"
+            groups='["website.group_website_designer"]'/>
         <product_header_category_option
             template="website_sale.ProductHeaderCategoryOption"
             selector="#products_grid:has(header.o_wsale_products_header_is_category)"

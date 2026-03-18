@@ -591,7 +591,7 @@
                 <span name="o_wsale_cta_wrapper_boxed_price_label" class="text-muted">Price</span>
                 <div>
                     <t t-call="website_sale.product_price"/>
-                    <small 
+                    <small
                         t-if="combination_info.get('base_unit_price')"
                         class="ms-1 text-muted o_base_unit_price_wrapper d-none"
                     >
@@ -1321,7 +1321,8 @@
                                     <!-- Extra-field-only categories (no attribute lines) -->
                                     <t t-foreach="extra_fields_by_category" t-as="ef_category">
                                         <t t-if="not attrib_categories or ef_category not in attrib_categories">
-                                            <div class="col-lg-6">
+                                            <t t-set="has_visible_fields" t-value="any(product.sudo()[ef.name] for ef in extra_fields_by_category[ef_category])"/>
+                                            <div t-if="has_visible_fields" class="col-lg-6">
                                                 <t t-set="category" t-value="ef_category"/>
                                                 <t t-set="category_attrib_lines" t-value="product.env['product.template.attribute.line']"/>
                                                 <t t-set="category_extra_fields" t-value="extra_fields_by_category[ef_category]"/>
@@ -1344,30 +1345,60 @@
         inherit_id="website_sale.product_accordion"
         active="False"
     >
+        <xpath expr="//div[@id='product_accordion']" position="attributes">
+            <attribute name="class" add="o_wsale_specss" separator=" "/>
+        </xpath>
         <xpath expr="//div[@id='more_information_accordion_item']" position="before">
-            <t
-                t-set="attrib_categories"
-                t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"
-            />
-            <t t-if="attrib_categories">
-                <t t-foreach="attrib_categories" t-as="category">
+            <t t-set="attrib_categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
+            <t t-set="extra_fields_by_category" t-value="website.get_extra_spec_fields_by_category()"/>
+            <t t-foreach="attrib_categories" t-as="category">
+                <t t-set="category_attrib_lines" t-value="attrib_categories[category]"/>
+                <t t-set="category_extra_fields" t-value="extra_fields_by_category.get(category, website.env['website.sale.extra.field'])"/>
+                <div class="accordion-item">
+                    <div class="accordion-header my-0 h6">
+                        <button
+                            class="accordion-button collapsed fw-medium"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            t-attf-data-bs-target="#category_accordion_{{category_index}}"
+                            aria-expanded="false"
+                            aria-controls="specifications"
+                        >
+                            <t t-if="category_size == 1">Specifications</t>
+                            <t t-else=""><t t-out="category.name or 'Others'"/></t>
+                        </button>
+                    </div>
+                    <div
+                        t-attf-id="category_accordion_{{category_index}}"
+                        class="accordion-collapse collapse"
+                        data-bs-parent="#product_accordion"
+                    >
+                        <div class="accordion-body pt-0">
+                            <t t-call="website_sale.specifications_table" is_accordion="True"/>
+                        </div>
+                    </div>
+                </div>
+            </t>
+            <t t-foreach="extra_fields_by_category" t-as="ef_category">
+                <t t-if="ef_category not in attrib_categories">
+                    <t t-set="category" t-value="ef_category"/>
+                    <t t-set="category_attrib_lines" t-value="product.env['product.template.attribute.line']"/>
+                    <t t-set="category_extra_fields" t-value="extra_fields_by_category[ef_category]"/>
                     <div class="accordion-item">
                         <div class="accordion-header my-0 h6">
                             <button
-                                t-out="category.name"
                                 class="accordion-button collapsed fw-medium"
                                 type="button"
                                 data-bs-toggle="collapse"
-                                t-attf-data-bs-target="#category_accordion_{{category_index}}"
+                                t-attf-data-bs-target="#category_accordion_ef_{{ef_category_index}}"
                                 aria-expanded="false"
                                 aria-controls="specifications"
                             >
-                                <t t-if="category_size == 1">Specifications</t>
-                                <t t-else="">Others</t>
+                                <t t-out="ef_category.name or 'Others'"/>
                             </button>
                         </div>
                         <div
-                            t-attf-id="category_accordion_{{category_index}}"
+                            t-attf-id="category_accordion_ef_{{ef_category_index}}"
                             class="accordion-collapse collapse"
                             data-bs-parent="#product_accordion"
                         >
@@ -1425,23 +1456,26 @@
                 </td>
             </tr>
 
-            <!-- Extra fields added via builder — website-wide -->
+            <!-- Extra fields -->
             <t t-if="category_extra_fields">
-                <tr t-foreach="category_extra_fields" t-as="extra_field">
-                    <td class="w-25 ps-0">
-                        <span t-out="extra_field.label"/>
-                    </td>
-                    <td class="w-75 pe-0 text-muted text-end">
-                        <t t-if="extra_field.field_id.ttype != 'binary'">
-                            <span t-out="product.sudo()[extra_field.name]"/>
-                        </t>
-                        <t t-else="">
-                            <a target="_blank" t-attf-href="/web/content/product.template/#{product.id}/#{extra_field.name}?download=1">
-                                <i class="fa fa-file"/>
-                            </a>
-                        </t>
-                    </td>
-                </tr>
+                <t t-foreach="category_extra_fields" t-as="extra_field">
+                    <t t-set="field_value" t-value="product.sudo()[extra_field.name]"/>
+                    <tr t-if="field_value" t-att-data-extra-field-id="extra_field.id">
+                        <td class="w-25 ps-0">
+                            <span t-out="extra_field.label"/>
+                        </td>
+                        <td class="w-75 pe-0 text-muted text-end">
+                            <t t-if="extra_field.field_id.ttype != 'binary'">
+                                <span t-out="field_value"/>
+                            </t>
+                            <t t-else="">
+                                <a target="_blank" t-attf-href="/web/content/product.template/#{product.id}/#{extra_field.name}?download=1">
+                                    <i class="fa fa-file"/>
+                                </a>
+                            </t>
+                        </td>
+                    </tr>
+                </t>
             </t>
 
         </table>
