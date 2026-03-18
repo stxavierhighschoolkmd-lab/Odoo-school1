@@ -21,7 +21,8 @@ class AccountMoveSend(models.AbstractModel):
         if invoice_sending_method := move.commercial_partner_id.with_company(move.company_id).invoice_sending_method:
             return {invoice_sending_method}
 
-        if self._is_applicable_to_company('peppol', move.company_id):
+        company_registered_on_peppol = move.company_id.account_peppol_proxy_state not in ('not_registered', 'in_verification')
+        if self._is_applicable_to_company('peppol', move.company_id) and company_registered_on_peppol:
             return {'email', 'peppol'}
 
         return {'email'}
