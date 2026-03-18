@@ -1,18 +1,23 @@
 import { useRef, useState, useSubEnv } from "@web/owl2/utils";
 import { isBrowserFirefox } from "@web/core/browser/feature_detection";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
+import { localization } from "@web/core/l10n/localization";
 import { rpc } from "@web/core/network/rpc";
 import { renderToElement } from "@web/core/utils/render";
 import { useAutofocus, useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { WebsiteDialog } from "@website/components/dialog/dialog";
+import {
+    handleMatrixKeyNavigation,
+    showMatrixNotification,
+} from "@html_builder/utils/backend_utils";
 import { Switch } from "@html_editor/components/switch/switch";
 import {
     applyTextHighlight,
     removeTextHighlight,
     getObservedEls,
 } from "@website/js/highlight_utils";
-import { Component, onWillStart, onMounted, status } from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount, status } from "@odoo/owl";
 import { onceAllImagesLoaded } from "@website/utils/images";
 
 const NO_OP = () => {};
@@ -72,6 +77,14 @@ class AddPageTemplateBlank extends Component {
 
     select() {
         this.env.addPage();
+    }
+
+    onPreviewKeydown(ev) {
+        handleMatrixKeyNavigation(ev, {
+            containerEl: ev.currentTarget.closest(".row"),
+            focusedItemSelector: ".o_page_template",
+            focusableElSelector: ".o_button_area",
+        });
     }
 }
 
@@ -281,6 +294,14 @@ class AddPageTemplatePreview extends Component {
             templateId
         );
     }
+
+    onPreviewKeydown(ev) {
+        handleMatrixKeyNavigation(ev, {
+            containerEl: ev.currentTarget.closest(".row"),
+            focusedItemSelector: ".o_page_template",
+            focusableElSelector: ".o_button_area",
+        });
+    }
 }
 
 class AddPageTemplatePreviews extends Component {
@@ -302,6 +323,17 @@ class AddPageTemplatePreviews extends Component {
 
     setup() {
         super.setup();
+        this.notification = useService("notification");
+        this.backendDirection = localization.direction;
+        this.frontendDirection = document
+            .querySelector("iframe:not(.o_ignore_in_tour)")
+            .contentDocument.querySelector(".o_rtl")
+            ? "rtl"
+            : "ltr";
+
+        onWillUnmount(() => {
+            this.closeDialogDescription?.();
+        });
     }
 
     get columns() {
@@ -312,6 +344,10 @@ class AddPageTemplatePreviews extends Component {
             currentColumnIndex = (currentColumnIndex + 1) % result.length;
         }
         return result;
+    }
+
+    showDialogDescription(ev) {
+        this.closeDialogDescription ||= showMatrixNotification(this.notification, ev.currentTarget);
     }
 }
 
@@ -349,6 +385,12 @@ class AddPageTemplates extends Component {
             activePageId: "basic",
         });
         this.pages = undefined;
+
+        this.frontendDirection = document
+            .querySelector("iframe:not(.o_ignore_in_tour)")
+            .contentDocument.querySelector(".o_rtl")
+            ? "rtl"
+            : "ltr";
 
         onWillStart(() => {
             this.preparePages().then((pages) => {
