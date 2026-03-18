@@ -35,6 +35,7 @@ class AccountPaymentRegister(models.TransientModel):
                     d = f_delta
                     f_previous = wizard.l10n_ar_net_amount
                     wizard.amount += d
+                    wizard.l10n_ar_withholding_ids.invalidate_recordset(['base_amount', 'amount'])
                     wizard._compute_l10n_ar_net_amount()
                     for i in range(201):
                         f_delta = checks_amount - wizard.l10n_ar_net_amount
@@ -47,6 +48,7 @@ class AccountPaymentRegister(models.TransientModel):
                         d = max(f_delta / der, 0.01)
                         f_previous = wizard.l10n_ar_net_amount
                         wizard.amount += d
+                        wizard.l10n_ar_withholding_ids.invalidate_recordset(['base_amount', 'amount'])
                         wizard._compute_l10n_ar_net_amount()
                     if i == 200:
                         # Adjustment failed, resetting

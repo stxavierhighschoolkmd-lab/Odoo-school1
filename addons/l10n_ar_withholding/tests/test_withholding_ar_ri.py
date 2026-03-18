@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo.addons.l10n_ar.tests.common import TestArCommon
-from odoo.tests import tagged
+from odoo.tests import tagged, Form
 from odoo import Command
 from datetime import datetime
 
@@ -435,3 +435,58 @@ class TestArWithholdingArRi(TestArCommon):
             # Receivable line:
             {'debit': 188865.27, 'credit': 0.0, 'currency_id': wizard.currency_id.id, 'amount_currency': 188865.27, 'reconciled': True}
         ])
+
+    def test_12_withholding_check_payment_iterative_flush(self):
+        """Test the iterative solver cache flush bug using the UI Form.
+        A 30,250 ARS vendor bill with 10% withholding tax (2500 ARS retention) paid with an
+        own check of 27,750 ARS must iteratively converge to 30,250 gross.
+        """
+        self.tax_wth_test_1.write({'amount': 1})
+
+        # Setup Journal with Own Checks Outbound Payment Method
+        third_party_check_journal = self.third_party_check_journal()
+        own_check_method = self.env.ref('l10n_latam_check.account_payment_method_own_checks')
+        if own_check_method.id not in third_party_check_journal.outbound_payment_method_line_ids.mapped('payment_method_id').ids:
+            third_party_check_journal.outbound_payment_method_line_ids = [Command.create({'payment_method_id': own_check_method.id})]
+        own_check_line = third_party_check_journal.outbound_payment_method_line_ids.filtered(lambda l: l.payment_method_id == own_check_method)[:1]
+
+        # Create a Vendor Bill of exactly 30,250 (25000 untaxed + 21% VAT = 30250)
+        invoice = self.env['account.move'].create({
+            "ref": "Vendor Bill Adhoc test 30250",
+            "partner_id": self.res_partner_adhoc.id,
+            "move_type": "in_invoice",
+            "invoice_line_ids": [(0, 0, {
+                'product_id': self.product_a.id,
+                'price_unit': 25000.0,
+                'quantity': 1,
+                'tax_ids': [Command.set(self.tax_21.ids)]
+            })],
+            "invoice_date": datetime.today(),
+            "l10n_latam_document_number": '1-99',
+        })
+        invoice.action_post()
+
+        # Add partner tax configuration to guarantee withholdings automatically apply on the wizard
+        self.env['l10n_ar.partner.tax'].create({
+            'partner_id': self.res_partner_adhoc.id,
+            'company_id': invoice.company_id.id,
+            'tax_id': self.tax_wth_test_1.id
+        })
+
+        with Form(self.env['account.payment.register'].with_context(active_model='account.move', active_ids=invoice.ids)) as pay_form:
+            pay_form.journal_id = third_party_check_journal
+            pay_form.payment_method_line_id = own_check_line
+
+            # Add check details triggering onchange combinations
+            with pay_form.l10n_latam_new_check_ids.new() as check_line:
+                check_line.name = 'CHK-999'
+                check_line.payment_date = datetime.today()
+                check_line.amount = 30000.0
+
+        wizard = pay_form.save()
+
+        # Validate perfectly converged mathematical values
+        self.assertEqual(wizard.l10n_ar_net_amount, 30000.0)
+        self.assertEqual(wizard.l10n_ar_withholding_ids.amount, 250.0)
+        self.assertEqual(wizard.l10n_ar_withholding_ids.base_amount, 25000.0)
+        self.assertEqual(wizard.amount, 30250.0)
