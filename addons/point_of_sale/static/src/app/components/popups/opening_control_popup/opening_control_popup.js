@@ -9,6 +9,7 @@ import { Dialog } from "@web/core/dialog/dialog";
 import { RPCError } from "@web/core/network/rpc";
 import { CashInput } from "@point_of_sale/app/components/inputs/input/cash_input/cash_input";
 
+const { DateTime } = luxon;
 class CustomDialog extends Dialog {
     onEscape() {}
 }
@@ -34,8 +35,35 @@ export class OpeningControlPopup extends Component {
         this.ui = useService("ui");
     }
     get orderCount() {
-        return this.pos.models["pos.order"].filter((o) => o.lines.length > 0 && o.state === "draft")
-            .length;
+        return this.pos.models["pos.order"].filter(
+            (o) =>
+                o.lines.length > 0 &&
+                (o.state === "draft" ||
+                    (["paid", "done"].includes(o.state) && o.preset_time > DateTime.now()))
+        ).length;
+    }
+    get ordersByPreset() {
+        const presetCount = this.pos.models["pos.order"]
+            .filter(
+                (o) =>
+                    o.lines.length > 0 &&
+                    (o.state === "draft" ||
+                        (["paid", "done"].includes(o.state) && o.preset_time > DateTime.now()))
+            )
+            .map((o) => o.preset_id)
+            .filter(Boolean)
+            .reduce((acc, preset_id) => {
+                if (!acc[preset_id.id]) {
+                    acc[preset_id.id] = {
+                        id: preset_id.id,
+                        name: preset_id.name,
+                        orderCount: 0,
+                    };
+                }
+                acc[preset_id.id].orderCount += 1;
+                return acc;
+            }, {});
+        return Object.values(presetCount);
     }
     async confirm() {
         try {
