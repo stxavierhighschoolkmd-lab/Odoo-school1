@@ -1200,8 +1200,8 @@ class Website(models.Model):
         """
         extra_fields = self.env["website.sale.extra.field"].search([("website_id", "=", self.id)])
         result = {}
-        for ef in extra_fields:
-            key = ef.category_id or False
+        for extra_field in extra_fields:
+            key = extra_field.category_id or False
             result.setdefault(key, self.env["website.sale.extra.field"])
-            result[key] |= ef
+            result[key] |= extra_field
         return result
