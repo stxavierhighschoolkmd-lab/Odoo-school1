@@ -18,7 +18,8 @@ import {
 } from "@html_editor/main/media/image_post_process_plugin";
 import { _t } from "@web/core/l10n/translation";
 import { BuilderAction } from "@html_builder/core/builder_action";
-import { getMimetype } from "@html_editor/utils/image";
+import { getMimetypeBeforeShape } from "@html_builder/utils/image";
+import { withSequence } from "@html_editor/utils/resource";
 
 /**
  * @typedef {((dataset: DOMStringMap) => string)[]} default_shape_handlers
@@ -74,6 +75,7 @@ export class ImageShapeOptionPlugin extends Plugin {
         process_image_warmup_handlers: this.processImageWarmup.bind(this),
         process_image_post_handlers: this.processImagePost.bind(this),
         hover_effect_allowed_predicates: (el) => this.canHaveHoverEffect(el),
+        on_media_dialog_saved_handlers: withSequence(5, this.onMediaDialogSavedHandlers.bind(this)),
     };
     setup() {
         this.shapeSvgTextCache = {};
@@ -84,13 +86,34 @@ export class ImageShapeOptionPlugin extends Plugin {
             this.imageShapes[oldShapeId] = this.imageShapes[shapeId];
         }
     }
+    async onMediaDialogSavedHandlers(elements, { node }) {
+        if (!node || !node.dataset.shape) {
+            return;
+        }
+        for (const element of elements) {
+            if (!element || !element.tagName === "IMG") {
+                continue;
+            }
+            const data = await loadImageInfo(element);
+            if (!data.originalSrc) {
+                continue;
+            }
+            element.dataset.shape = node.dataset.shape;
+            for (const shapeInfo of ["shapeColors", "shapeFlip", "shapeRotate"]) {
+                if (node.dataset[shapeInfo]) {
+                    element.dataset[shapeInfo] = node.dataset[shapeInfo];
+                }
+            }
+        }
+    }
     async canHaveHoverEffect(imgEl) {
         const dataset = Object.assign({}, imgEl.dataset, await loadImageInfo(imgEl));
+        const isImageSupportedForShapes = await this.isImageSupportedForShapes(imgEl, dataset);
         return (
             imgEl.tagName === "IMG" &&
             !this.isDeviceShape(imgEl) &&
             !this.isAnimableShape(dataset.shape) &&
-            this.isImageSupportedForShapes(imgEl, dataset)
+            isImageSupportedForShapes
         );
     }
     isDeviceShape(img) {
@@ -101,7 +124,9 @@ export class ImageShapeOptionPlugin extends Plugin {
         const shapeCategory = shapeName.split("/")[1];
         return shapeCategory === "devices";
     }
-    isImageSupportedForShapes(img, dataset = img.dataset) {
+    // TODO: in master, this should be the same condition than the one evaluated
+    // to display the shape option.
+    async isImageSupportedForShapes(img, dataset = img.dataset) {
         // todo: The hover effect and shape code should probably be define somewhere else.
         if (!!dataset.hoverEffect || !!dataset.shape) {
             return true;
@@ -109,7 +134,7 @@ export class ImageShapeOptionPlugin extends Plugin {
         if (!dataset.originalId) {
             return false;
         }
-        return isImageSupportedForProcessing(getMimetype(img, dataset));
+        return isImageSupportedForProcessing(await getMimetypeBeforeShape(img));
     }
     async getShapeSvgText(shapeName) {
         // Compatibility with old shapes.

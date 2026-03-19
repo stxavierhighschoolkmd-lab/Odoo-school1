@@ -291,6 +291,7 @@ test("animation=onHover should not be visible when the image has a wrong mimetyp
             <img data-original-id="1" data-mimetype="foo/bar" src='${base64Img}'>
         </div>
     `);
+    onRpc("/html_editor/get_image_info", async () => ({}));
     await contains(":iframe .test-options-target img").click();
     await waitSidebarUpdated();
     await contains(".options-container [data-label='Animation'] .dropdown-toggle").click();
