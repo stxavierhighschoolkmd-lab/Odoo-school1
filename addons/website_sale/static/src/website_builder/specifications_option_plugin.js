@@ -2,9 +2,12 @@ import { reactive } from "@web/owl2/utils";
 import { BuilderAction } from "@html_builder/core/builder_action";
 import { Plugin } from "@html_editor/plugin";
 import { registry } from "@web/core/registry";
+import { withSequence } from "@html_editor/utils/resource";
+import { _t } from "@web/core/l10n/translation";
 
 class SpecificationsPlugin extends Plugin {
     static id = "specificationsOption";
+    static dependencies = ["builderOptions"];
     static shared = [
         "loadSpecs",
         "getExtraFields",
@@ -20,6 +23,34 @@ class SpecificationsPlugin extends Plugin {
             RemoveSpecFieldAction,
             CreateCategoryAction,
         },
+        has_overlay_options: {
+            editableOnly: false,
+            hasOption: (el) => el.matches("tr[data-extra-field-id]"),
+        },
+        get_overlay_buttons: withSequence(10, {
+            editableOnly: false,
+            getButtons: (el) => {
+                if (!el.matches("tr[data-extra-field-id]")) {
+                    return [];
+                }
+                return [{
+                    class: "fa fa-trash text-danger",
+                    title: _t("Remove Field"),
+                    handler: async () => {
+                        await this.services.orm.unlink(
+                            "website.sale.extra.field",
+                            [parseInt(el.dataset.extraFieldId)]
+                        );
+                        this.clearLoadedSpecs();
+                        await this.config.reloadEditor({
+                            target: this.dependencies.builderOptions.getReloadSelector(
+                                this.document.querySelector(".o_wsale_specss")
+                            )
+                        });
+                    },
+                }];
+            },
+        }),
     };
 
     setup() {

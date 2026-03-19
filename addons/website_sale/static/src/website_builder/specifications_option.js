@@ -47,3 +47,11 @@ export class SpecificationsOption extends BaseOptionComponent {
 registry
     .category("website-options")
     .add(SpecificationsOption.id, SpecificationsOption);
+
+
+class SpecFieldRowOption extends BaseOptionComponent {
+    static id = "spec_field_row_option";
+    static template = "website_sale.SpecFieldRowOption";
+
+}
+registry.category("website-options").add(SpecFieldRowOption.id, SpecFieldRowOption);

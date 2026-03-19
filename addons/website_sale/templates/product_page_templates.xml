@@ -1394,7 +1394,7 @@
                                 aria-expanded="false"
                                 aria-controls="specifications"
                             >
-                                <t t-out="ef_category.name or 'Others'"/>
+                                <t t-out="ef_category and ef_category.name or 'Others'"/>
                             </button>
                         </div>
                         <div

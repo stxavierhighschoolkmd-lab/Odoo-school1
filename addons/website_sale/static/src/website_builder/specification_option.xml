@@ -77,31 +77,9 @@
         </BuilderRow>
     </t>
 
-    <!-- Added fields list -->
-    <t t-if="extraFields.length">
-        <BuilderRow label.translate="Added Fields">
-            <div class="w-100 d-flex flex-column gap-1">
-                <t t-foreach="extraFields" t-as="ef" t-key="ef.id">
-                    <div class="d-flex align-items-center justify-content-between gap-2 p-1">
-                        <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-                            <span class="small text-truncate"><t t-out="ef.label"/></span>
-                            <span t-if="ef.category_id" class="text-truncate" style="font-size: 10px;">(<t t-out="ef.category_id[1]"/>)</span>
-                        </div>
-                        <BuilderButton
-                            action="'removeSpecField'"
-                            actionValue="`${ef.id}`"
-                            preview="false"
-                            className="'btn-danger flex-shrink-0 flex-grow-0 p-0'"
-                            style="'width: 24px; height: 24px; min-width: unset;'"
-                        >
-                            <i class="fa fa-trash"/>
-                        </BuilderButton>
-                    </div>
-                </t>
-            </div>
-        </BuilderRow>
-    </t>
+</t>
 
+<t t-name="website_sale.SpecFieldRowOption">
 </t>
 
 </templates>
