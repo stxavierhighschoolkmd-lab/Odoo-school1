@@ -7,7 +7,6 @@ import requests
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools.mail import is_html_empty
 
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment.const import REPORT_REASONS_MAPPING, SENSITIVE_KEYS
@@ -1068,14 +1067,3 @@ class PaymentProvider(models.Model):
         """
         self.ensure_one()
         return self.code
-
-    def _get_final_states(self):  # noqa: PLR6301
-        """Return the states that are considered final.
-
-        This method serves as a hook to allow providers to modify what is considered as a final
-        state.
-
-        :return: The final states.
-        :rtype: set
-        """
-        return {"authorized", "done", "cancel", "error"}

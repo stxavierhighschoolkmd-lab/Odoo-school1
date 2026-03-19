@@ -19,7 +19,10 @@ class PaymentTransaction(models.Model):
         redirecting to payment page."""
         tx = super()._process(provider_code, payment_data)
         if tx.sale_order_ids.website_id and tx.state in ["cancel", "error"]:
-            tx.landing_route = "/shop/payment"
+            default_error_message = self.env._("Payment was not successful, please try again.")
+            tx.landing_route = (
+                f"/shop/payment?payment_error={tx.state_message or default_error_message}"
+            )
         return tx
 
     def _get_transaction_status_message(self, **kwargs):
@@ -28,17 +31,19 @@ class PaymentTransaction(models.Model):
         :param sale.order order: The current cart linked to the transaction.
         """
         status_message = super()._get_transaction_status_message(**kwargs)
-        order = kwargs.get('order')
+        order = kwargs.get("order")
         if (
-            order and
-            order.website_id and
-            self.state == 'done' and
-            order.amount_total != self.amount
+            order
+            and order.website_id
+            and self.state == "done"
+            and order.amount_total != self.amount
         ):
-            return Markup(f'''<p>{
-                _("Unfortunately your order can not be confirmed as the amount of your payment does"
-                " not match the amount of your cart. Please contact the responsible of the shop for"
-                " more information."
-                )}
-            ''')
+            return Markup(f"""<p>{
+                _(
+                    "Unfortunately your order can not be confirmed as the amount of your payment"
+                    " does not match the amount of your cart. Please contact the responsible of"
+                    " the shop for more information."
+                )
+            }
+            """)
         return status_message
