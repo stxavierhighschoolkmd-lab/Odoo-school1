@@ -423,6 +423,7 @@ export class SwitchThemeAction extends BuilderAction {
                 body: _t(
                     "Changing theme requires to leave the editor. This will save all your changes, are you sure you want to proceed? Be careful that changing the theme will reset all your color customizations."
                 ),
+                confirmLabel: _t("Apply New Palette"),
                 confirm: () => resolve(true),
                 cancel: () => resolve(false),
             });
