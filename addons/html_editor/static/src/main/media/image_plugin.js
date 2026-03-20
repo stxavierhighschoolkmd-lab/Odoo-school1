@@ -10,6 +10,7 @@ import { READ, withSequence } from "@html_editor/utils/resource";
 import { callbacksForCursorUpdate } from "@html_editor/utils/selection";
 import { closestBlock } from "@html_editor/utils/blocks";
 import { fillEmpty } from "@html_editor/utils/dom";
+import { ImageAlignSelector } from "./image_align_selector";
 
 const IMAGE_PADDING = [
     { name: "None", value: 0 },
@@ -24,6 +25,12 @@ const IMAGE_SIZE = [
     { name: "100%", value: "100%" },
     { name: "50%", value: "50%" },
     { name: "25%", value: "25%" },
+];
+
+const IMAGE_ALIGNMENT = [
+    { icon: "oi-text-inline", value: "", title: _t("Inline") },
+    { icon: "oi-text-wrap", value: "float-start", title: _t("Wrap text") },
+    { icon: "oi-text-break", value: "d-block", title: _t("Break text") },
 ];
 
 /**
@@ -89,6 +96,20 @@ export class ImagePlugin extends Plugin {
                 commandId: "previewImage",
             },
             {
+                id: "image_alignment",
+                description: _t("Set image alignment"),
+                groupId: "image_modifiers",
+                Component: ImageAlignSelector,
+                props: {
+                    items: IMAGE_ALIGNMENT,
+                    getDisplay: () => this.imageAlignment,
+                    onSelected: (item) => {
+                        this.setImageAlignment(item);
+                    },
+                },
+                isAvailable: isHtmlContentSupported,
+            },
+            {
                 id: "image_padding",
                 groupId: "image_padding",
                 description: _t("Set image padding"),
@@ -144,6 +165,7 @@ export class ImagePlugin extends Plugin {
                 this.setSelectionAroundImage(e.target);
             }
         });
+        this.imageAlignment = reactive({ displayIcon: "oi-text-inline" });
         this.addDomListener(this.editable, "pointerup", (e) => {
             if (e.target.tagName === "IMG") {
                 this.setSelectionAroundImage(e.target);
@@ -162,6 +184,37 @@ export class ImagePlugin extends Plugin {
             return "Default";
         }
         return targetedImg.style.width || "Default";
+    }
+
+    /**
+     * @returns {string} icon class
+     */
+    get imageAlignmentIcon() {
+        const targetedImg = this.getTargetedImage();
+        if (!targetedImg) {
+            return "oi-text-inline";
+        }
+        for (const { value, icon } of IMAGE_ALIGNMENT) {
+            if (value && targetedImg.classList.contains(value)) {
+                return icon;
+            }
+        }
+        return "oi-text-inline";
+    }
+
+    setImageAlignment(alignment) {
+        const targetedImg = this.getTargetedImage();
+        if (!targetedImg) {
+            return;
+        }
+        targetedImg.classList.remove(
+            ...IMAGE_ALIGNMENT.filter((item) => item.value).map((item) => item.value)
+        );
+        if (alignment.value) {
+            targetedImg.classList.add(alignment.value);
+        }
+        this.imageAlignment.displayIcon = alignment.icon;
+        this.dependencies.history.addStep();
     }
 
     setImagePadding({ size } = {}) {
@@ -266,6 +319,7 @@ export class ImagePlugin extends Plugin {
 
     updateImageParams() {
         this.imageSize.displayName = this.imageSizeName;
+        this.imageAlignment.displayIcon = this.imageAlignmentIcon;
     }
 
     setSelectionAroundImage(img) {
