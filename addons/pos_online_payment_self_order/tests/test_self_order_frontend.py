@@ -75,7 +75,6 @@ class TestSelfOrderOnlinePayment(TestUi):
             'module_pos_restaurant': True,
             'company_id': company_b.id,
             'journal_id': test_sale_journal.id,
-            'invoice_journal_id': test_sale_journal.id,
             'payment_method_ids': [Command.set([online_payment_method.id])],
             'self_ordering_mode': 'mobile',
             'self_ordering_pay_after': 'each',

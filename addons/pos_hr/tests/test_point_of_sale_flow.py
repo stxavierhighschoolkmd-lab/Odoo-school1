@@ -14,7 +14,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         session = self.pos_config_usd.current_session_id
         session.set_opening_control(0, None)
         current_session_name = session.name
-        session.action_pos_session_closing_control()
+        session.close_session_from_ui()
 
         self.pos_config_usd.open_ui()
         session = self.pos_config_usd.current_session_id

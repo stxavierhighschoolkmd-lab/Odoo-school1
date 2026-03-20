@@ -51,7 +51,6 @@ class TestFrontendCommon(TestPointOfSaleHttpCommon):
             'iface_tipproduct': False,
             'company_id': cls.env.company.id,
             'journal_id': test_sale_journal_2.id,
-            'invoice_journal_id': test_sale_journal_2.id,
             'payment_method_ids': [
                 (4, cls.bank_payment_method.id),
                 (0, 0, {

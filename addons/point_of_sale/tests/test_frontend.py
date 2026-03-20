@@ -57,8 +57,7 @@ class TestPointOfSaleHttpCommon(AccountTestInvoicingHttpCommon):
         config.with_user(user).open_ui()
         session = config.current_session_id
         yield session
-        session.post_closing_cash_details(0)
-        session.close_session_from_ui()
+        session.close_session_from_ui(0)
 
     @classmethod
     def setUpClass(cls):
@@ -581,7 +580,6 @@ class TestPointOfSaleHttpCommon(AccountTestInvoicingHttpCommon):
             'tax_regime_selection': True,
             'fiscal_position_ids': FP_POS_2M,
             'journal_id': test_sale_journal.id,
-            'invoice_journal_id': test_sale_journal.id,
             'payment_method_ids': [(0, 0, { 'name': 'Cash',
                                             'journal_id': cash_journal.id,
                                             'receivable_account_id': cls.account_receivable.id,
@@ -840,9 +838,9 @@ class TestUi(TestPointOfSaleHttpCommon):
         pos_session = self.main_pos_config.current_session_id
 
         # Close the session and check the session journal entry.
-        pos_session.action_pos_session_validate()
+        pos_session.close_session_from_ui()
 
-        lines = pos_session.move_id.line_ids.sorted('balance')
+        lines = pos_session.move_ids.line_ids.sorted('balance')
 
         # order in the tour is paid using the bank payment method.
         bank_pm = self.main_pos_config.payment_method_ids.filtered(lambda pm: pm.name == 'Bank')
@@ -920,20 +918,21 @@ class TestUi(TestPointOfSaleHttpCommon):
         """
         self.main_pos_config.open_ui()
         current_session = self.main_pos_config.current_session_id
-        current_session.post_closing_cash_details(0)
-        current_session.close_session_from_ui()
+        current_session.close_session_from_ui(0)
         self.main_pos_config.with_user(self.pos_user).open_ui()
         self.start_tour("/pos/ui/%d" % self.main_pos_config.id, 'CashClosingDetails', login="pos_user")
-        self.assertEqual(self.main_pos_config.last_session_closing_cash, 50.0)
+        cash_pm = self.main_pos_config.current_session_id.account_bank_statement_id.balance_end_real
+        self.assertEqual(cash_pm, 50.0)
         cash_diff_line = self.env['account.bank.statement.line'].search([
-            ('payment_ref', 'ilike', 'Cash difference observed during the counting (Loss)')
+            ('payment_ref', 'ilike', 'Cash difference observed during the counting (Loss)'),
         ])
         self.assertAlmostEqual(cash_diff_line.amount, -1.00)
 
     def test_cash_payments_should_reflect_on_next_opening(self):
         self.main_pos_config.with_user(self.pos_user).open_ui()
         self.start_tour("/pos/ui/%d" % self.main_pos_config.id, 'OrderPaidInCash', login="pos_user")
-        self.assertEqual(self.main_pos_config.last_session_closing_cash, 25.0)
+        cash_pm = self.main_pos_config.current_session_id.account_bank_statement_id.balance_end_real
+        self.assertEqual(cash_pm, 25.0)
 
     def test_pos_session_statistics_display(self):
         """Test that POS session statistics are properly displayed in the UI."""
@@ -1827,8 +1826,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         total_cash_payment = sum(current_session.mapped('order_ids.payment_ids').filtered(
             lambda payment: payment.payment_method_id.type == 'cash').mapped('amount')
         )
-        current_session.post_closing_cash_details(total_cash_payment)
-        current_session.close_session_from_ui()
+        current_session.close_session_from_ui(total_cash_payment)
         self.assertEqual(current_session.state, 'closed')
         report_refund_order, report_order = self.env['report.pos.order'].sudo().search([('order_id', 'in', current_session.order_ids.ids)])
         self.assertEqual(report_order.margin, 20.0)
@@ -2145,7 +2143,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         self.main_pos_config.current_session_id.order_ids.filtered(
             lambda o: o.state != 'paid').state = 'cancel'
 
-        self.main_pos_config.current_session_id.action_pos_session_closing_control()
+        self.main_pos_config.current_session_id.close_session_from_ui()
         self.assertEqual(
             two_last_orders[0].picking_ids.move_line_ids.owner_id.id,
             two_last_orders[1].picking_ids.move_line_ids.owner_id.id,
@@ -2769,9 +2767,9 @@ class TestUi(TestPointOfSaleHttpCommon):
         self.assertEqual(pos_session.order_ids[0].payment_ids[0].amount, 7771.01)
 
         # Close the session and check the session journal entry.
-        pos_session.action_pos_session_validate()
+        pos_session.close_session_from_ui()
 
-        lines = pos_session.move_id.line_ids.sorted('balance')
+        lines = pos_session.move_ids.line_ids.sorted('balance')
 
         self.assertEqual(len(lines), 5, "There should be 5 lines in the session journal entry")
         self.assertAlmostEqual(lines[0].balance, -7051.73)
@@ -4149,8 +4147,7 @@ class TestTaxCommonPOS(TestPointOfSaleHttpCommon, TestTaxCommon):
 
     def assert_pos_orders_and_invoices(self, tour, tests_with_orders):
         if self.main_pos_config.current_session_id:
-            self.main_pos_config.current_session_id.post_closing_cash_details(0)
-            self.main_pos_config.current_session_id.close_session_from_ui()
+            self.main_pos_config.current_session_id.close_session_from_ui(0)
 
         self.start_pos_tour(tour)
         orders = self.env['pos.order'].search([('session_id', '=', self.main_pos_config.current_session_id.id)], limit=len(tests_with_orders))

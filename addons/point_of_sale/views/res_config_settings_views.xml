@@ -232,13 +232,12 @@
                                         <button name="%(account.action_tax_form)d" icon="oi-arrow-right" type="action" string="Taxes" class="btn-link"/>
                                     </div>
                                 </setting>
-                                <setting groups="account.group_account_readonly">
-                                    <label string="Default POS Receivable Account" for="account_default_pos_receivable_account_id"/>
-                                    <i class="fa fa-info-circle me-1" title="This setting is common to all PoS." pos-data-toggle="tooltip"/>
-                                    <div class="text-muted">
-                                        Intermediary account used for unidentified customers.
+                                <setting>
+                                    <label string="Default PoS Partner for closing" for="pos_default_partner_id" />
+                                    <div class="text-muted mb-1">
+                                        The partner account will be used to generate out receipts.
                                     </div>
-                                    <field name="account_default_pos_receivable_account_id" colspan="4" nolabel="1" domain="[('reconcile', '=', True), ('account_type', '=', 'asset_receivable')]"/>
+                                    <field name="pos_default_partner_id" create="0" required="1" />
                                 </setting>
                                 <setting id="order_edit_tracking" help="Store edited orders in the backend">
                                     <field name="pos_order_edit_tracking"/>
@@ -264,12 +263,6 @@
                                         <div class="row" title="Whenever you close a session, one entry is generated in the following accounting journal for all the orders not invoiced. Invoices are recorded in accounting separately.">
                                             <label string="Orders" for="pos_journal_id" class="col-lg-3 o_light_label" options="{'no_open': True, 'no_create': True}"/>
                                             <field name="pos_journal_id" domain="[('company_id', '=', company_id), ('type', 'in', ('general', 'sale'))]" context="{'default_company_id': company_id, 'default_type': 'general'}" required="pos_company_has_template"/>
-                                        </div>
-                                        <div class="row">
-                                            <label string="Invoices" for="pos_invoice_journal_id" class="col-lg-3 o_light_label"/>
-                                            <field name="pos_invoice_journal_id"
-                                                domain="[('company_id', '=', company_id), ('type', '=', 'sale')]"
-                                                context="{'default_company_id': company_id, 'default_type': 'sale'}"/>
                                         </div>
                                     </div>
                                 </setting>

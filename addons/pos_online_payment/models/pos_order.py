@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import models, fields, api, tools
+from odoo import api, fields, models, tools
 
 
 class PosOrder(models.Model):
     _inherit = 'pos.order'
 
     online_payment_method_id = fields.Many2one('pos.payment.method', compute="_compute_online_payment_method_id")
-    next_online_payment_amount = fields.Float(string='Next online payment amount to pay', digits=0, required=False) # unlimited precision
+    next_online_payment_amount = fields.Float(string='Next online payment amount to pay', digits=0, required=False)  # unlimited precision
 
     @api.depends('config_id.payment_method_ids')
     def _compute_online_payment_method_id(self):
@@ -40,7 +39,7 @@ class PosOrder(models.Model):
         if is_paid:
             return {
                 'id': self.id,
-                'paid_order': self.read([], load=False)
+                'paid_order': self.read([], load=False),
             }
 
         online_payments = self.sudo().env['pos.payment'].search_read(domain=['&', ('pos_order_id', '=', self.id), ('online_account_payment_id', '!=', False)], fields=['payment_method_id', 'amount'], load=False)
@@ -51,7 +50,7 @@ class PosOrder(models.Model):
         }
         if not isinstance(next_online_payment_amount, bool):
             if tools.float_is_zero(next_online_payment_amount, precision_rounding=self.currency_id.rounding) and len(online_payments) == 0 and self.state == 'draft' and not self.config_id.module_pos_restaurant and len(self.config_id.trusted_config_ids) == 0:
-                self.sudo()._clean_payment_lines() # Needed to delete the order
+                self.sudo()._clean_payment_lines()  # Needed to delete the order
                 return_data['deleted'] = True
             elif self._check_next_online_payment_amount(next_online_payment_amount):
                 self.next_online_payment_amount = next_online_payment_amount
@@ -76,3 +75,14 @@ class PosOrder(models.Model):
             # online payment lines should not be created in draft orders
             order['payment_ids'] = [payment for payment in order.get('payment_ids', []) if payment[0] not in [0, 1] or (payment[2].get('payment_method_id') not in online_payment_methods.ids)]
         return super()._process_order(order, existing_order)
+
+    def _create_payment_moves(self, session, payments, partner=None):
+        all_payment_lines = super()._create_payment_moves(session, payments, partner)
+
+        for pm_data in payments:
+            pm = pm_data['metadata']['payment_method_id']
+
+            if pm.type == 'online':
+                all_payment_lines |= pm._create_online_payment_line_transfer(session)
+
+        return all_payment_lines

@@ -43,7 +43,7 @@ class TestPoSSaleReport(TestPoSCommon, TestPointOfSaleHttpCommon):
         # Duplicate the first line of the first order
         session.order_ids[0].lines.copy()
 
-        session.action_pos_session_closing_control()
+        session.close_session_from_ui()
 
         # PoS Orders have negative IDs to avoid conflict, so reports[0] will correspond to the newest order
         reports = self.env['sale.report'].sudo().search([('product_id', '=', self.product0.id)], order='id', limit=2)
@@ -67,8 +67,7 @@ class TestPoSSaleReport(TestPoSCommon, TestPointOfSaleHttpCommon):
         total_cash_payment = sum(current_session.mapped('order_ids.payment_ids').filtered(
             lambda payment: payment.payment_method_id.type == 'cash').mapped('amount')
         )
-        current_session.post_closing_cash_details(total_cash_payment)
-        current_session.close_session_from_ui()
+        current_session.close_session_from_ui(total_cash_payment)
         self.assertEqual(current_session.state, 'closed')
 
         report = self.env['sale.report'].sudo().search([('product_id', '=', test_product.id), ('name', 'ilike', '% REFUND')], order='id', limit=1)
@@ -109,7 +108,7 @@ class TestPoSSaleReport(TestPoSCommon, TestPointOfSaleHttpCommon):
         order = self.create_ui_order_data([(product_1, 3), (product_2, 3)])
         self.env['pos.order'].sync_from_ui([order])
 
-        session.action_pos_session_closing_control()
+        session.close_session_from_ui()
 
         report = self.env['sale.report'].sudo().search([('product_id', '=', product_1.id)], order='id', limit=1)
         self.assertEqual(report.weight, 3)
@@ -148,7 +147,7 @@ class TestPoSSaleReport(TestPoSCommon, TestPointOfSaleHttpCommon):
         orders.append(self.create_ui_order_data([(self.product0, 3)]))
         self.env['pos.order'].sync_from_ui(orders)
 
-        session.action_pos_session_closing_control()
+        session.close_session_from_ui()
 
         reports = self.env['sale.report'].sudo().search([('product_id', '=', self.product0.id)], order='id', limit=2)
         self.assertEqual(reports[0].warehouse_id.id, self.config.picking_type_id.warehouse_id.id)
@@ -171,7 +170,7 @@ class TestPoSSaleReport(TestPoSCommon, TestPointOfSaleHttpCommon):
         order = self.env['pos.order'].sync_from_ui(orders)
         order = self.env['pos.order'].browse(order['pos.order'][0]['id'])
 
-        session.action_pos_session_closing_control()
+        session.close_session_from_ui()
 
         report = self.env['sale.report'].sudo().search([('product_id', '=', self.product0.id)], order='id')
 

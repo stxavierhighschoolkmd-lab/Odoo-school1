@@ -8,7 +8,7 @@
                 <header>
                     <button name="%(action_pos_payment)d" string="Payment" class="oe_highlight" type="action" invisible="state != 'draft'" />
                     <button name="action_pos_order_invoice" string="Invoice" type="object"
-                            invisible="state not in ['paid', 'done'] or account_move"/>
+                            invisible="state not in ['paid', 'done'] or is_invoiced"/>
                     <button name="action_pos_order_receipt" string="Download Receipt" type="object" invisible="state not in ['paid', 'done']"/>
                     <button name="refund" string="Return Products" type="object"
                         invisible="state == 'draft' or not has_refundable_lines"/>
@@ -32,8 +32,13 @@
                         type="object"
                         class="oe_stat_button"
                         icon="fa-pencil-square-o"
-                        invisible="not account_move">
-                    </button>
+                        invisible="not is_invoiced"/>
+                    <button name="action_view_invoice"
+                        string="Global Invoice"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-pencil-square-o"
+                        invisible="is_invoiced or not account_move"/>
                     <button name="action_view_refund_orders"
                         type="object"
                         class="oe_stat_button"
@@ -178,13 +183,7 @@
                         </group>
                     </page>
                     <page name="extra" string="Extra Info">
-                        <group >
-                            <group
-                                string="Accounting"
-                                groups="account.group_account_manager"
-                                invisible="not session_move_id or account_move">
-                                <field name="session_move_id" readonly="1" />
-                            </group>
+                        <group>
                             <group string="Other Information" name="other_information">
                                 <field name="pos_reference"/>
                                 <field name="tracking_number"/>

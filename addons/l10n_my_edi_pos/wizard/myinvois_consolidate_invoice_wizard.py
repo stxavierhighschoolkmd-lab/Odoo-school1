@@ -56,7 +56,7 @@ class MyInvoisConsolidateInvoiceWizard(models.TransientModel):
                         'company_id': config.company_id.id,
                         'currency_id': config.currency_id.id,
                         'pos_config_id': config.id,
-                        'journal_id': config.invoice_journal_id.id,
+                        'journal_id': config.journal_id.id,
                         'is_consolidated_invoice': True,
                         'move_type': 'out_invoice',  # In practice, a consolidated invoice from the PoS can be considered as 'invoice' for the sake of grouping/sequencing
                     })

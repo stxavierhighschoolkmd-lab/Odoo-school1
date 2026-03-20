@@ -79,6 +79,6 @@ class TestHash(CommonPosTest):
         posted_order = self.env['pos.order'].search([('uuid', '=', '12345-123-1234')])
         self.assertEqual(posted_order.state, 'paid')
 
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
 
         self.assertEqual(posted_order.l10n_fr_hash, posted_order._compute_hash(''))

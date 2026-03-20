@@ -620,10 +620,10 @@ class TestPoSBasicConfig(TestPoSCommon):
         self.assertEqual(orders[1]['amount_return'], 0, msg='The amount return should be 0')
 
         # close the session
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
         # check values after the session is closed
-        session_account_move = self.pos_session.move_id
+        session_account_move = self.pos_session.move_ids
 
         rounding_line = session_account_move.line_ids.filtered(lambda line: line.name == 'Rounding line')
         self.assertAlmostEqual(rounding_line.credit, 0.03, msg='The credit should be equals to 0.03')
@@ -836,9 +836,8 @@ class TestPoSBasicConfig(TestPoSCommon):
             self.assertTrue(cm.output[1].startswith(f'DEBUG:odoo.addons.point_of_sale.models.pos_order:PoS synchronisation #1996 processing order {order_log_str} order full data: '))
             self.assertEqual(cm.output[2], f'INFO:odoo.addons.point_of_sale.models.pos_order:PoS synchronisation #1996 order {order_log_str} created pos.order #{odoo_order_id}')
             self.assertEqual(cm.output[3], 'INFO:odoo.addons.point_of_sale.models.pos_order:PoS synchronisation #1996 finished')
-            
-        session.post_closing_cash_details(amount_paid)
-        session.close_session_from_ui()
+
+        session.close_session_from_ui(amount_paid)
 
         self.assertEqual(session.cash_register_balance_start, 0)
         self.assertEqual(session.cash_register_balance_end_real, amount_paid)
@@ -846,11 +845,9 @@ class TestPoSBasicConfig(TestPoSCommon):
         # Open/Close session without any order in cash control
         self.open_new_session(amount_paid)
         session = self.pos_session
-        session.post_closing_cash_details(amount_paid)
-        session.close_session_from_ui()
+        session.close_session_from_ui(amount_paid)
         self.assertEqual(session.cash_register_balance_start, amount_paid)
         self.assertEqual(session.cash_register_balance_end_real, amount_paid)
-        self.assertEqual(self.config.last_session_closing_cash, amount_paid)
 
     def test_start_balance_with_two_pos(self):
         """ When having several POS with cash control, this tests ensures that each POS has its correct opening amount """
@@ -884,8 +881,7 @@ class TestPoSBasicConfig(TestPoSCommon):
             pos_data['amount_paid'] += order_data['amount_paid']
             self.env['pos.order'].sync_from_ui([order_data])
 
-            session.post_closing_cash_details(pos_data['amount_paid'])
-            session.close_session_from_ui()
+            session.close_session_from_ui(pos_data['amount_paid'])
 
         open_and_check(pos01_data)
         open_and_check(pos02_data)
@@ -1222,10 +1218,10 @@ class TestPoSBasicConfig(TestPoSCommon):
         # sync orders
         self.env['pos.order'].sync_from_ui(orders)
         # close the session
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
         # check values after the session is closed
-        session_account_move = self.pos_session.move_id
+        session_account_move = self.pos_session.move_ids
 
         # Define expected quantities for each product
         expected_product_quantity = {
@@ -1272,7 +1268,7 @@ class TestPoSBasicConfig(TestPoSCommon):
         # sync orders
         self.env['pos.order'].sync_from_ui(orders)
         # close the session
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
         pos_orders = self.env['pos.order'].search([])
         # set customer for the orders
@@ -1300,7 +1296,7 @@ class TestPoSBasicConfig(TestPoSCommon):
             payments=[(self.bank_pm1, 50)]
         ))
         self.env['pos.order'].sync_from_ui(orders)
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
         # open new session & create orders
         self.open_new_session()
@@ -1314,7 +1310,7 @@ class TestPoSBasicConfig(TestPoSCommon):
             payments=[(self.bank_pm1, 109.96)]
         ))
         self.env['pos.order'].sync_from_ui(orders2)
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
         pos_orders = self.env['pos.order'].search([])
         # set customer for the orders

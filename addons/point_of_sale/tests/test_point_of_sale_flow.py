@@ -63,8 +63,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         total_cash_payment = sum(current_session.mapped('order_ids.payment_ids').filtered(
             lambda payment: payment.payment_method_id.type == 'cash').mapped('amount')
         )
-        current_session.post_closing_cash_details(total_cash_payment)
-        current_session.close_session_from_ui()
+        current_session.close_session_from_ui(total_cash_payment)
         self.assertEqual(current_session.state, 'closed')
 
     def test_refund_multiple_payment_rounding(self):
@@ -140,7 +139,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         })
         refund_payment.with_context(**payment_context).check()
         self.assertEqual(refund.state, 'paid')
-        current_session.action_pos_session_closing_control()
+        current_session.close_session_from_ui()
         self.assertEqual(current_session.state, 'closed')
 
     def test_order_partial_refund(self):
@@ -194,7 +193,7 @@ class TestPointOfSaleFlow(CommonPosTest):
 
         self.assertEqual(remaining_refund.state, 'paid')
 
-        current_session.action_pos_session_closing_control()
+        current_session.close_session_from_ui()
         self.assertEqual(current_session.state, 'closed')
 
     def test_pos_orders_count(self):
@@ -301,7 +300,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         invoice_pdf_content = legal_documents[0]['content'].decode()
         self.assertTrue("using Cash" in invoice_pdf_content)
         self.assertEqual(order_refund_3.picking_count, 1)
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
 
     def test_order_to_picking02(self):
         """
@@ -366,7 +365,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         invoice_test = self.env['account.move'].browse(res['res_id'])
         self.assertEqual(invoice_test.ref, invoice_test.pos_order_ids.display_name)
 
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
 
     def test_order_to_payment_currency(self):
         """
@@ -409,11 +408,11 @@ class TestPointOfSaleFlow(CommonPosTest):
         self.assertEqual(order.amount_paid, 30)
         self.assertEqual(order.state, 'paid')
         current_session = self.pos_config_eur.current_session_id
-        current_session.action_pos_session_validate()
-        self.assertTrue(current_session.move_id)
-        debit_lines = current_session.move_id.mapped('line_ids.debit')
-        credit_lines = current_session.move_id.mapped('line_ids.credit')
-        amount_currency_lines = current_session.move_id.mapped('line_ids.amount_currency')
+        current_session.close_session_from_ui()
+        self.assertTrue(current_session.move_ids)
+        debit_lines = current_session.move_ids.mapped('line_ids.debit')
+        credit_lines = current_session.move_ids.mapped('line_ids.credit')
+        amount_currency_lines = current_session.move_ids.mapped('line_ids.amount_currency')
         for a, b in zip(sorted(debit_lines), [0.0, 15.0]):
             self.assertAlmostEqual(a, b)
         for a, b in zip(sorted(credit_lines), [0.0, 15.0]):
@@ -462,7 +461,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         for iline in invoice.invoice_line_ids:
             self.assertFalse(iline.tax_ids)
 
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
 
     def test_order_to_invoice_uses_correct_shipping_address(self):
         """
@@ -530,18 +529,17 @@ class TestPointOfSaleFlow(CommonPosTest):
 
         total_cash_payment = sum(current_session.mapped('order_ids.payment_ids').filtered(
             lambda payment: payment.payment_method_id.type == 'cash').mapped('amount'))
-        current_session.post_closing_cash_details(total_cash_payment)
 
         # close session (should not fail here)
-        # We don't call `action_pos_session_closing_control` to force the failed
+        # We don't call `close_session_from_ui` to force the failed
         # closing which will return the action because the internal rollback call messes
         # with the rollback of the test runner. So instead, we directly call the method
         # that returns the action by specifying the imbalance amount.
-        action = current_session._close_session_action(1.0)
+        action = current_session._close_session_action(total_cash_payment)
         wizard = self.env['pos.close.session.wizard'].browse(action['res_id'])
         wizard.with_context(action['context']).close_session()
 
-        diff_line = current_session.move_id.line_ids.filtered(
+        diff_line = current_session.move_ids.line_ids.filtered(
             lambda line: line.name == 'Difference at closing PoS session')
         self.assertAlmostEqual(diff_line.credit, 1.0, msg="Missing amount of 1.0")
 
@@ -705,7 +703,7 @@ class TestPointOfSaleFlow(CommonPosTest):
                     {'payment_method_id': self.bank_payment_method.id, 'amount': 23.0},
                 ],
             })
-            self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+            self.pos_config_usd.current_session_id.close_session_from_ui()
 
             # Check the closing entry.
             closing_entry = order.session_move_id
@@ -799,7 +797,7 @@ class TestPointOfSaleFlow(CommonPosTest):
                     {'payment_method_id': self.bank_payment_method.id, 'amount': 23.0},
                 ],
             })
-            self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+            self.pos_config_usd.current_session_id.close_session_from_ui()
 
             # Check the closing entry.
             closing_entry = order.session_move_id
@@ -883,7 +881,7 @@ class TestPointOfSaleFlow(CommonPosTest):
                 {'payment_method_id': self.bank_payment_method.id, 'amount': 20.0},
             ],
         })
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
         with freeze_time('2020-01-03'):
             order.partner_id = self.partner_stva.id
             order.action_pos_order_invoice()
@@ -942,8 +940,8 @@ class TestPointOfSaleFlow(CommonPosTest):
             ],
         })
         current_session = self.pos_config_usd.current_session_id
-        current_session.action_pos_session_closing_control()
-        self.assertEqual(current_session.move_id.line_ids[0].account_id.id, account.id)
+        current_session.close_session_from_ui()
+        self.assertEqual(current_session.move_ids.line_ids[0].account_id.id, account.id)
 
     def test_tracked_product_with_owner(self):
         self.stock_location = self.company_data['default_warehouse'].lot_stock_id
@@ -978,7 +976,7 @@ class TestPointOfSaleFlow(CommonPosTest):
             ],
         })
         current_session = self.pos_config_usd.current_session_id
-        current_session.action_pos_session_closing_control()
+        current_session.close_session_from_ui()
         self.assertEqual(current_session.picking_ids.move_line_ids.owner_id.id, self.partner_adgu.id)
 
     def test_order_refund_with_invoice(self):
@@ -1002,7 +1000,7 @@ class TestPointOfSaleFlow(CommonPosTest):
             ]
         })
 
-        current_session.action_pos_session_closing_control()
+        current_session.close_session_from_ui()
         invoices = self.env['account.move'].search([('move_type', '=', 'out_invoice')], order='id desc', limit=1)
         credit_notes = self.env['account.move'].search([('move_type', '=', 'out_refund')], order='id desc', limit=1)
         self.assertEqual(credit_notes.ref, "Reversal of: "+invoices.name)
@@ -1054,7 +1052,7 @@ class TestPointOfSaleFlow(CommonPosTest):
             ],
         })
 
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
         order.picking_ids._action_done()
         self.assertEqual(len(order.picking_ids.move_ids), 2)
 
@@ -1093,7 +1091,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         })
 
         current_session = self.pos_config_usd.current_session_id
-        current_session.action_pos_session_closing_control()
+        current_session.close_session_from_ui()
         refund_payment = refund.payment_ids[0]
         self.assertEqual(refund_payment.amount, -25.0)
         self.assertEqual(refund.amount_total, -23.00)
@@ -1152,7 +1150,7 @@ class TestPointOfSaleFlow(CommonPosTest):
                 {'payment_method_id': self.cash_payment_method.id, 'amount': 30},
             ],
         })
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
         self.assertEqual(order.state, 'done')
 
         # Quantity decreased because from the same location
@@ -1173,7 +1171,6 @@ class TestPointOfSaleFlow(CommonPosTest):
         sub_pos_config = self.env['pos.config'].with_company(branch).create({
             'name': 'Main',
             'journal_id': self.company_data['default_journal_sale'].id,
-            'invoice_journal_id': self.company_data['default_journal_sale'].id,
             'payment_method_ids': [(4, bank_payment_method.id)],
         })
 
@@ -1194,7 +1191,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         })
 
         current_session = sub_pos_config.current_session_id
-        sub_pos_config.current_session_id.action_pos_session_closing_control()
+        sub_pos_config.current_session_id.close_session_from_ui()
         self.assertEqual(current_session.state, 'closed', msg='State of current session should be closed.')
 
     def test_pos_branch_payment_method_config(self):
@@ -1213,7 +1210,6 @@ class TestPointOfSaleFlow(CommonPosTest):
         sub_pos_config = self.env['pos.config'].with_company(branch).create({
             'name': 'Main',
             'journal_id': self.company_data['default_journal_sale'].id,
-            'invoice_journal_id': self.company_data['default_journal_sale'].id,
         })
 
         with self.assertRaises(ValidationError, msg="The points of sale for the payment method Bank must belong to its company."):
@@ -1235,7 +1231,7 @@ class TestPointOfSaleFlow(CommonPosTest):
             ],
         })
 
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
         order_lot_id = order.picking_ids.move_line_ids.lot_id
         self.assertEqual(order_lot_id.name, '1001')
         self.assertTrue(all(
@@ -1288,24 +1284,11 @@ class TestPointOfSaleFlow(CommonPosTest):
                 {'payment_method_id': self.bank_payment_method.id, 'amount': 10},
             ],
         })
-        self.pos_config_usd.current_session_id.action_pos_session_closing_control()
+        self.pos_config_usd.current_session_id.close_session_from_ui()
         purchase_order = self.env['purchase.order'].search([], limit=1)
         self.assertEqual(purchase_order.order_line.product_qty, 1)
         self.assertEqual(purchase_order.order_line.product_id.id,
                         self.ten_dollars_with_15_incl.product_variant_id.id)
-
-    def test_state_when_closing_register(self):
-        self.create_backend_pos_order({
-            'line_data': [
-                {'product_id': self.ten_dollars_with_10_incl.product_variant_id.id},
-            ],
-            'payment_data': [
-                {'payment_method_id': self.bank_payment_method.id, 'amount': 10},
-            ],
-        })
-        current_session = self.pos_config_usd.current_session_id
-        current_session.action_pos_session_closing_control(bank_payment_method_diffs={self.bank_payment_method.id: 5.00})
-        self.assertEqual(current_session.state, 'closed')
 
     def test_change_with_card_only(self):
         """Test that the change is not skipped if order was overpaid only with card"""
@@ -1798,8 +1781,7 @@ class TestPointOfSaleFlow(CommonPosTest):
             .filtered(lambda p: p.payment_method_id.type == 'cash')
             .mapped('amount')
         )
-        current_session.post_closing_cash_details(total_cash_payment)
-        current_session.close_session_from_ui()
+        current_session.close_session_from_ui(total_cash_payment)
 
         # Ensure the session is closed
         self.assertEqual(current_session.state, 'closed')
@@ -1858,7 +1840,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         })
         order_payment.with_context(**payment_context).check()
 
-        session_id.action_pos_session_closing_control(bank_payment_method_diffs={self.bank_payment_method.id: -10.00})
+        session_id.close_session_from_ui()
         self.bank_payment_move = session_id._get_related_account_moves().filtered(lambda move: 'Combine Bank' in move.ref)
         self.assertRecordValues(self.bank_payment_move.line_ids.sorted('balance'), [{
             'balance': -100.0,
@@ -1934,8 +1916,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         self.env['pos.order'].sync_from_ui([pos_order_data])
 
         total_cash_payment = sum(current_session.mapped('order_ids.payment_ids').filtered(lambda payment: payment.payment_method_id.type == 'cash').mapped('amount'))
-        current_session.post_closing_cash_details(total_cash_payment)
-        current_session.close_session_from_ui()
+        current_session.close_session_from_ui(total_cash_payment)
 
         pos_order = self.env['pos.order'].search([])
         pos_order.action_pos_order_invoice()
@@ -2049,7 +2030,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         session = self.pos_config_usd.current_session_id
         session.set_opening_control(0, None)
         current_session_name = session.name
-        session.action_pos_session_closing_control()
+        session.close_session_from_ui()
 
         self.pos_config_usd.open_ui()
         session = self.pos_config_usd.current_session_id
@@ -2200,7 +2181,7 @@ class TestPointOfSaleFlow(CommonPosTest):
 
         self.env['pos.order'].sync_from_ui([product_order])
         current_session.close_session_from_ui()
-        order_balance = current_session.move_id.line_ids.filtered(
+        order_balance = current_session.move_ids.line_ids.filtered(
             lambda l: l.account_id.account_type == "asset_receivable"
             and l.partner_id == self.partner
         ).balance
@@ -2393,7 +2374,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         self.assertEqual(current_session.state, 'closed')
 
         order_no_invoice.action_pos_order_invoice()
-        customer_account_receivable_entry = current_session.move_id.line_ids.filtered(lambda l: l.partner_id == self.partner)
+        customer_account_receivable_entry = current_session.move_ids.line_ids.filtered(lambda l: l.partner_id == self.partner)
         reversal_receivable_entry = order_no_invoice.reversed_move_ids.line_ids.filtered(lambda l: l.account_id == self.partner.property_account_receivable_id)
         self.assertTrue(customer_account_receivable_entry.reconciled)
         self.assertTrue(reversal_receivable_entry.reconciled)

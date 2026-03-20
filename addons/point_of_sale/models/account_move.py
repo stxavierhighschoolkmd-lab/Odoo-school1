@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-
-from odoo import fields, models, api, _
+from odoo import _, api, fields, models
 
 
 class AccountMove(models.Model):
@@ -14,8 +12,23 @@ class AccountMove(models.Model):
     reversed_pos_order_id = fields.Many2one('pos.order', string="Reversed POS Order",
         index='btree_not_null',
         help="The pos order that was reverted after closing the session to create an invoice for it.")
-    pos_session_ids = fields.One2many("pos.session", "move_id", "POS Sessions")
+    pos_session_ids = fields.One2many("pos.session", compute="_compute_pos_sessions", search="_search_pos_sessions", string="POS Sessions")
+    pos_session_from_sales_ids = fields.One2many("pos.session", "sales_move_id", "POS Sessions from Sales")
+    pos_session_from_refunds_ids = fields.One2many("pos.session", "refunds_move_id", "POS Sessions from Refunds")
     pos_order_count = fields.Integer(compute="_compute_origin_pos_count", string='POS Order Count')
+
+    @api.depends('pos_session_from_sales_ids', 'pos_session_from_refunds_ids')
+    def _compute_pos_sessions(self):
+        for move in self:
+            move.pos_session_ids = move.pos_session_from_sales_ids | move.pos_session_from_refunds_ids
+
+    def _search_pos_sessions(self, operator, value):
+        sessions = self.env['pos.session'].search([('id', operator, value)])
+        return [
+            '|',
+            ('pos_session_from_sales_ids', 'in', sessions.ids),
+            ('pos_session_from_refunds_ids', 'in', sessions.ids),
+        ]
 
     @api.depends('pos_order_ids')
     def _compute_origin_pos_count(self):
@@ -33,11 +46,10 @@ class AccountMove(models.Model):
             if move.pos_session_ids:
                 move.always_tax_exigible = True
 
-
     def _get_invoiced_lot_values(self):
         self.ensure_one()
 
-        lot_values = super(AccountMove, self)._get_invoiced_lot_values()
+        lot_values = super()._get_invoiced_lot_values()
 
         if self.state == 'draft':
             return lot_values
@@ -112,20 +124,3 @@ class AccountMove(models.Model):
     @api.model
     def _load_pos_data_domain(self, data, config):
         return False
-
-class AccountMoveLine(models.Model):
-    _inherit = 'account.move.line'
-
-    def _get_cogs_value(self):
-        self.ensure_one()
-        if not self.product_id:
-            return self.price_unit
-        price_unit = super()._get_cogs_value()
-        sudo_order = self.move_id.sudo().pos_order_ids
-        if sudo_order:
-            price_unit = sudo_order._get_pos_anglo_saxon_price_unit(self.product_id, self.quantity)
-        return price_unit
-
-    def _compute_name(self):
-        amls = self.filtered(lambda l: not l.move_id.pos_session_ids)
-        super(AccountMoveLine, amls)._compute_name()

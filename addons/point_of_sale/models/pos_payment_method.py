@@ -1,6 +1,6 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import BinaryBytes, file_open
+from odoo.tools import BinaryBytes, file_open, float_compare
 
 
 class PosPaymentMethod(models.Model):
@@ -66,10 +66,13 @@ class PosPaymentMethod(models.Model):
         string='Identify Customer',
         default=False,
         help='Forces to set a customer when using this payment method and splits the journal entries for each customer. It could slow down the closing process.')
+    account_bank_statement_id = fields.Many2one(
+        'account.bank.statement',
+        string='Cash Lines',
+        readonly=True)
     open_session_ids = fields.Many2many('pos.session', string='Pos Sessions', compute='_compute_open_session_ids', help='Open PoS sessions that are using this payment method.')
     config_ids = fields.Many2many('pos.config', string='Point of Sale')
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
-    default_pos_receivable_account_name = fields.Char(related="company_id.account_default_pos_receivable_account_id.display_name", string="Default Receivable Account Name")
     active = fields.Boolean(default=True)
     type = fields.Selection(selection=[('cash', 'Cash'), ('bank', 'Bank'), ('pay_later', 'Customer Account')], compute="_compute_type")
     custom_image = fields.Image("Custom Image", max_width=90, max_height=90)
@@ -84,7 +87,6 @@ class PosPaymentMethod(models.Model):
         help='Type of QR-code to be generated for this payment method.',
     )
     hide_qr_code_method = fields.Boolean(compute='_compute_hide_qr_code_method')
-
     payment_provider = fields.Selection(selection=lambda self: self._get_provider_selection(), string='Payment Provider', help='Payment provider that will be used to process payments made with this payment method.')
     available_payment_providers = fields.Json(compute='_compute_available_payment_providers')
 
@@ -252,7 +254,13 @@ class PosPaymentMethod(models.Model):
         for vals in vals_list:
             if vals.get('payment_method_type', False):
                 self._force_payment_method_type_values(vals, vals['payment_method_type'])
-        return super().create(vals_list)
+        payment_methods = super().create(vals_list)
+        for pm in payment_methods:
+            if pm.type != 'cash':
+                continue
+            pm._ensure_account_bank_statement()
+
+        return payment_methods
 
     def write(self, vals):
         if self._is_write_forbidden(set(vals.keys())):
@@ -263,6 +271,7 @@ class PosPaymentMethod(models.Model):
             self._force_payment_method_type_values(vals, vals['payment_method_type'])
             return super().write(vals)
 
+        old_type = self.type
         pmt_terminal = self.filtered(lambda pm: pm.payment_method_type == 'terminal')
         pmt_bank_qr = self.filtered(lambda pm: pm.payment_method_type == 'bank_qr_code')
         pmt_external_qr = self.filtered(lambda pm: pm.payment_method_type == 'external_qr')
@@ -281,6 +290,12 @@ class PosPaymentMethod(models.Model):
             res = super().write(forced_vals) and res
         if not_pmt:
             res = super(PosPaymentMethod, not_pmt).write(vals) and res
+
+        if 'type' in vals and old_type == 'cash' and vals['type'] != 'cash':
+            raise ValueError(_('You cannot change the type of a cash payment method.'))
+
+        if 'type' in vals and old_type != 'cash' and vals['type'] == 'cash':
+            self._ensure_account_bank_statement()
 
         return res
 
@@ -362,3 +377,87 @@ class PosPaymentMethod(models.Model):
 
         return payment_bank.with_context(is_online_qr=True).build_qr_code_base64(
             float(amount), free_communication, structured_communication, currency, debtor_partner, self.qr_code_method, silent_errors=False)
+
+    ##############################################################
+    #                 Accounting related methods                 #
+    ##############################################################
+    def _create_bank_payment_line(self, session, amount, partner=None):
+        self.ensure_one()
+        outstanding_account = self.outstanding_account_id
+        partner_account = partner.property_account_receivable_id if partner else None
+        destination_account = partner_account or session._get_receivable_account()
+        rounding = session.currency_id.rounding
+
+        # TODO: add a list of pos.order that was paid though this combined PM
+        memo = _(
+            'Combine %(payment_method)s POS payments from %(session)s',
+            payment_method=self.name,
+            session=session.name,
+        )
+        account_payment = self.env['account.payment'].sudo().create({
+            'amount': abs(amount),
+            'journal_id': self.journal_id.id,
+            'force_outstanding_account_id': outstanding_account.id,
+            'destination_account_id': destination_account.id,
+            'memo': memo,
+            'pos_payment_method_id': self.id,
+            'pos_session_id': session.id,
+            'company_id': self.company_id.id,
+        })
+
+        if float_compare(amount, 0, precision_rounding=rounding) < 0:
+            # revert the accounts because account.payment doesn't accept
+            # negative amount.
+            account_payment.write({
+                'outstanding_account_id': account_payment.destination_account_id,
+                'destination_account_id': account_payment.outstanding_account_id,
+                'payment_type': 'outbound',
+            })
+
+        account_payment.action_post()
+        return account_payment.move_id.line_ids.filtered(
+            lambda line: line.account_id == destination_account,
+        )
+
+    def _create_cash_payment_line(self, session, amount, partner=None, message=None):
+        """
+        Use account.bank.statement.line for cash PMs.
+        Pass counterpart_account_id to bypass the journal suspense account
+        and land the counterpart directly on the POS receivable, so it
+        can be reconciled with the out_receipt payment_term line below.
+        """
+        self.ensure_one()
+        if self.type != 'cash':
+            raise ValueError(_('Only cash payment methods can use cash payment lines.'))
+
+        BankStatementLine = self.env['account.bank.statement.line'].with_context(
+            no_retrieve_partner=True,
+        )
+        partner_account = partner.property_account_receivable_id if partner else None
+        destination_account = partner_account or session._get_receivable_account()
+        statement_line = BankStatementLine.create({
+            'amount': amount,
+            'journal_id': self.journal_id.id,
+            'date': fields.Date.context_today(self),
+            'partner_id': partner.id if partner else None,
+            'statement_id': self.account_bank_statement_id.id,
+            'pos_session_id': session.id,
+            'counterpart_account_id': destination_account.id,
+            'payment_ref': message or _(
+                '"%(payment_method)s" POS payments from %(session)s',
+                payment_method=self.name,
+                session=session.name,
+            ),
+        })
+        return statement_line.move_id.line_ids.filtered(
+            lambda line, acc=destination_account: line.account_id == acc,
+        )
+
+    def _ensure_account_bank_statement(self):
+        if not self.account_bank_statement_id:
+            self.account_bank_statement_id = self.env['account.bank.statement'].create({
+                'journal_id': self.journal_id.id,
+                'balance_start': 0,
+                'balance_end_real': 0,
+                'name': _('Cash Statement for %s', self.name),
+            })

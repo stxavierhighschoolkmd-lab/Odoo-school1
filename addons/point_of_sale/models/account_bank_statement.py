@@ -1,11 +1,19 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-# Copyright (C) 2004-2008 PC Solutions (<http://pcsol.be>). All Rights Reserved
-from odoo import fields, models, api, _
-from odoo.exceptions import UserError
+from odoo import api, fields, models
 
 
-class AccountBankStatementLine(models.Model):
-    _inherit = 'account.bank.statement.line'
+class AccountBankStatement(models.Model):
+    _inherit = 'account.bank.statement'
 
-    pos_session_id = fields.Many2one('pos.session', string="Session", copy=False, index='btree_not_null')
+    pos_payment_method_id = fields.Many2one(
+        'pos.payment.method',
+        string="Payment Method",
+        compute='_compute_pos_payment_method',
+        store=True)
+
+    @api.depends('pos_payment_method_id.type')
+    def _compute_pos_payment_method(self):
+        for statement in self:
+            statement.pos_payment_method_id = self.env['pos.payment.method'].search([
+                ('account_bank_statement_id', '=', statement.id),
+            ], limit=1)

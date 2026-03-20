@@ -56,7 +56,7 @@ class TestAngloSaxonCommon(AccountTestInvoicingCommon):
         cls.pos_config.journal_id = sale_journal
         cls.cash_journal = cls.env['account.journal'].create({'name': 'CASH journal', 'type': 'cash', 'code': 'CSH00'})
         cls.sale_journal = cls.env['account.journal'].create({'name': 'SALE journal', 'type': 'sale', 'code': 'INV00'})
-        cls.pos_config.invoice_journal_id = cls.sale_journal
+        cls.pos_config.journal_id = cls.sale_journal
         cls.cash_payment_method = cls.env['pos.payment.method'].create({
             'name': 'Cash Test',
             'journal_id': cls.cash_journal.id,
@@ -116,8 +116,7 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
 
         # I close the current session to generate the journal entries
         current_session_id = self.pos_config.current_session_id
-        current_session_id.post_closing_cash_details(450.0)
-        current_session_id.close_session_from_ui()
+        current_session_id.close_session_from_ui(450.0)
         self.assertEqual(current_session_id.state, 'closed', 'Check that session is closed')
 
         # Check if there is account_move in the order.
@@ -199,13 +198,12 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
 
         # validate the session
         current_session_id = self.pos_config.current_session_id
-        current_session_id.post_closing_cash_details(7 * 450.0)
-        current_session_id.close_session_from_ui()
+        current_session_id.close_session_from_ui(7 * 450.0)
 
         # check the anglo saxon move lines
         # with uninvoiced orders, the account_move field of pos.order is empty.
         # the accounting lines are in move_id of pos.session.
-        session_move = pos_order_pos0.session_id.move_id
+        session_move = pos_order_pos0.session_id.move_ids
         line = session_move.line_ids.filtered(lambda l: l.debit and l.account_id == self.category.property_account_expense_categ_id)
         self.assertEqual(session_move.journal_id, self.pos_config.journal_id)
         self.assertEqual(line.debit, 27, 'As it is a fifo product, the move\'s value should be 5*5 + 2*1')
@@ -229,7 +227,7 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
 
         # check the anglo saxon move lines
         line = pos_order_pos0.account_move.line_ids.filtered(lambda l: l.debit and l.account_id == self.category.property_account_expense_categ_id)
-        self.assertEqual(pos_order_pos0.account_move.journal_id, self.pos_config.invoice_journal_id)
+        self.assertEqual(pos_order_pos0.account_move.journal_id, self.pos_config.journal_id)
         self.assertEqual(line.debit, 27, 'As it is a fifo product, the move\'s value should be 5*5 + 2*1')
 
     def test_fifo_valuation_with_invoice_when_pos_customer_is_delivery_type(self):
@@ -261,7 +259,7 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
 
         # check the anglo saxon move lines
         line = pos_order_pos0.account_move.line_ids.filtered(lambda l: l.debit and l.account_id == self.category.property_account_expense_categ_id)
-        self.assertEqual(pos_order_pos0.account_move.journal_id, self.pos_config.invoice_journal_id)
+        self.assertEqual(pos_order_pos0.account_move.journal_id, self.pos_config.journal_id)
         self.assertEqual(line.debit, 27, 'As it is a fifo product, the move\'s value should be 5*5 + 2*1')
 
     @skip('Temporary to fast merge new valuation')
@@ -313,8 +311,7 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
 
         # I close the current session to generate the journal entries
         current_session_id = self.pos_config.current_session_id
-        current_session_id.post_closing_cash_details(450.0)
-        current_session_id.close_session_from_ui()
+        current_session_id.close_session_from_ui(450.0)
         self.assertEqual(current_session_id.state, 'closed', 'Check that session is closed')
 
         self.assertEqual(len(current_session.picking_ids), 1, "There should be 2 pickings")
@@ -510,8 +507,7 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
 
         # I close the current session to generate the journal entries
         current_session_id = self.pos_config.current_session_id
-        current_session_id.post_closing_cash_details(300.0)
-        current_session_id.close_session_from_ui()
+        current_session_id.close_session_from_ui(300.0)
         self.assertEqual(current_session_id.state, 'closed', 'Check that session is closed')
 
         current_session.picking_ids.move_ids.filtered(lambda m: m.product_id == self.product_2).write({'quantity': 1, 'picked': True})

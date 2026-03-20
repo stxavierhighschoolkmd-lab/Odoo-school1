@@ -4,10 +4,8 @@ from odoo import models
 class PosOrder(models.Model):
     _inherit = 'pos.order'
 
-    def _prepare_product_aml_dict(self, base_line_vals, update_base_line_vals, rate, sign):
-        res = super()._prepare_product_aml_dict(base_line_vals, update_base_line_vals, rate, sign)
+    def _grouping_function(self, line):
+        res = super()._grouping_function(line)  # Warning return an immutable tuple
         if self.company_id.account_fiscal_country_id.code == 'IN':
-            res.update({
-                'l10n_in_hsn_code': base_line_vals['l10n_in_hsn_code'],
-            })
+            res += (line.l10n_in_hsn_code,)
         return res

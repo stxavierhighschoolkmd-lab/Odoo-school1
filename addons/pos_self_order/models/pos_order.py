@@ -218,7 +218,7 @@ class PosOrder(models.Model):
                 self._compute_line_price(line)
 
         order_lines = self.lines
-        base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
+        base_lines = order_lines._prepare_base_lines_for_taxes_computation()
         self.env['account.tax']._add_tax_details_in_base_lines(base_lines, company)
         self.env['account.tax']._round_base_lines_tax_details(base_lines, company)
         tax_totals = self.env['account.tax']._get_tax_totals_summary(

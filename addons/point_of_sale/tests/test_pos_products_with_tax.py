@@ -163,7 +163,7 @@ class TestPoSProductsWithTax(TestPoSCommon):
             self.assertAlmostEqual(sum(invoices.mapped('amount_total')), 481.08)
 
         def _after_closing_cb():
-            session_move = self.pos_session.move_id
+            session_move = self.pos_session.move_ids
             tax_lines = session_move.line_ids.filtered(lambda line: line.account_id == self.tax_received_account)
 
             manually_calculated_taxes = (-6.81, -44.54)
@@ -280,7 +280,7 @@ class TestPoSProductsWithTax(TestPoSCommon):
 
         def _after_closing_cb():
             manually_calculated_taxes = (4.01, 6.36)  # should be positive since it is return order
-            tax_lines = self.pos_session.move_id.line_ids.filtered(lambda line: line.account_id == self.tax_received_account)
+            tax_lines = self.pos_session.move_ids.line_ids.filtered(lambda line: line.account_id == self.tax_received_account)
             self.assertAlmostEqual(sum(manually_calculated_taxes), sum(tax_lines.mapped('balance')))
             for t1, t2 in zip(sorted(manually_calculated_taxes), sorted(tax_lines.mapped('balance'))):
                 self.assertAlmostEqual(t1, t2, msg='Taxes should be correctly combined and should be debit.')
@@ -350,9 +350,9 @@ class TestPoSProductsWithTax(TestPoSCommon):
             (product1, 1),
             (product2, -1),
         ])])
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
-        lines = self.pos_session.move_id.line_ids.sorted('balance')
+        lines = self.pos_session.move_ids.line_ids.sorted('balance')
         self.assertEqual(2, len(lines.filtered(lambda l: l.tax_ids)), "Taxes should have been set on 2 lines")
         self.assertEqual(4, len(lines.filtered(lambda l: l.tax_tag_ids)), "Tags should have been set on 4 lines")
         self.assertRecordValues(lines, [
@@ -396,9 +396,9 @@ class TestPoSProductsWithTax(TestPoSCommon):
             (product1, 1),
             (product2, -1),
         ])])
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
-        lines = self.pos_session.move_id.line_ids.sorted('balance')
+        lines = self.pos_session.move_ids.line_ids.sorted('balance')
         self.assertEqual(2, len(lines.filtered(lambda l: l.tax_ids)), "Taxes should have been set on 2 lines")
         self.assertEqual(4, len(lines.filtered(lambda l: l.tax_tag_ids)), "Tags should have been set on 4 lines")
         self.assertRecordValues(lines, [
@@ -442,9 +442,9 @@ class TestPoSProductsWithTax(TestPoSCommon):
             (product1, 1, 10),
             (product2, -1, 10),
         ])])
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
-        lines = self.pos_session.move_id.line_ids.sorted('balance')
+        lines = self.pos_session.move_ids.line_ids.sorted('balance')
 
         self.assertEqual(2, len(lines.filtered(lambda l: l.tax_ids)), "Taxes should have been set on 2 lines")
         self.assertEqual(4, len(lines.filtered(lambda l: l.tax_tag_ids)), "Tags should have been set on 4 lines")
@@ -489,9 +489,9 @@ class TestPoSProductsWithTax(TestPoSCommon):
             (product1, 6, 5),
             (product2, -6, 5),
         ])])
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
-        lines = self.pos_session.move_id.line_ids.sorted('balance')
+        lines = self.pos_session.move_ids.line_ids.sorted('balance')
 
         self.assertEqual(2, len(lines.filtered(lambda l: l.tax_ids)), "Taxes should have been set on 2 lines")
         self.assertEqual(4, len(lines.filtered(lambda l: l.tax_tag_ids)), "Tags should have been set on 4 lines")
@@ -534,9 +534,9 @@ class TestPoSProductsWithTax(TestPoSCommon):
         self.env['pos.order'].sync_from_ui([self.create_ui_order_data([
             (zero_amount_product, 1),
         ])])
-        self.pos_session.action_pos_session_validate()
+        self.pos_session.close_session_from_ui()
 
-        lines = self.pos_session.move_id.line_ids.sorted('balance')
+        lines = self.pos_session.move_ids.line_ids.sorted('balance')
 
         self.assertRecordValues(lines, [
             {'account_id': self.tax_received_account.id, 'balance': -1},
