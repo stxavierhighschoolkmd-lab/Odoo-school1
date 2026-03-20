@@ -83,16 +83,14 @@ export class ImagePlugin extends Plugin {
             },
         ],
         toolbar_groups: [
-            withSequence(23, { id: "image_preview", namespaces: ["image"] }),
-            withSequence(26, { id: "image_padding", namespaces: ["image"] }),
-            withSequence(26, { id: "image_size", namespaces: ["image"] }),
             withSequence(26, { id: "image_modifiers", namespaces: ["image"] }),
+            withSequence(26, { id: "image_size", namespaces: ["image"] }),
             withSequence(32, { id: "image_delete", namespaces: ["image"] }),
         ],
         toolbar_items: [
             {
                 id: "image_preview",
-                groupId: "image_preview",
+                groupId: "image_actions",
                 commandId: "previewImage",
             },
             {
@@ -111,7 +109,7 @@ export class ImagePlugin extends Plugin {
             },
             {
                 id: "image_padding",
-                groupId: "image_padding",
+                groupId: "image_modifiers",
                 description: _t("Set image padding"),
                 Component: ImageToolbarDropdown,
                 props: {

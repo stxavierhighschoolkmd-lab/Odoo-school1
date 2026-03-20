@@ -235,20 +235,20 @@ export class LinkPlugin extends Plugin {
                 commandId: "removeLinkFromSelection",
                 isDisabled: () => this.removeLinkFromSelectionIsDisabled(),
             },
-            {
+            withSequence(20, {
                 id: "link",
-                groupId: "image_link",
+                groupId: "image_actions",
                 commandId: "openLinkTools",
                 isActive: isLinkActive,
                 isDisabled: (sel, nodes) =>
                     !this.isLinkAllowedOnSelection() || nodes.some((node) => !isStylable(node)),
-            },
-            {
+            }),
+            withSequence(30, {
                 id: "unlink",
-                groupId: "image_link",
+                groupId: "image_actions",
                 commandId: "removeLinkFromSelection",
                 isDisabled: () => this.removeLinkFromSelectionIsDisabled(),
-            },
+            }),
         ],
 
         powerbox_categories: withSequence(50, { id: "navigation", name: _t("Navigation") }),
