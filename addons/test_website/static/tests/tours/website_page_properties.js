@@ -233,7 +233,7 @@ function testWebsitePageProperties() {
         {
             // TODO: this needs to be tested
             content: "Make visible with password only",
-            trigger: ".o-dropdown-item[data-choice-index='3']",
+            trigger: ".o-dropdown-item[data-choice-index='2']",
             run: "click",
         },
         {
