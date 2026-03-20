@@ -69,7 +69,6 @@ export class PosConfig extends models.ServerModel {
             iface_cashdrawer: false,
             iface_big_scrollbars: false,
             iface_print_auto: false,
-            iface_print_skip_screen: true,
             iface_tax_included: "total",
             iface_available_categ_ids: [],
             customer_display_bg_img: false,
