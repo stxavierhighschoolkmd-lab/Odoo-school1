@@ -228,7 +228,7 @@
                                     <p>
                                         Add the following code to the &lt;head&gt; section of your website:
                                     </p>
-                                    <field class="text-muted" name="script_external" readonly="1" widget="CopyClipboardChar"/>
+                                    <field class="text-muted" name="script_external" readonly="1" widget="script_external"/>
                                     <br/><br/>
                                     <p>
                                         Alternatively, share this URL with your customers or suppliers via email:
