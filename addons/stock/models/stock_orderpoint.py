@@ -444,17 +444,14 @@ class StockWarehouseOrderpoint(models.Model):
 
     def _get_default_route(self):
         self.ensure_one()
-        rules_groups = self.env['stock.rule']._read_group([
-            '|', ('route_id.product_selectable', '!=', False),
-            ('route_id.product_categ_selectable', '!=', False),
-            ('location_dest_id', 'in', self.location_id.ids),
-            ('action', 'in', ['pull_push', 'pull']),
-            ('route_id.active', '!=', False)
-        ], ['location_dest_id', 'route_id'])
-        for location_dest, route in rules_groups:
-            if route in (self.product_id.route_ids | self.product_id.categ_id.route_ids) and self.location_id == location_dest:
-                return route
-        return self.env['stock.route']
+        applicable_routes = self.product_id.route_ids | self.product_id.categ_id.total_route_ids
+        matching_route = applicable_routes.filtered(lambda r: r.rule_ids.filtered(
+            lambda rule: rule.location_dest_id == self.location_id
+            and rule.action in ['pull_push', 'pull']
+            and r.active
+        ))
+
+        return matching_route[0] if matching_route else self.env['stock.route']
 
     def _get_replenishment_multiple_alternative(self, qty_to_order):
         """
