@@ -494,6 +494,75 @@ export class DomMutationPlugin extends Plugin {
         this.currentChanges.updateExternal(key, value);
     }
 
+    // =======
+    // Staging
+    // =======
+
+    /**
+     * Set the serialized selection of the currentChanges.
+     *
+     * This method is used to save a serialized selection in the currentChanges.
+     * It will be necessary if the commit is reverted at some point because we
+     * need to set the selection to where it was before any mutation was made.
+     *
+     * It means that we should not call this method in the middle of mutations
+     * because if a selection is set onto a node that is edited/added/removed
+     * within the same commit, it might become impossible to set the selection
+     * when reverting the commit.
+     */
+    stageSelection() {
+        this.stageFocus();
+        const selection = this.dependencies.selection.getEditableSelection();
+        if (this.hasStagedMutations()) {
+            console.warn(
+                `should not have any "characterData", "remove" or "add" mutations in current changes when you update the selection`
+            );
+            return;
+        }
+        this.currentChanges.updateSelection(this.serializeSelection(selection));
+    }
+
+    /**
+     * Set the serialized focus of the currentChanges.
+     */
+    stageFocus() {
+        let activeElement = this.document.activeElement;
+        if (activeElement.contains(this.editable)) {
+            activeElement = this.editable;
+        }
+        if (this.editable.contains(activeElement)) {
+            this.currentChanges.updateActiveElement(this.setNodeId(activeElement));
+        }
+    }
+
+    /**
+     * Disable the warning in @see hasStagedMutations and return a function that
+     * re-enables it.
+     *
+     * @returns { () => void }
+     */
+    disableHasStagedMutationsWarning() {
+        this.ignoreHasStagedMutations = true;
+        return () => {
+            this.ignoreHasStagedMutations = false;
+        };
+    }
+
+    /**
+     * Return true if the staged changes include mutations of types
+     * `characterData`, `remove` or `add`, false otherwise.
+     *
+     * @returns { boolean }
+     */
+    hasStagedMutations() {
+        if (this.ignoreHasStagedMutations) {
+            return false;
+        }
+        return !!this.currentChanges.mutations.find((m) =>
+            ["characterData", "remove", "add"].includes(m.type)
+        );
+    }
+
     // ===================
     // Mutation processing
     // ===================
@@ -1294,7 +1363,9 @@ export class DomMutationPlugin extends Plugin {
         }
     }
 
-    // Observer stuff
+    // ========
+    // Observer
+    // ========
 
     enableObserver() {
         this.observer.observe(this.editable, {
@@ -1375,22 +1446,6 @@ export class DomMutationPlugin extends Plugin {
      */
     isObservedNode(node) {
         return this.nodeMap.hasNode(node);
-    }
-
-    disableHasStagedMutationsWarning() {
-        this.ignoreHasStagedMutations = true;
-        return () => {
-            this.ignoreHasStagedMutations = false;
-        };
-    }
-
-    hasStagedMutations() {
-        if (this.ignoreHasStagedMutations) {
-            return false;
-        }
-        return !!this.currentChanges.mutations.find((m) =>
-            ["characterData", "remove", "add"].includes(m.type)
-        );
     }
 
     /**
@@ -1537,45 +1592,6 @@ export class DomMutationPlugin extends Plugin {
         // Remove entry, so it won't be used again.
         stateMap.delete(key);
         return { ...record, oldValue: lastObservedValue };
-    }
-
-    // Staging stuff
-
-    /**
-     * Set the serialized selection of the currentChanges.
-     *
-     * This method is used to save a serialized selection in the currentChanges.
-     * It will be necessary if the commit is reverted at some point because we
-     * need to set the selection to where it was before any mutation was made.
-     *
-     * It means that we should not call this method in the middle of mutations
-     * because if a selection is set onto a node that is edited/added/removed
-     * within the same commit, it might become impossible to set the selection
-     * when reverting the commit.
-     */
-    stageSelection() {
-        this.stageFocus();
-        const selection = this.dependencies.selection.getEditableSelection();
-        if (this.hasStagedMutations()) {
-            console.warn(
-                `should not have any "characterData", "remove" or "add" mutations in current changes when you update the selection`
-            );
-            return;
-        }
-        this.currentChanges.updateSelection(this.serializeSelection(selection));
-    }
-
-    /**
-     * Set the serialized focus of the currentChanges.
-     */
-    stageFocus() {
-        let activeElement = this.document.activeElement;
-        if (activeElement.contains(this.editable)) {
-            activeElement = this.editable;
-        }
-        if (this.editable.contains(activeElement)) {
-            this.currentChanges.updateActiveElement(this.setNodeId(activeElement));
-        }
     }
 
     // Custom mutations
