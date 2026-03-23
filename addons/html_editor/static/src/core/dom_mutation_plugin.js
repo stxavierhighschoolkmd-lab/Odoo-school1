@@ -181,23 +181,31 @@ export class DomMutationPlugin extends Plugin {
         "unstash",
         "updateExternal",
 
+        // Observer on/off
+        "ignoreDOMMutations",
+
         // DOM Map Handling
         "getNodeById",
         "getNodeId",
         "serializeSelection",
 
-        // From Original
+        // Staging
         "stageCustomMutation",
-        "applyCustomMutation",
-        "getIsPreviewing",
         "hasStagedMutations",
-        "ignoreDOMMutations",
+        "stageSelection",
+        "stageFocus",
+
+        // Commit creation
+        "createSnapshotCommit",
+
+        // Commit application/reversal
+        "applyCustomMutation",
+
+        // Preview
+        "getIsPreviewing",
         "makePreviewableOperation",
         "makePreviewableAsyncOperation",
         "makeSavePoint",
-        "createSnapshotCommit",
-        "stageSelection",
-        "stageFocus",
     ];
     /** @type {import("plugins").EditorResources} */
     resources = {
