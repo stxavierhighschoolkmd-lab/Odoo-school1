@@ -17,6 +17,7 @@ import {
     undo,
 } from "./_helpers/user_actions";
 import { execCommand } from "./_helpers/userCommands";
+import { nodeToTree } from "@html_editor/utils/dom_info";
 
 describe("reset", () => {
     test("should not add mutations in the current commit from the normalization when calling reset", async () => {
@@ -1233,7 +1234,7 @@ describe("serialization", () => {
         const textNode = editor.document.createTextNode("test");
         p.prepend(textNode);
         editor.shared.domMutation.commit();
-        const serializedNode = domMutationPlugin.serializeNode(textNode);
+        const serializedNode = domMutationPlugin.serializeTree(nodeToTree(textNode));
         const unserializedTextNode = domMutationPlugin.unserializeNode(serializedNode);
         expect(unserializedTextNode).toBe(textNode);
     });

@@ -882,16 +882,6 @@ export class DomMutationPlugin extends Plugin {
     }
 
     /**
-     * Serialize a node and its children.
-     *
-     * @param { Node } node
-     * @returns { SerializedNode | null }
-     */
-    serializeNode(node) {
-        return this.serializeTree(nodeToTree(node));
-    }
-
-    /**
      * @param { Tree } tree
      * @returns { SerializedNode | null }
      */
@@ -1080,7 +1070,7 @@ export class DomMutationPlugin extends Plugin {
         return this.createCommit({
             id: this.dependencies.history.getHistoryCommits().at(-1)?.id,
             type,
-            data: /** @type { DomMutationCommitData } */ {
+            data: {
                 authorTimestamp,
                 mutations: childNodes(this.editable)
                     .filter((node) => this.nodeMap.hasNode(node))
@@ -1088,7 +1078,7 @@ export class DomMutationPlugin extends Plugin {
                         type: "add",
                         parentNodeId: "root",
                         nodeId: this.getNodeId(node),
-                        serializedNode: this.serializeNode(node),
+                        serializedNode: this.serializeTree(nodeToTree(node)),
                         nextNodeId: null,
                     })),
                 activeElementId: null,
@@ -1100,6 +1090,7 @@ export class DomMutationPlugin extends Plugin {
                 },
                 selectionAfter: null,
             },
+            selectionAfter: null,
         });
     }
 
