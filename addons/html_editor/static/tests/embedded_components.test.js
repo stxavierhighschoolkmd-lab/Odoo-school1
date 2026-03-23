@@ -42,7 +42,7 @@ import { Plugin } from "@html_editor/plugin";
 import { cleanHints, processThroughCleanForSave } from "./_helpers/dispatch";
 import { expectElementCount } from "./_helpers/ui_expectations";
 import { renderToElement } from "@web/core/utils/render";
-import { nodeToTree } from "@html_editor/utils/dom_info";
+import { NodeMap, nodeToTree } from "@html_editor/utils/dom_info";
 
 function getConfig(components) {
     return {
@@ -1017,9 +1017,10 @@ describe("In-editor manipulations", () => {
             }
         );
         const domMutationPlugin = plugins.get("domMutation");
-        const node = domMutationPlugin._unserializeNode(
-            domMutationPlugin.serializeTree(nodeToTree(el))
-        )[0];
+        const node = domMutationPlugin.unserializeNode(
+            domMutationPlugin.serializeTree(nodeToTree(el)),
+            new NodeMap()
+        );
         expect(getContent(node, { sortAttrs: true })).toBe(
             `<p data-selection-placeholder=""><br></p><div><p>a</p></div><p data-selection-placeholder=""><br></p><div contenteditable="false" data-embedded="counter" data-oe-protected="true"></div><p data-selection-placeholder=""><br></p>`
         );
@@ -1040,9 +1041,10 @@ describe("In-editor manipulations", () => {
             { config: getConfig([]) }
         );
         const domMutationPlugin = plugins.get("domMutation");
-        const node = domMutationPlugin._unserializeNode(
-            domMutationPlugin.serializeTree(nodeToTree(el))
-        )[0];
+        const node = domMutationPlugin.unserializeNode(
+            domMutationPlugin.serializeTree(nodeToTree(el)),
+            new NodeMap()
+        );
         expect(getContent(node)).toBe(
             `<p data-selection-placeholder=""><br></p><div data-embedded="unknown"><p>UNKNOWN</p></div><p data-selection-placeholder=""><br></p>`
         );
@@ -1275,9 +1277,10 @@ describe("editable descendants", () => {
             }
         );
         const domMutationPlugin = plugins.get("domMutation");
-        const node = domMutationPlugin._unserializeNode(
-            domMutationPlugin.serializeTree(nodeToTree(el))
-        )[0];
+        const node = domMutationPlugin.unserializeNode(
+            domMutationPlugin.serializeTree(nodeToTree(el)),
+            new NodeMap()
+        );
         expect(getContent(node, { sortAttrs: true })).toBe(
             unformat(`
                 <p data-selection-placeholder=""><br></p>
