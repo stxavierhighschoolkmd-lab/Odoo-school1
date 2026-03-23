@@ -705,7 +705,7 @@ class ProductTemplate(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         ''' Store the initial standard price in order to be able to retrieve the cost of a product template for a given date'''
-        templates = super().create(vals_list)
+        templates = super(ProductTemplate, self.with_context(mail_notrack=True)).create(vals_list)
         if self.env.context.get("create_product_product", True):
             templates._create_variant_ids()
 
@@ -716,7 +716,7 @@ class ProductTemplate(models.Model):
                 if vals.get(field_name) and not template[field_name]:
                     related_vals[field_name] = vals[field_name]
             if related_vals:
-                template.write(related_vals)
+                template.with_context(mail_notrack=True).write(related_vals)
 
         return templates
 
