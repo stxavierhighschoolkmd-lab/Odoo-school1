@@ -2230,16 +2230,16 @@ test(`basic grouped list rendering with widget="handle" col`, async () => {
     `,
         groupBy: ["bar"],
     });
-    expect(`thead th:not(.o_list_record_selector)`).toHaveCount(4, {
+    expect(`thead th:not(.o_list_record_selector)`).toHaveCount(5, {
         message:
-            "should have 1 th for checkbox (desktop only), 1 th for handle, 1 th for Foo, 1 th for Bar and 1 for eventual cog",
+            "should have 1 th for checkbox (desktop only), 1 th for handle, 1 th for Foo, 1 th for Bar 1 for Count and 1 for eventual cog",
     });
     expect(`thead th[data-name=foo]`).toHaveCount(1);
     expect(`thead th[data-name=bar]`).toHaveCount(1);
     expect(`thead th[data-name=int_field]`).toHaveCount(1);
     expect(`tr.o_group_header`).toHaveCount(2);
     expect(`th.o_group_name`).toHaveCount(2);
-    expect(`.o_group_header:eq(0) th`).toHaveCount(2); // group name + cog placeholder
+    expect(`.o_group_header:eq(0) th`).toHaveCount(3); // group name + count + cog placeholder
     expect(`.o_group_header:eq(0) .o_list_number`).toHaveCount(0);
 });
 

@@ -200,6 +200,15 @@ export class ListRenderer extends Component {
             altKeyMode: false,
         });
         this.currencyRates = null;
+        this.countColumn = {
+            type: "count",
+            hasLabel: true,
+            label: _t("Count"),
+            name: "__count",
+            options: {
+                allow_order: true,
+            },
+        };
         onWillStart(async () => {
             const needsCurrencyRates = this.props.archInfo.columns.some((column) => {
                 if (column.type !== "field") {
@@ -896,6 +905,9 @@ export class ListRenderer extends Component {
     }
 
     isNumericColumn(column) {
+        if (column.name === "__count") {
+            return true;
+        }
         const { type } = this.fields[column.name];
         return ["float", "integer", "monetary"].includes(type);
     }
@@ -914,8 +926,7 @@ export class ListRenderer extends Component {
 
     isSortable(column) {
         const { hasLabel, name, options } = column;
-        const { sortable } = this.fields[name];
-        return (sortable || options.allow_order) && hasLabel;
+        return (this.fields[name]?.sortable || options.allow_order) && hasLabel;
     }
 
     getSortableIconClass(column) {
@@ -1206,8 +1217,12 @@ export class ListRenderer extends Component {
         if (this.editedRecord || this.props.list.model.useSampleModel) {
             return;
         }
-        const fieldName = column.name;
         const list = this.props.list;
+        if (column.name === "__count") {
+            this.env.searchModel.switchGroupBySort();
+            return;
+        }
+        const fieldName = column.name;
         if (this.isSortable(column)) {
             list.sortBy(fieldName);
         }
@@ -1987,6 +2002,14 @@ export class ListRenderer extends Component {
     get showNoContentHelper() {
         const { model } = this.props.list;
         return this.props.noContentHelp && (model.useSampleModel || !model.hasData());
+    }
+
+    get isListGrouped() {
+        return this.props.list.isGrouped;
+    }
+
+    get showCountColumn() {
+        return this.isListGrouped && !this.env.isSmall;
     }
 
     /**
