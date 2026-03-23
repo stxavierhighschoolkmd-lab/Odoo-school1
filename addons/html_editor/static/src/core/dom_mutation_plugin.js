@@ -975,66 +975,62 @@ export class DomMutationPlugin extends Plugin {
      * Unserialize a node and its children.
      *
      * @param { SerializedNode } node
-     * @returns { Node }
+     * @param { NodeMap } [nodeMap = this.nodeMap]
+     * @returns { Node | null }
      */
-    unserializeNode(node) {
-        let [unserializedNode, newNodesMap] = this._unserializeNode(node, this.nodeMap);
-        if (!unserializedNode) {
-            return null;
-        }
-        const fakeNode = this.document.createElement("fake-el");
-        // TODO AGE: this next line has the effect of REMOVING THE NODE FROM THE
-        // DOM! Is that intended?
-        fakeNode.appendChild(unserializedNode);
-        this.dependencies.sanitize.sanitize(fakeNode, { IN_PLACE: true });
-        unserializedNode = fakeNode.firstChild;
-        if (!unserializedNode) {
-            return null;
-        }
-        // Only assing id to the remaining nodes, otherwise the removed nodes
-        // will still be accessible through the nodeMap and could lead to
-        // security issues.
-        for (const node of [unserializedNode, ...descendants(unserializedNode)]) {
-            if (this.nodeMap.hasNode(node)) {
-                continue;
+    unserializeNode(node, nodeMap = this.nodeMap) {
+        /** @type { Map<Node, string> } */
+        const newNodesMap = new Map();
+        /**
+         * Recursive helper.
+         *
+         * @param { SerializedNode } serializedNode
+         * @returns { Node | null }
+         */
+        const unserialize = (serializedNode) => {
+            let node = nodeMap.getNode(serializedNode.nodeId);
+            if (!node) {
+                if (serializedNode.nodeType === Node.TEXT_NODE) {
+                    node = this.document.createTextNode(serializedNode.textValue);
+                } else if (serializedNode.nodeType === Node.ELEMENT_NODE) {
+                    node = this.document.createElement(serializedNode.tagName);
+                    for (const key in serializedNode.attributes) {
+                        node.setAttribute(key, serializedNode.attributes[key]);
+                    }
+                    node.append(...serializedNode.children.map(unserialize).filter(Boolean));
+                } else {
+                    console.warn(`Can't unserialize a node of type ${serializedNode.nodeType}.`);
+                    return null;
+                }
+                newNodesMap.set(node, serializedNode.nodeId);
             }
-            const id = newNodesMap.get(node);
-            if (id) {
-                this.nodeMap.set(id, node);
-            }
-        }
-        return unserializedNode;
-    }
+            return node;
+        };
 
-    /**
-     * Unserialize a node and its children.
-     * @param { SerializedNode } serializedNode
-     * @param { Map<Node, string> } _map
-     * @returns { [Node, Map<Node, string>] }
-     */
-    _unserializeNode(serializedNode, nodeMap = new NodeMap(), _map = new Map()) {
-        let node = nodeMap.getNode(serializedNode.nodeId);
-        if (node) {
-            return [node, _map];
-        }
-        if (serializedNode.nodeType === Node.TEXT_NODE) {
-            node = this.document.createTextNode(serializedNode.textValue);
-        } else if (serializedNode.nodeType === Node.ELEMENT_NODE) {
-            node = this.document.createElement(serializedNode.tagName);
-            for (const key in serializedNode.attributes) {
-                node.setAttribute(key, serializedNode.attributes[key]);
+        let unserializedNode = unserialize(node, nodeMap);
+        if (unserializedNode) {
+            const fakeNode = this.document.createElement("fake-el");
+            // TODO AGE: this next line has the effect of REMOVING THE NODE FROM
+            // THE DOM! But changing it for a clone breaks a bunch of tests.
+            fakeNode.appendChild(unserializedNode);
+            this.dependencies.sanitize.sanitize(fakeNode);
+            unserializedNode = fakeNode.firstChild;
+            if (unserializedNode) {
+                // Only assing id to the remaining nodes, otherwise the removed
+                // nodes will still be accessible through the nodeMap and could
+                // lead to security issues.
+                for (const node of [unserializedNode, ...descendants(unserializedNode)]) {
+                    if (!this.nodeMap.hasNode(node)) {
+                        const id = newNodesMap.get(node);
+                        if (id) {
+                            this.nodeMap.set(id, node);
+                        }
+                    }
+                }
+                return unserializedNode;
             }
-            node.append(
-                ...serializedNode.children
-                    .map((child) => this._unserializeNode(child, nodeMap, _map)[0])
-                    .filter(Boolean)
-            );
-        } else {
-            console.warn("unknown node type");
-            return [null, _map];
         }
-        _map.set(node, serializedNode.nodeId);
-        return [node, _map];
+        return null;
     }
 
     // =================
