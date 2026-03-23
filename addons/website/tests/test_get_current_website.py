@@ -133,11 +133,9 @@ class TestGetCurrentWebsite(HttpCaseWithUserDemo):
 
     def test_recursive_current_website(self):
         Website = self.env['website']
-        self.env['ir.rule'].create({
+        self.env['ir.access'].create({
             'name': 'Recursion Test',
             'model_id': self.env.ref('website.model_website').id,
-            'domain_force': [(1, '=', 1)],
-            'groups': [],
         })
         # Ensure the cache is invalidated, it is not needed at the time but some
         # code might one day go through get_current_website_id before reaching

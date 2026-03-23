@@ -88,9 +88,10 @@ class TestHttpWebJson_1(TestHttpBase):
         self.user_demo.group_ids += self.env.ref('sales_team.group_sale_salesman')
         self.url_open_json('/crm')
 
-        self.env['ir.model.access'].search([
-            ('model_id', '=', action_crm.model_id.id)
-        ]).perm_read = False
+        accesses = self.env['ir.access'].search([('model_id', '=', action_crm.model_id.id)])
+        for access in accesses:
+            if 'r' in access.operation:
+                access.operation = access.operation[1:]
 
         with self.assertLogs('odoo.http', 'WARNING') as capture:
             res = self.url_open_json('/crm', expected_code=403)

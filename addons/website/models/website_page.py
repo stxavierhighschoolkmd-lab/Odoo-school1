@@ -309,11 +309,9 @@ class WebsitePage(models.Model):
         results = most_specific_pages.filtered_domain(domain)  # already sudo
 
         def filter_page(search, page, all_pages):
-            # Exclude pages that do not pass ACL.
-            Rule = page.env['ir.rule'].sudo(False)
-            if not page.filtered_domain(Rule._compute_domain('website.page', 'read')):
+            if not page.sudo(False).has_access('read'):
                 return False
-            if not page.view_id.filtered_domain(Rule._compute_domain('ir.ui.view', 'read')):
+            if not page.view_id.sudo(False).has_access('read'):
                 return False
             if search and with_description:
                 # Search might have matched words in the xml tags and parameters therefore we make

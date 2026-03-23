@@ -171,10 +171,10 @@ class TestMessageController(MailControllerThreadCommon):
         self.authenticate(self.user_admin.login, self.user_admin.login)
         partner = self.env["res.partner"].create({"name": "partner"})
 
-        self.env['ir.rule'].create({
+        self.env['ir.access'].create({
             'name': 'Access Partner',
             'model_id': self.env.ref('base.model_res_partner').id,
-            'domain_force': f"[('id', '!=', {partner.id})]"
+            'domain': f"[('id', '!=', {partner.id})]",
         })
         self.authenticate(self.user_employee.login, self.user_employee.login)
 

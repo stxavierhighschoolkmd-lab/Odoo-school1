@@ -233,7 +233,7 @@ class ResGroups(models.Model):
         # invalidate caches after the write (if not su) because we check access
         # when writing
         if any(self._ids) and not self.env.su:
-            self.env['ir.model.access'].call_cache_clearing_methods()
+            self.env['ir.access']._clear_caches()
         return res
 
     def _ensure_xml_id(self):
