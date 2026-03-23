@@ -181,23 +181,31 @@ export class DomMutationPlugin extends Plugin {
         "unstash",
         "updateExternal",
 
+        // Observer on/off
+        "ignoreDOMMutations",
+
         // DOM Map Handling
         "getNodeById",
         "getNodeId",
         "serializeSelection",
 
-        // From Original
+        // Staging
         "stageCustomMutation",
-        "applyCustomMutation",
-        "getIsPreviewing",
         "hasStagedMutations",
-        "ignoreDOMMutations",
+        "stageSelection",
+        "stageFocus",
+
+        // Commit creation
+        "createSnapshotCommit",
+
+        // Commit application/reversal
+        "applyCustomMutation",
+
+        // Preview
+        "getIsPreviewing",
         "makePreviewableOperation",
         "makePreviewableAsyncOperation",
         "makeSavePoint",
-        "createSnapshotCommit",
-        "stageSelection",
-        "stageFocus",
     ];
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -620,6 +628,23 @@ export class DomMutationPlugin extends Plugin {
         }
     }
 
+    stageCustomMutation({ apply, revert }) {
+        const customMutation = {
+            type: "custom",
+            // Note AGE: this definitely fails in collaborative since it's not
+            // serializable. Do we need it in collaborative?
+            apply: () => {
+                apply();
+                this.stageCustomMutation({ apply, revert });
+            },
+            revert: () => {
+                revert();
+                this.stageCustomMutation({ apply: revert, revert: apply });
+            },
+        };
+        this.stage(customMutation);
+    }
+
     /**
      * Disable the warning in @see hasStagedMutations and return a function that
      * re-enables it.
@@ -1001,6 +1026,104 @@ export class DomMutationPlugin extends Plugin {
         return childListToTreesMap;
     }
 
+    // TODO AGE: I feel like it should be possible to get rid of the following
+    // three functions with some changes in `processNativeMutations`: investigate.
+
+    /**
+     * This function, alongside @see updateOldValue, ensures mutation records
+     * have the correct historical "oldValue" by checking against the last
+     * observed state.
+     *
+     * When the observer is disabled, we store the record's `oldValue` for a
+     * node's attribute/class/textContent as the last observed value.
+     *
+     * As multiple mutations to the same node-attribute/class/textContent can
+     * happen with the observer disabled, we store only the first value
+     * encountered for each node-attribute/class/text. This way, we capture the
+     * state as it was before any modifications in the disabled observer
+     * sequence began.
+     *
+     * @see updateOldValue
+     *
+     * @param { NativeMutation<"attributes"|"characterData"> } record
+     */
+    storeOldValue(record) {
+        /** @type { (NativeMutation<"attributes"|"characterData"> | EditorMutation<"classList">)[] } */
+        let mutations = [record];
+        if (record.type === "attributes" && record.attributeName === "class") {
+            // If the record is a change in a class attribute, first split it so
+            // we can handle the old value of each class individually.
+            mutations = this.createClassListMutations(record);
+        }
+        for (const mutation of mutations) {
+            const { stateMap, key } = this.getObservedStateStorage(mutation);
+            // Only store it if not already stored.
+            if (!stateMap.has(key)) {
+                stateMap.set(key, mutation.oldValue);
+            }
+        }
+    }
+
+    /**
+     * @template { "attributes" | "characterData" } T
+     * @param { |
+     *        NativeMutation<T>
+     *      | EditorMutation<T | "childList">
+     * } record
+     * @returns { {
+     *      stateMap: ObservedState[T | "childList"],
+     *      key: string
+     * } }
+     */
+    getObservedStateStorage(record) {
+        // Add entry for current target if not already present.
+        if (!this.lastObservedState.has(record.target)) {
+            this.lastObservedState.set(record.target, {
+                attributes: new Map(),
+                classList: new Map(),
+                characterData: new Map(),
+            });
+        }
+        const stateMap = this.lastObservedState.get(record.target)[record.type];
+        switch (record.type) {
+            case "attributes":
+                return { stateMap, key: record.attributeName };
+            case "classList":
+                return { stateMap, key: record.className };
+            case "characterData":
+                return { stateMap, key: "textContent" };
+            default:
+                throw new Error(`Unsupported mutation type: ${record.type}`);
+        }
+    }
+
+    /**
+     * This function, alongside @see storeOldValue, ensures mutation records
+     * have the correct historical "oldValue" by checking against the last
+     * observed state.
+     *
+     * When the observer is enabled, it updates a record's `oldValue` with the
+     * last observed state, and removes the entry to prevent reuse. Without
+     * removing the entry, the same historical value might be incorrectly
+     * applied to future mutation records targeting the same
+     * attribute/class of the same element, which would create incorrect
+     * history mutations.
+     *
+     * @template { NativeMutationType } T
+     * @param { EditorMutation<T>} record
+     * @returns { EditorMutation<T> }
+     */
+    updateOldValue(record) {
+        const { stateMap, key } = this.getObservedStateStorage(record);
+        if (!stateMap.has(key)) {
+            return record;
+        }
+        const lastObservedValue = stateMap.get(key);
+        // Remove entry, so it won't be used again.
+        stateMap.delete(key);
+        return { ...record, oldValue: lastObservedValue };
+    }
+
     // ================
     // DOM Map Handling
     // ================
@@ -1190,6 +1313,14 @@ export class DomMutationPlugin extends Plugin {
         return null;
     }
 
+    /**
+     * @returns { NodeId  }
+     */
+    generateId() {
+        // No need for secure random number.
+        return Math.floor(Math.random() * Math.pow(2, 52)).toString();
+    }
+
     // ===============
     // Commit creation
     // ===============
@@ -1377,6 +1508,11 @@ export class DomMutationPlugin extends Plugin {
         toRemove.remove();
     }
 
+    applyCustomMutation({ apply, revert }) {
+        apply();
+        this.stageCustomMutation({ apply, revert });
+    }
+
     /**
      * Take a batch of mutations, reverse both their effect and their order,
      * then apply that.
@@ -1485,140 +1621,9 @@ export class DomMutationPlugin extends Plugin {
         }
     }
 
-    dispatchContentUpdated() {
-        if (this.currentChanges.mutations.length) {
-            // @todo @phoenix remove this?
-            // @todo @phoenix this includes previous mutations that were already
-            // stored in the current commit. Ideally, it should only include the new ones.
-            const root = this.getMutationsRoot(this.currentChanges.mutations);
-            if (root) {
-                this.trigger("on_content_updated_handlers", root);
-            }
-        }
-    }
-
-    // State storage stuff
-
-    /**
-     * This function, alongside @see updateOldValue, ensures mutation records
-     * have the correct historical "oldValue" by checking against the last
-     * observed state.
-     *
-     * When the observer is disabled, we store the record's `oldValue` for a
-     * node's attribute/class/textContent as the last observed value.
-     *
-     * As multiple mutations to the same node-attribute/class/textContent can
-     * happen with the observer disabled, we store only the first value
-     * encountered for each node-attribute/class/text. This way, we capture the
-     * state as it was before any modifications in the disabled observer
-     * sequence began.
-     *
-     * @see updateOldValue
-     *
-     * @param { NativeMutation<"attributes"|"characterData"> } record
-     */
-    storeOldValue(record) {
-        /** @type { (NativeMutation<"attributes"|"characterData"> | EditorMutation<"classList">)[] } */
-        let mutations = [record];
-        if (record.type === "attributes" && record.attributeName === "class") {
-            // If the record is a change in a class attribute, first split it so
-            // we can handle the old value of each class individually.
-            mutations = this.createClassListMutations(record);
-        }
-        for (const mutation of mutations) {
-            const { stateMap, key } = this.getObservedStateStorage(mutation);
-            // Only store it if not already stored.
-            if (!stateMap.has(key)) {
-                stateMap.set(key, mutation.oldValue);
-            }
-        }
-    }
-
-    /**
-     * @template { "attributes" | "characterData" } T
-     * @param { |
-     *        NativeMutation<T>
-     *      | EditorMutation<T | "childList">
-     * } record
-     * @returns { {
-     *      stateMap: ObservedState[T | "childList"],
-     *      key: string
-     * } }
-     */
-    getObservedStateStorage(record) {
-        // Add entry for current target if not already present.
-        if (!this.lastObservedState.has(record.target)) {
-            this.lastObservedState.set(record.target, {
-                attributes: new Map(),
-                classList: new Map(),
-                characterData: new Map(),
-            });
-        }
-        const stateMap = this.lastObservedState.get(record.target)[record.type];
-        switch (record.type) {
-            case "attributes":
-                return { stateMap, key: record.attributeName };
-            case "classList":
-                return { stateMap, key: record.className };
-            case "characterData":
-                return { stateMap, key: "textContent" };
-            default:
-                throw new Error(`Unsupported mutation type: ${record.type}`);
-        }
-    }
-
-    /**
-     * This function, alongside @see storeOldValue, ensures mutation records
-     * have the correct historical "oldValue" by checking against the last
-     * observed state.
-     *
-     * When the observer is enabled, it updates a record's `oldValue` with the
-     * last observed state, and removes the entry to prevent reuse. Without
-     * removing the entry, the same historical value might be incorrectly
-     * applied to future mutation records targeting the same
-     * attribute/class of the same element, which would create incorrect
-     * history mutations.
-     *
-     * @template { NativeMutationType } T
-     * @param { EditorMutation<T>} record
-     * @returns { EditorMutation<T> }
-     */
-    updateOldValue(record) {
-        const { stateMap, key } = this.getObservedStateStorage(record);
-        if (!stateMap.has(key)) {
-            return record;
-        }
-        const lastObservedValue = stateMap.get(key);
-        // Remove entry, so it won't be used again.
-        stateMap.delete(key);
-        return { ...record, oldValue: lastObservedValue };
-    }
-
-    // Custom mutations
-
-    applyCustomMutation({ apply, revert }) {
-        apply();
-        this.stageCustomMutation({ apply, revert });
-    }
-
-    stageCustomMutation({ apply, revert }) {
-        const customMutation = {
-            type: "custom",
-            // Note AGE: this definitely fails in collaborative since it's not
-            // serializable. Do we need it in collaborative?
-            apply: () => {
-                apply();
-                this.stageCustomMutation({ apply, revert });
-            },
-            revert: () => {
-                revert();
-                this.stageCustomMutation({ apply: revert, revert: apply });
-            },
-        };
-        this.stage(customMutation);
-    }
-
-    // Preview stuff
+    // =======
+    // Preview
+    // =======
 
     /**
      * TODO AGE: review link with history and commits.
@@ -1826,6 +1831,10 @@ export class DomMutationPlugin extends Plugin {
         return !!this.isPreviewing;
     }
 
+    // =============
+    // Miscellaneous
+    // =============
+
     /**
      * Returns the deepest common ancestor element of the given mutations.
      * @param { (EditorMutation)[] } mutations - The array of mutations.
@@ -1842,12 +1851,16 @@ export class DomMutationPlugin extends Plugin {
         return commonAncestor;
     }
 
-    /**
-     * @returns { NodeId  }
-     */
-    generateId() {
-        // No need for secure random number.
-        return Math.floor(Math.random() * Math.pow(2, 52)).toString();
+    dispatchContentUpdated() {
+        if (this.currentChanges.mutations.length) {
+            // @todo @phoenix remove this?
+            // @todo @phoenix this includes previous mutations that were already
+            // stored in the current commit. Ideally, it should only include the new ones.
+            const root = this.getMutationsRoot(this.currentChanges.mutations);
+            if (root) {
+                this.trigger("on_content_updated_handlers", root);
+            }
+        }
     }
 }
 
