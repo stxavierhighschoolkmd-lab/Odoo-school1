@@ -89,7 +89,13 @@ class ReportPosOrder(models.Model):
                 s.pricelist_id,
                 s.session_id,
                 s.account_move IS NOT NULL AS invoiced,
+<<<<<<< 5ee86452cd3c65439416b719762ded3f476d417c
                 (SIGN(l.qty) * SIGN(l.price_unit) * ABS(l.price_subtotal)) - COALESCE(l.total_cost,0) / COALESCE(NULLIF(s.currency_rate, 0), 1.0) AS margin,
+||||||| 3d35b298262c569e89f3143c8aedf184df5840be
+                l.price_subtotal - COALESCE(l.total_cost,0) / COALESCE(NULLIF(s.currency_rate, 0), 1.0) AS margin,
+=======
+                (l.price_subtotal - COALESCE(l.total_cost,0)) / COALESCE(NULLIF(s.currency_rate, 0), 1.0) AS margin,
+>>>>>>> 2370f9c0570df5c257db5a09c7adea6f3d644e40
                 pm.payment_method_id AS payment_method_id,
                 fpc.id AS pos_categ_id
 
