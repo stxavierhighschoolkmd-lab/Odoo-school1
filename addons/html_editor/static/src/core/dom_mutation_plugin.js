@@ -494,6 +494,91 @@ export class DomMutationPlugin extends Plugin {
         this.currentChanges.updateExternal(key, value);
     }
 
+    // ===============
+    // Observer on/off
+    // ===============
+
+    enableObserver() {
+        this.observer.observe(this.editable, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeOldValue: true,
+            characterData: true,
+            characterDataOldValue: true,
+        });
+    }
+
+    /**
+     * Disable the mutation observer.
+     *
+     * /!\ This method should be used with extreme caution. Not observing some
+     * mutations could lead to mutations that are impossible to undo/redo.
+     */
+    disableObserver() {
+        const enableObserver = () => {
+            this.enableObserverCallbacks.delete(enableObserver);
+            if (this.enableObserverCallbacks.size > 0) {
+                return;
+            }
+            this.flush();
+            this.isObserverDisabled = false;
+        };
+        this.enableObserverCallbacks.add(enableObserver);
+        this.flush();
+        this.isObserverDisabled = true;
+        return enableObserver;
+    }
+
+    /**
+     * This is not shared as it is only used internally by the DOM mutation plugin.
+     * Other plugins should use {@link ignoreDOMMutations} instead.
+     * TODO AGE: why do we need this _and_ disableObserver?
+     */
+    withObserverOff(callback) {
+        this.flush();
+        this.observer.disconnect();
+        callback();
+        this.enableObserver();
+    }
+
+    /**
+     * Execute {@link callback} while the MutationObserver is disabled.
+     *
+     * /!\ This method should be used with extreme caution. Not observing some
+     * mutations could lead to mutations that are impossible to undo/redo.
+     *
+     * /!\ Do not re-introduce nodes that had been already added to the DOM in
+     * a commit. @see isObservedNode
+     *
+     * @param { Function } callback
+     */
+    ignoreDOMMutations(callback) {
+        const enableObserver = this.disableObserver();
+        try {
+            return callback();
+        } finally {
+            enableObserver();
+        }
+    }
+
+    /**
+     * Any node that was added to the DOM without a mutation record in a commit
+     * (typically due to {@link ignoreDOMMutations}) is considered an unobserved
+     * node.
+     *
+     * A known limitation to this approach is when a node that had been present
+     * in the editable before (and thus has an entry in the nodeMap) is re-added
+     * with {@link ignoreDOMMutations}. Such node will not be flagged as
+     * unobserved and history might become inconsistent.
+     *
+     * @param { Node } node
+     * @returns { boolean }
+     */
+    isObservedNode(node) {
+        return this.nodeMap.hasNode(node);
+    }
+
     // =======
     // Staging
     // =======
@@ -1361,91 +1446,6 @@ export class DomMutationPlugin extends Plugin {
         if (elementToFocus?.isConnected && elementToFocus !== this.document.activeElement) {
             elementToFocus.focus();
         }
-    }
-
-    // ========
-    // Observer
-    // ========
-
-    enableObserver() {
-        this.observer.observe(this.editable, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeOldValue: true,
-            characterData: true,
-            characterDataOldValue: true,
-        });
-    }
-
-    /**
-     * Disable the mutation observer.
-     *
-     * /!\ This method should be used with extreme caution. Not observing some
-     * mutations could lead to mutations that are impossible to undo/redo.
-     */
-    disableObserver() {
-        const enableObserver = () => {
-            this.enableObserverCallbacks.delete(enableObserver);
-            if (this.enableObserverCallbacks.size > 0) {
-                return;
-            }
-            this.flush();
-            this.isObserverDisabled = false;
-        };
-        this.enableObserverCallbacks.add(enableObserver);
-        this.flush();
-        this.isObserverDisabled = true;
-        return enableObserver;
-    }
-
-    /**
-     * This is not shared as it is only used internally by the DOM mutation plugin.
-     * Other plugins should use {@link ignoreDOMMutations} instead.
-     * TODO AGE: why do we need this _and_ disableObserver?
-     */
-    withObserverOff(callback) {
-        this.flush();
-        this.observer.disconnect();
-        callback();
-        this.enableObserver();
-    }
-
-    /**
-     * Execute {@link callback} while the MutationObserver is disabled.
-     *
-     * /!\ This method should be used with extreme caution. Not observing some
-     * mutations could lead to mutations that are impossible to undo/redo.
-     *
-     * /!\ Do not re-introduce nodes that had been already added to the DOM in
-     * a commit. @see isObservedNode
-     *
-     * @param { Function } callback
-     */
-    ignoreDOMMutations(callback) {
-        const enableObserver = this.disableObserver();
-        try {
-            return callback();
-        } finally {
-            enableObserver();
-        }
-    }
-
-    /**
-     * Any node that was added to the DOM without a mutation record in a commit
-     * (typically due to {@link ignoreDOMMutations}) is considered an unobserved
-     * node.
-     *
-     * A known limitation to this approach is when a node that had been present
-     * in the editable before (and thus has an entry in the nodeMap) is re-added
-     * with {@link ignoreDOMMutations}. Such node will not be flagged as
-     * unobserved and history might become inconsistent.
-     *
-     * @param { Node } node
-     * @returns { boolean }
-     */
-    isObservedNode(node) {
-        return this.nodeMap.hasNode(node);
     }
 
     /**
