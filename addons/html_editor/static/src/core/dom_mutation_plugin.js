@@ -43,7 +43,7 @@ import { EditorCommit } from "@html_editor/utils/commit";
  *
  * @typedef { Object } DomMutationCommitData
  * @property { number } authorTimestamp              // timestamp of the commit authoring, before any mutation is applied
- * @property { EditorMutation[] } mutations          // the mutations to apply/revert
+ * @property { SerializedMutation[] } mutations      // the mutations to apply/revert
  * @property { NodeId } activeElementId              // the ID of the active element before applying the mutations
  * @property { SerializedSelection } selection       // the serialized selection before applying the mutations
  * @property { SerializedSelection } selectionAfter  // the serialized selection after applying the mutations
@@ -154,14 +154,8 @@ import { EditorCommit } from "@html_editor/utils/commit";
 
 /**
  * @typedef { ((
- *    arg: {
- *      nodeId: NodeId,
- *      attributeName: string,
- *      oldValue: string,
- *      value: string,
- *      reverse: boolean,
- *    },
- *    options: { ensureNewMutations: boolean }
+ *    mutation: SerializedMutation<"attributes">,
+ *    options: { ensureNewMutations: boolean, wasReversed: boolean }
  *  ) => arg)[] } attribute_change_processors
  * @typedef { ((root: HTMLElement) => void)[] } on_content_updated_handlers
  * @typedef { ((record: SerializedMutation[]) => void)[] } on_attribute_changed_handlers
@@ -226,22 +220,31 @@ export class DomMutationPlugin extends Plugin {
         on_prepare_drag_handlers: this.disableHasStagedMutationsWarning.bind(this),
         on_history_cleaned_handlers: this.clean.bind(this),
         on_will_add_external_commit_handlers: () => {
-            // The last commit is an uncommited draft, revert it first
+            // The last commit is an uncommited draft, revert it first.
             this.stash();
         },
         on_external_commit_added_handlers: () => {
-            // Reapply the uncommited draft, since this is not an operation which should cancel it
+            // Reapply the uncommited draft, since this is not an operation
+            // which should cancel it.
             this.unstash();
         },
         apply_commit_overrides: (commit) => {
             if (commit.data.mutations) {
-                this.applyCommit(commit);
+                this.applyMutations(commit.data.mutations);
+                // TODO AGE: check why reverting a commit involves also setting
+                // its serialized focus and selection, and updating the state,
+                // while _applying_ a commit doesn't. Couldn't we make this more
+                // coherent?
                 return true;
             }
         },
         revert_commit_overrides: (commit, { ensureNewMutations = false } = {}) => {
             if (commit.data.mutations) {
-                this.revertCommit(commit, { ensureNewMutations });
+                this.revertMutations(commit.data.mutations, { ensureNewMutations });
+                this.setSerializedFocus(commit.data.activeElementId);
+                this.stageFocus();
+                this.setSerializedSelection(commit.data.selection);
+                this.currentChanges.updateSelection(commit.data.selectionAfter);
                 return true;
             }
         },
@@ -1033,9 +1036,9 @@ export class DomMutationPlugin extends Plugin {
         return null;
     }
 
-    // =================
-    // Commit management
-    // =================
+    // ===============
+    // Commit creation
+    // ===============
 
     /**
      * @param { Object } param0
@@ -1090,63 +1093,19 @@ export class DomMutationPlugin extends Plugin {
         });
     }
 
-    // NEW: Apply mutations
-
-    applyCommit(commit) {
-        this.applyMutations(commit.data.mutations);
-        // TODO AGE: shouldn't this also apply other changes?
-    }
-
-    revertCommit(commit, { ensureNewMutations = false } = {}) {
-        this.revertChanges(commit.data, { ensureNewMutations });
-    }
+    // ===========================
+    // Commit application/reversal
+    // ===========================
 
     /**
-     * @param {CommitData} param0
-     */
-    revertChanges(
-        { mutations, activeElementId, selection, selectionAfter },
-        { ensureNewMutations = false } = {}
-    ) {
-        this.revertMutations(mutations, { ensureNewMutations });
-        this.setSerializedFocus(activeElementId);
-        this.stageFocus();
-        this.setSerializedSelection(selection);
-        this.currentChanges.updateSelection(selectionAfter);
-    }
-
-    /**
-     * @param { EditorMutation[] } mutations
-     */
-    revertMutations(mutations, { ensureNewMutations = false } = {}) {
-        const revertedMutations = mutations.map((mutation) => {
-            switch (mutation.type) {
-                case "characterData":
-                case "classList":
-                case "attributes":
-                    return { ...mutation, value: mutation.oldValue, oldValue: mutation.value };
-                case "remove":
-                    return { ...mutation, type: "add" };
-                case "add":
-                    return { ...mutation, type: "remove" };
-                case "custom":
-                    return { ...mutation, apply: mutation.revert, revert: mutation.apply };
-                default:
-                    throw new Error(`Unknown mutation type: ${mutation.type}`);
-            }
-        });
-        this.applyMutations(revertedMutations.toReversed(), { ensureNewMutations, reverse: true });
-    }
-
-    /**
-     * @param { EditorMutation[] } mutations
+     * @param { SerializedMutation[] } mutations
      * @param { Object } options
      * @param { boolean } options.ensureNewMutations whether to ensure new
      *        mutations are generated when applying the mutations
-     * @param { boolean } options.reverse whether the mutations are the reverse
-     *        of other mutations
+     * @param { boolean } options.areReversed whether the mutations are the
+     *        reverse of other mutations
      */
-    applyMutations(mutations, { ensureNewMutations = false, reverse = false } = {}) {
+    applyMutations(mutations, { ensureNewMutations = false, areReversed = false } = {}) {
         if (ensureNewMutations) {
             this.fixClassListMutationsToEnsureNewMutations(mutations);
         }
@@ -1171,15 +1130,8 @@ export class DomMutationPlugin extends Plugin {
                     break;
                 }
                 case "attributes": {
-                    const node = this.getNodeById(mutation.nodeId);
-                    if (node) {
-                        const { value } = this.processThrough(
-                            "attribute_change_processors",
-                            { ...mutation, reverse },
-                            { ensureNewMutations }
-                        );
-                        this.setAttribute(node, mutation.attributeName, value);
-                    }
+                    const options = { ensureNewMutations, wasReversed: areReversed };
+                    this.applyAttributesMutation(mutation, options);
                     break;
                 }
                 case "remove": {
@@ -1195,25 +1147,29 @@ export class DomMutationPlugin extends Plugin {
     }
 
     /**
-     * @param { Node } node
-     * @param { string } attributeName
-     * @param { string } attributeValue
+     * @param { SerializedMutation<"attributes"> } mutation
+     * @param { Object } options
+     * TODO AGE: rename and re-document this param:
+     * @param { boolean } [options.ensureNewMutations = false] whether the mutation is being used
+     *        to create a new commit and requires to ensure new mutations are generated
+     * @param { boolean } [options.wasReversed = false] whether the change was reversed
      */
-    setAttribute(node, attributeName, attributeValue) {
-        if (this.delegateTo("set_attribute_overrides", node, attributeName, attributeValue)) {
-            return;
-        }
-
-        // if attributeValue is falsy but not null, we still need to apply it
-        if (attributeValue !== null) {
-            node.setAttribute(attributeName, attributeValue);
-        } else {
-            node.removeAttribute(attributeName);
+    applyAttributesMutation(mutation, options = {}) {
+        const node = this.getNodeById(mutation.nodeId);
+        if (node) {
+            const { value } = this.processThrough("attribute_change_processors", mutation, options);
+            if (!this.delegateTo("set_attribute_overrides", node, mutation.attributeName, value)) {
+                if (value === null) {
+                    node.removeAttribute(mutation.attributeName);
+                } else {
+                    node.setAttribute(mutation.attributeName, value);
+                }
+            }
         }
     }
 
     /**
-     * @param { EditorMutation<"add"> } mutation
+     * @param { SerializedMutation<"add"> } mutation
      */
     applyAddMutation(mutation) {
         const { nodeId, serializedNode, parentNodeId, nextNodeId, previousNodeId } = mutation;
@@ -1251,7 +1207,7 @@ export class DomMutationPlugin extends Plugin {
     }
 
     /**
-     * @param { EditorMutation<"remove"> } mutation
+     * @param { SerializedMutation<"remove"> } mutation
      */
     applyRemoveMutation(mutation) {
         const parent = this.getNodeById(mutation.parentNodeId);
@@ -1265,6 +1221,38 @@ export class DomMutationPlugin extends Plugin {
             return;
         }
         toRemove.remove();
+    }
+
+    /**
+     * Take a batch of mutations, reverse both their effect and their order,
+     * then apply that.
+     *
+     * @param { SerializedMutation[] } mutations
+     * @param { Object } options
+     * @param { boolean } options.ensureNewMutations whether to ensure new
+     *        mutations are generated when applying the mutations
+     */
+    revertMutations(mutations, { ensureNewMutations = false } = {}) {
+        const reversedMutations = mutations.map((mutation) => {
+            switch (mutation.type) {
+                case "characterData":
+                case "classList":
+                case "attributes":
+                    return { ...mutation, value: mutation.oldValue, oldValue: mutation.value };
+                case "remove":
+                    return { ...mutation, type: "add" };
+                case "add":
+                    return { ...mutation, type: "remove" };
+                case "custom":
+                    return { ...mutation, apply: mutation.revert, revert: mutation.apply };
+                default:
+                    throw new Error(`Unknown mutation type: ${mutation.type}`);
+            }
+        });
+        this.applyMutations(reversedMutations.toReversed(), {
+            ensureNewMutations,
+            areReversed: true,
+        });
     }
 
     /**

@@ -144,27 +144,26 @@ export class EmbeddedComponentPlugin extends Plugin {
      * the attribute has to be set to a new value, computed by the
      * stateChangeManager.
      *
-     * @param {import("@html_editor/core/dom_mutation_plugin").EditorMutationAttributes} attributeChange
-     * @param { Object } options
-     * @param { boolean } options.ensureNewMutations whether the mutation is being used
-     *        to create a new commit
+     * @param {import("@html_editor/core/dom_mutation_plugin").SerializedMutation<"attributes">} attributeChange
+     * @param { Object } [options = {}]
+     * @param { boolean } [options.ensureNewMutations = false] whether the mutation is being used
+     *        to create a new commit and requires to ensure new mutations are generated
+     * @param { boolean } [options.wasReversed = false] whether the change was reversed
      * @returns {string} new attribute value to set on the node, which might be
      *        unchanged
      */
-    onChangeAttribute(attributeChange, { ensureNewMutations = false } = {}) {
+    onChangeAttribute(attributeChange, { ensureNewMutations = false, wasReversed = false } = {}) {
         const attributeValue = attributeChange.value;
         let newAttributeValue;
         if (attributeChange.attributeName === "data-embedded-state") {
-            const attrState = attributeChange.reverse
-                ? attributeChange.oldValue
-                : attributeChange.value;
+            const attrState = wasReversed ? attributeChange.oldValue : attributeChange.value;
             const target = this.dependencies.domMutation.getNodeById(attributeChange.nodeId);
             const stateChangeManager = this.getStateChangeManager(target);
             if (stateChangeManager) {
                 // onStateChanged returns undefined if no change is needed for
                 // the attribute value
                 newAttributeValue = stateChangeManager.onStateChanged(attrState, {
-                    reverse: attributeChange.reverse,
+                    reverse: wasReversed,
                     ensureNewMutations,
                 });
             }
