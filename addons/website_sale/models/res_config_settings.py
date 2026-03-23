@@ -46,6 +46,9 @@ class ResConfigSettings(models.TransientModel):
     prevent_sale_for_categories = fields.Many2many(
         related="website_id.prevent_sale_for_categories", readonly=False
     )
+    unpublish_out_of_stock = fields.Boolean(
+        related="website_id.unpublish_out_of_stock", readonly=False
+    )
     contact_us_link_url = fields.Char(related="website_id.contact_us_link_url", readonly=False)
     show_line_subtotals_tax_selection = fields.Selection(
         related="website_id.show_line_subtotals_tax_selection", readonly=False

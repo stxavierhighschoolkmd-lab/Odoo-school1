@@ -244,6 +244,12 @@ class Website(models.Model):
         string="Wishlist Grid Gap", help="Gap between products on the wishlist page", default="16px"
     )
 
+    unpublish_out_of_stock = fields.Boolean(
+        string="Unpublish out-of-stock products",
+        default=False,
+        help="Automatically unpublish/republish products based on stock availability.",
+    )
+
     prevent_sale = fields.Boolean(string="Hide Add To Cart")
 
     prevent_sale_for = fields.Selection(
@@ -272,6 +278,35 @@ class Website(models.Model):
         domain=[("model", "=", "sale.order")],
         default=_default_confirmation_email_template,
     )
+
+    # === CRUD METHODS ===#
+
+    def write(self, vals):
+        # Identify websites where the setting is being switched from disabled to enabled,
+        # so we can immediately evaluate existing published products retroactively.
+        newly_enabled = (
+            self.filtered(lambda w: not w.unpublish_out_of_stock)
+            if vals.get("unpublish_out_of_stock")
+            else self.env["website"]
+        )
+
+        res = super().write(vals)
+
+        for website in newly_enabled:
+            templates = (
+                self
+                .env["product.template"]
+                .sudo()
+                .search([
+                    ("is_published", "=", True),
+                    "|",
+                    ("website_id", "=", website.id),
+                    ("website_id", "=", False),
+                ])
+            )
+            templates.with_context(website_id=website.id)._check_auto_publish_state()
+
+        return res
 
     # === COMPUTE METHODS ===#
 

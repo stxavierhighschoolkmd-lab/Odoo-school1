@@ -30,6 +30,8 @@ from . import (
     res_users,
     sale_order,
     sale_order_line,
+    stock_move,
+    stock_quant,
     theme_utils,
     website,
     website_base_unit,

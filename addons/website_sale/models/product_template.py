@@ -162,6 +162,13 @@ class ProductTemplate(models.Model):
         help="Add a strikethrough price to your /shop and product pages for comparison purposes."
         "It will not be displayed if pricelists apply.",
     )
+
+    is_manually_published = fields.Boolean(
+        string="Manually Published",
+        copy=False,
+        help="Set when a user explicitly publishes or unpublishes the product via the UI toggle. "
+        "Prevents the stock-based automation from overriding the user's intent.",
+    )
     variants_default_code = fields.Char(
         compute="_compute_variants_default_code",
         store=True,
@@ -287,9 +294,106 @@ class ProductTemplate(models.Model):
             )  # don't remove "empty" video div
         ):
             vals["description_ecommerce"] = ""
+
+        # Track explicit user publish/unpublish to distinguish from automated stock changes.
+        # Any direct write to is_published or website_published that does not come from
+        # _check_auto_publish_state is treated as a deliberate merchant decision.
+        publish_keys = {"is_published", "website_published"}
+        if publish_keys & vals.keys() and not self.env.context.get("stock_auto_publish"):
+            new_published = vals.get("is_published", vals.get("website_published"))
+            vals = dict(vals, is_manually_published=bool(new_published))
+
         return super().write(vals)
 
     # === BUSINESS METHODS ===#
+
+    def _all_variants_out_of_stock(self):
+        """Return True only if every active variant of this template has no available stock.
+
+        Non-storable products (consumable/service) are never considered out of stock.
+
+        :return: True if all active variants have free_qty < 1, False otherwise.
+        :rtype: bool
+        """
+        self.ensure_one()
+
+        if not self.is_storable:
+            return False
+
+        active_variants = self.product_variant_ids.filtered("active")
+        if not active_variants:
+            return False
+
+        # Invalidate the ORM cache so free_qty reflects the latest committed quant values,
+        # not a stale value from earlier in the same transaction (e.g. before _apply_inventory).
+        active_variants.invalidate_recordset(["free_qty", "qty_available"])
+
+        website_id = self.env.context.get("website_id")
+        website = (
+            self.env["website"].browse(website_id)
+            if website_id
+            else self.website_id or self.env["website"].get_current_website()
+        )
+
+        for variant in active_variants:
+            variant_sudo = variant.sudo()
+            # _get_product_available_qty is added by website_sale_stock for warehouse-aware qty.
+            if hasattr(website, "_get_product_available_qty"):
+                free_qty = website._get_product_available_qty(variant_sudo)
+            else:
+                free_qty = variant_sudo.free_qty
+            if free_qty >= 1.0:
+                return False
+
+        return True
+
+    def _check_auto_publish_state(self):
+        """Auto-publish or unpublish products based on stock availability.
+
+        Called after any stock quantity change. For each template:
+        - Skips non-storable products and those with no enabled website setting.
+        - Unpublishes when all active variants are out of stock (stock reality always wins).
+        - Republishes when stock is restored, but only if the merchant never explicitly
+          unpublished the product (i.e. is_manually_published is False).
+        """
+        website_id = self.env.context.get("website_id")
+        if website_id:
+            enabled_websites = (
+                self.env["website"].browse(website_id).filtered("unpublish_out_of_stock")
+            )
+        else:
+            enabled_websites = (
+                self.env["website"].sudo().search([("unpublish_out_of_stock", "=", True)])
+            )
+
+        if not enabled_websites:
+            return
+
+        for template in self:
+            if not template.is_storable:
+                continue
+
+            applicable_websites = (
+                template.website_id & enabled_websites if template.website_id else enabled_websites
+            )
+            if not applicable_websites:
+                continue
+
+            website = applicable_websites[:1]
+            all_out_of_stock = template.with_context(
+                website_id=website.id
+            )._all_variants_out_of_stock()
+
+            if all_out_of_stock and template.is_published:
+                # Stock is empty — always unpublish, regardless of manual intent.
+                template.with_context(stock_auto_publish=True).write({"is_published": False})
+            elif (
+                not all_out_of_stock
+                and not template.is_published
+                and not template.is_manually_published
+            ):
+                # Only auto-republish if the user never explicitly unpublished this product.
+                template.with_context(stock_auto_publish=True).write({"is_published": True})
 
     def _prepare_variant_values(self, combination):
         variant_dict = super()._prepare_variant_values(combination)
