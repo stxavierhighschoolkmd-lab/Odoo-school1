@@ -109,7 +109,13 @@ class SaleOrderLine(models.Model):
                 quantity = line.product_uom_id._compute_quantity(new_qty, last_purchase_line.product_uom_id)
                 last_purchase_line.write({'product_qty': quantity})
             elif last_purchase_line.state in ['purchase', 'done', 'cancel']:  # create new PO, by forcing the quantity as the difference from SO line
+<<<<<<< 8119107660d06cfcb92287fc1e56bd18069a293a
                 quantity = line.product_uom_id._compute_quantity(new_qty - origin_values.get(line.id, 0.0), last_purchase_line.product_uom_id)
+||||||| cf9805874722b6729b5301fdea4f107ae221a1d2
+                quantity = line.product_uom._compute_quantity(new_qty - origin_values.get(line.id, 0.0), last_purchase_line.product_uom)
+=======
+                quantity = new_qty - origin_values.get(line.id, 0.0)
+>>>>>>> b6a7eb7edf28cb1e05a3c19cc400eb24fe436db2
                 line._purchase_service_create(quantity=quantity)
 
     def _purchase_get_date_order(self, supplierinfo):
