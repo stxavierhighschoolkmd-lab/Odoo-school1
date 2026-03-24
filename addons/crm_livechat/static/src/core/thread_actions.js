@@ -23,7 +23,11 @@ registerThreadAction("create-lead", {
         );
     },
     actionPanelOuterClass: "bg-100",
-    condition: false, // managed by ThreadAction patch
+    /**
+     * @param {Object} param0
+     * @param {import("models").DiscussChannel} param0.channel
+     */
+    condition: ({ channel, owner }) => channel?.isAllowedToCreateLead && !owner.isDiscussSidebarChannelActions,
     icon: "fa fa-handshake-o",
     name: _t("Create Lead"),
     sequence: 10,

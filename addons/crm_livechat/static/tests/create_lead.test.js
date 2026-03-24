@@ -20,10 +20,11 @@ defineCrmLivechatModels();
 test("can create a lead from the thread action after the conversation ends", async () => {
     mockDate("2025-01-01 12:00:00", +1);
     const pyEnv = await startServer();
-    const groupId = pyEnv["res.groups"].create({ name: "Sales Team" });
-    serverState.groupSalesTeamId = groupId;
     pyEnv["res.users"].write([serverState.userId], {
-        group_ids: [Command.link(groupId)],
+        group_ids: [
+            Command.link(serverState.groupLivechatId),
+            Command.link(serverState.groupSalesTeamId),
+        ],
     });
     const guestId = pyEnv["mail.guest"].create({ name: "Visitor" });
     const channel_id = pyEnv["discuss.channel"].create({
