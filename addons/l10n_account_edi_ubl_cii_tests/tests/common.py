@@ -36,12 +36,15 @@ class TestUBLCommon(AccountTestInvoicingCommon):
             'lang': "{{ object.partner_id.lang }}",
         })
 
-        # Fixed Taxes
+        # Allowance/Charge Taxes
         cls.recupel = cls.env['account.tax'].create({
             'name': "RECUPEL",
             'amount_type': 'fixed',
             'amount': 1,
             'include_base_amount': True,
+            'ubl_cii_type': 'allowance_charge',
+            'ubl_cii_charge_reason_code': 'AEO',
+            'ubl_cii_allowance_charge_reason': 'RECUPEL',
             'sequence': 1,
         })
         cls.auvibel = cls.env['account.tax'].create({
@@ -49,6 +52,9 @@ class TestUBLCommon(AccountTestInvoicingCommon):
             'amount_type': 'fixed',
             'amount': 1,
             'include_base_amount': True,
+            'ubl_cii_type': 'allowance_charge',
+            'ubl_cii_charge_reason_code': 'AEO',
+            'ubl_cii_allowance_charge_reason': 'AUVIBEL',
             'sequence': 2,
         })
 

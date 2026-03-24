@@ -166,8 +166,24 @@ class TestUblExportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
         Note: There is a tolerance of 1 euro for the delta. This test is only producing a difference of 0.01 so,
         technically, the xml is still valid.
         """
-        tax_recupel = self.fixed_tax(1.254, name="RECUPEL", include_base_amount=True)
-        tax_auvibel = self.fixed_tax(1.254, name="AUVIBEL", include_base_amount=True)
+        tax_recupel = self._create_allowance_charge_tax(
+            name="RECUPEL",
+            amount_type="fixed",
+            amount=1.254,
+            reason_code="AEO",
+            reason="RECUPEL",
+            is_charge=True,
+            include_base_amount=True,
+        )
+        tax_auvibel = self._create_allowance_charge_tax(
+            name="AUVIBEL",
+            amount_type="fixed",
+            amount=1.254,
+            reason_code="AEO",
+            reason="AUVIBEL",
+            is_charge=True,
+            include_base_amount=True,
+        )
         tax_21 = self.percent_tax(21.0)
         invoice = self._create_invoice(
             partner_id=self.partner_be,
@@ -191,9 +207,33 @@ class TestUblExportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
 
     def test_invoice_allowance_charge_fixed_tax_recycling_contribution(self):
         """ Ensure the recycling contribution taxes are turned into allowance/charges at the document line level. """
-        tax_recupel = self.fixed_tax(1.0, name="RECUPEL", include_base_amount=True)
-        tax_auvibel = self.fixed_tax(2.0, name="AUVIBEL", include_base_amount=True)
-        tax_bebat = self.fixed_tax(3.0, name="BEBAT", include_base_amount=True)
+        tax_recupel = self._create_allowance_charge_tax(
+            name="RECUPEL",
+            amount_type="fixed",
+            amount=1.0,
+            reason_code="AEO",
+            reason="RECUPEL",
+            is_charge=True,
+            include_base_amount=True,
+        )
+        tax_auvibel = self._create_allowance_charge_tax(
+            name="AUVIBEL",
+            amount_type="fixed",
+            amount=2.0,
+            reason_code="AEO",
+            reason="AUVIBEL",
+            is_charge=True,
+            include_base_amount=True,
+        )
+        tax_bebat = self._create_allowance_charge_tax(
+            name="BEBAT",
+            amount_type="fixed",
+            amount=3.0,
+            reason_code="CAV",
+            reason="BEBAT",
+            is_charge=True,
+            include_base_amount=True,
+        )
         tax_21 = self.percent_tax(21.0)
         invoice = self._create_invoice(
             partner_id=self.partner_be,
@@ -224,8 +264,26 @@ class TestUblExportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
 
     def test_invoice_allowance_charge_custom_tax_recycling_contribution(self):
         """ Ensure the recycling contribution taxes are turned into allowance/charges at the document line level. """
-        tax_recupel = self.python_tax("quantity * 1.0", name="RECUPEL", include_base_amount=True)
-        tax_auvibel = self.python_tax("quantity * 2.0", name="AUVIBEL", include_base_amount=True)
+        tax_recupel = self._create_allowance_charge_tax(
+            name="RECUPEL",
+            amount_type="code",
+            amount=0.0,
+            reason_code="AEO",
+            reason="RECUPEL",
+            include_base_amount=True,
+            is_charge=True,
+            formula="quantity * 1.0",
+        )
+        tax_auvibel = self._create_allowance_charge_tax(
+            name="AUVIBEL",
+            amount_type="code",
+            amount=0.0,
+            reason_code="AEO",
+            reason="AUVIBEL",
+            include_base_amount=True,
+            is_charge=True,
+            formula="quantity * 2.0",
+        )
         tax_21 = self.percent_tax(21.0)
         invoice = self._create_invoice(
             partner_id=self.partner_be,
@@ -251,7 +309,15 @@ class TestUblExportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
 
     def test_invoice_fixed_tax_emptying_turned_as_extra_invoice_lines(self):
         """ Ensure the emptying taxes (a.k.a 'vidange') are turned into extra invoice lines inside the xml. """
-        tax_emptying = self.fixed_tax(0.10, name="Vidange")
+        tax_emptying = self._create_allowance_charge_tax(
+            name="Vidange",
+            amount_type="fixed",
+            amount=0.10,
+            reason_code="AEO",
+            reason="Vidange",
+            is_charge=True,
+            include_base_amount=False,
+        )
         tax_21 = self.percent_tax(21.0)
         invoice = self._create_invoice(
             partner_id=self.partner_be,
@@ -276,8 +342,24 @@ class TestUblExportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
         self._assert_invoice_ubl_file(invoice, 'test_invoice_fixed_tax_emptying_turned_as_extra_invoice_lines')
 
     def test_invoice_multiple_fixed_tax_emptying_turned_as_extra_invoice_lines(self):
-        tax_emptying_1 = self.fixed_tax(0.1, name="Vidange")
-        tax_emptying_2 = self.fixed_tax(0.2, name="Vidange x2")
+        tax_emptying_1 = self._create_allowance_charge_tax(
+            name="Vidange",
+            amount_type="fixed",
+            amount=0.10,
+            reason_code="AEO",
+            reason="Vidange",
+            is_charge=True,
+            include_base_amount=False,
+        )
+        tax_emptying_2 = self._create_allowance_charge_tax(
+            name="Vidange x2",
+            amount_type="fixed",
+            amount=0.20,
+            reason_code="AEO",
+            reason="Vidange x2",
+            is_charge=True,
+            include_base_amount=False,
+        )
         tax_21 = self.percent_tax(21.0)
         invoice = self._create_invoice(
             partner_id=self.partner_be,
@@ -309,7 +391,16 @@ class TestUblExportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
 
     def test_invoice_custom_tax_emptying_turned_as_extra_invoice_lines(self):
         """ Ensure the emptying taxes (a.k.a 'vidange') are turned into extra invoice lines inside the xml. """
-        tax_emptying = self.python_tax("quantity * 0.10", name="Vidange")
+        tax_emptying = self._create_allowance_charge_tax(
+            name="Vidange",
+            amount_type="code",
+            amount=0.0,
+            reason_code="AEO",
+            reason="Vidange",
+            is_charge=True,
+            include_base_amount=False,
+            formula="quantity * 0.10",
+        )
         tax_21 = self.percent_tax(21.0)
         invoice = self._create_invoice(
             partner_id=self.partner_be,
@@ -404,7 +495,15 @@ class TestUblExportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
         self._assert_invoice_ubl_file(invoice, 'test_invoice_early_pay_discount_multiple_taxes')
 
     def test_invoice_early_pay_discount_with_recycling_contribution_tax(self):
-        tax_recupel = self.fixed_tax(1.0, name="RECUPEL", include_base_amount=True)
+        tax_recupel = self._create_allowance_charge_tax(
+            name="RECUPEL",
+            amount_type="fixed",
+            amount=1.0,
+            reason_code="AEO",
+            reason="RECUPEL",
+            is_charge=True,
+            include_base_amount=True,
+        )
         tax_21 = self.percent_tax(21.0)
         product = self._create_product(lst_price=99.0, taxes_id=tax_recupel + tax_21)
         mixed_early_payment_term = self._create_mixed_early_payment_term()
