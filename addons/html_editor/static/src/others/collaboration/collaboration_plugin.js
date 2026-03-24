@@ -129,8 +129,11 @@ export class CollaborationPlugin extends Plugin {
         let commitIndex = 0;
         const selectionData = this.dependencies.selection.getSelectionData();
 
-        const commits = this.dependencies.history.getHistoryCommits();
         for (const newCommit of newCommits) {
+            // `addExternalCommit` will impact the array of written commits.
+            // Get a new copy at every step of the loop to make sure to have an
+            // updated version.
+            const commits = this.dependencies.history.getHistoryCommits();
             // todo: add a test that no 2 on_history_missing_parent_commit_handlers
             // are called in same stack.
             const insertIndex = this.getInsertCommitIndex(commits, newCommit);
