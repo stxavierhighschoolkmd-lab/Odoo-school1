@@ -199,13 +199,12 @@ export class HistoryPlugin extends Plugin {
     }
 
     /**
-     * Return the list of commits in history.
-     * TODO AGE: This should pass a copy but doing so breaks tests!
+     * Return a copy of the list of commits in history.
      *
      * @returns { EditorCommit[] }
      */
     getHistoryCommits() {
-        return this.commits;
+        return [...this.commits];
     }
 
     /**
