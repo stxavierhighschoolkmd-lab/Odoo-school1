@@ -300,9 +300,9 @@ test("sidebar: basic chat rendering", async () => {
     await contains(".o-mail-DiscussSidebarChannel-itemName:text('Demo')");
     await contains(".o-mail-DiscussSidebarChannel img[alt='Thread Image']");
     await click("[title='Chat Actions']");
-    await waitFor(".o-dropdown-item:count(7)", { timeout: 3000 });
-    await waitFor(".o-mail-ActionList-group:count(4)");
-    const group = range(0, 4).map((i) => `.o-mail-ActionList-group:eq(${i})`);
+    await waitFor(".o-dropdown-item:count(8)", { timeout: 3000 });
+    await waitFor(".o-mail-ActionList-group:count(5)");
+    const group = range(0, 5).map((i) => `.o-mail-ActionList-group:eq(${i})`);
     await waitFor(`${group[0]} .o-dropdown-item:count(2)`);
     await waitFor(`${group[0]} .o-dropdown-item:eq(0):text('Start Video Call')`);
     await waitFor(`${group[0]} .o-dropdown-item:eq(1):text('Start Call')`);
@@ -314,6 +314,8 @@ test("sidebar: basic chat rendering", async () => {
     await waitFor(`${group[2]} .o-dropdown-item:eq(1):text('Advanced Settings')`);
     await waitFor(`${group[3]} .o-dropdown-item:count(1)`);
     await waitFor(`${group[3]} .o-dropdown-item:text('Hide Until New Message')`);
+    await waitFor(`${group[4]} .o-dropdown-item:count(1)`);
+    await waitFor(`${group[4]} .o-dropdown-item:text('Leave Conversation')`);
     await contains(".o-mail-DiscussSidebarChannel .badge", { count: 0 });
 });
 
@@ -349,7 +351,7 @@ test("sidebar: open channel and leave it", async () => {
     await contains(".o-mail-DiscussContent-threadName", { value: "General" });
     await expect.waitForSteps([]);
     await click("[title='Channel Actions']");
-    await click(".o-dropdown-item:contains('Leave Channel')");
+    await click(".o-dropdown-item:contains('Leave Conversation')");
     await click("button:text('Leave Conversation')");
     await contains(".o-mail-DiscussSidebarChannel-itemName:text('General')", { count: 0 });
     await contains(".o-mail-DiscussContent-threadName", { value: "Inbox" });
@@ -955,7 +957,7 @@ test("Can leave channel", async () => {
     await openDiscuss(channelId);
     await contains(".o-mail-DiscussSidebarChannel-itemName:text('General')");
     await click("[title='Channel Actions']");
-    await click(".o-dropdown-item:contains('Leave Channel')");
+    await click(".o-dropdown-item:contains('Leave Conversation')");
     await click("button:text('Leave Conversation')");
     await contains(".o-mail-DiscussSidebarChannel-itemName:text('General')", { count: 0 });
 });
@@ -1033,7 +1035,7 @@ test("Unpinning channel closes its chat window", async () => {
     await contains(".o-mail-ChatWindow:text('Sales')");
     await openDiscuss();
     await click("[title='Channel Actions']");
-    await click(".o-dropdown-item:contains('Leave Channel')");
+    await click(".o-dropdown-item:contains('Leave Conversation')");
     await openFormView("discuss.channel");
     await contains(".o-mail-ChatWindow:text('Sales')", { count: 0 });
 });
