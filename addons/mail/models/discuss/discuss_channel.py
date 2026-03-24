@@ -52,6 +52,7 @@ class DiscussChannel(models.Model):
     _mail_flat_thread = False
     _mail_post_access = 'read'
     _mail_message_reaction_access = "read"
+    _reactions_in_portal_chatter = True
     _inherit = ["mail.thread", "bus.sync.mixin"]
 
     MAX_BOUNCE_LIMIT = 10

@@ -31,6 +31,7 @@ class SlideChannel(models.Model):
     ]
     _order = 'sequence, id'
     _partner_unfollow_enabled = True
+    _reactions_in_portal_chatter = True
 
     _CUSTOMER_HEADERS_LIMIT_COUNT = 0  # never use X-Msg-To headers
 

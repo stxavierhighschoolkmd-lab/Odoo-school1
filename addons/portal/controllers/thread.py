@@ -105,6 +105,8 @@ class PortalWebClientController(WebclientController):
         }
 
         def can_react(thread):
+            if not getattr(thread, "_reactions_in_portal_chatter", False):
+                return False
             thread_mode = False
             # sudo: mail.thread - can read thread to build _mail_get_operation_for_mail_message_operation
             for domain, operation in thread.sudo()._mail_get_operation_for_mail_message_operation(
@@ -127,6 +129,7 @@ class PortalWebClientController(WebclientController):
             return bool(has_access)
 
         res.attr("can_react", can_react)
+        res.attr("display_name")
         res.attr("hasReadAccess", lambda t: t.sudo(False).has_access("read"))
         res.one(
             "portal_partner",

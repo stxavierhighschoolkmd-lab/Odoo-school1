@@ -100,6 +100,7 @@ export class Composer extends Component {
         sidebar: true,
         showFullComposer: true,
         allowUpload: true,
+        autofocus: 0,
     };
     static props = [
         "composer",

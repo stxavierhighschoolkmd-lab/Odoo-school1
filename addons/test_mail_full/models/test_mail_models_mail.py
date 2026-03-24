@@ -13,6 +13,7 @@ class MailTestPortal(models.Model):
         'portal.mixin',
         'mail.thread',
     ]
+    _reactions_in_portal_chatter = True
 
     name = fields.Char('Name')
     partner_id = fields.Many2one('res.partner', 'Customer')
@@ -32,6 +33,7 @@ class MailTestPortalNoPartner(models.Model):
         'mail.thread',
         'portal.mixin',
     ]
+    _reactions_in_portal_chatter = True
 
     name = fields.Char()
 

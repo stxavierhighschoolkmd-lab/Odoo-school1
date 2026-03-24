@@ -130,43 +130,6 @@ class TestProjectSharingUi(HttpCase):
         })
         self.start_tour("/my/projects", 'portal_project_sharing_tour_with_disallowed_milestones', login='georges1')
 
-    def test_04_project_sharing_chatter_message_reactions(self):
-        # portal users can load chatter messages containing partner reactions
-        self.env['project.share.wizard'].create({
-            'res_model': 'project.project',
-            'res_id': self.project_portal.id,
-            'collaborator_ids': [
-                Command.create({'partner_id': self.partner_portal.id, 'access_mode': 'edit'}),
-            ],
-        })
-        user_john = self.env["res.users"].create({
-            'name': 'John',
-            'login': 'john',
-            'password': 'john1234',
-            'email': 'john@example.com',
-            'group_ids': [Command.set([
-                self.env.ref('base.group_user').id,
-                self.env.ref('project.group_project_user').id
-            ])]
-        })
-        task = self.env['project.task'].with_context({'mail_create_nolog': True}).create({
-            'name': 'Test Task with messages',
-            'project_id': self.project_portal.id,
-        })
-        self.authenticate("georges1", "georges1")
-        message = task.message_post(
-            body='TestingMessage',
-            message_type="comment",
-            subtype_id=self.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment')
-        )
-        self.authenticate("john", "john")
-        self.project_portal.message_subscribe(partner_ids=[user_john.partner_id.id])
-        self.make_jsonrpc_request(
-            route="/mail/message/reaction",
-            params={"action": "add", "content": "👀", "message_id": message.id},
-        )
-        self.start_tour("/my/projects", 'test_04_project_sharing_chatter_message_reactions', login='georges1')
-
     def test_05_project_sharing_chatter_mention_users(self):
         self.env["project.share.wizard"].create(
             {

@@ -30,6 +30,7 @@ class SlideSlide(models.Model):
     ]
     _description = 'Slide'
     _mail_post_access = 'read'
+    _reactions_in_portal_chatter = True
     _order_by_strategy = {
         'sequence': 'sequence asc, id asc',
         'most_viewed': 'total_views desc',

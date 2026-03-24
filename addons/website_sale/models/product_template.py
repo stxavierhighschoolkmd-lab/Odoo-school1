@@ -42,6 +42,7 @@ class ProductTemplate(models.Model):
         "website.searchable.mixin",
     ]
     _mail_post_access = "read"
+    _reactions_in_portal_chatter = True
     _check_company_auto = True
 
     # === DEFAULT METHODS ===#
