@@ -157,6 +157,8 @@ import { EditorCommit } from "@html_editor/utils/commit";
  *    mutation: SerializedMutation<"attributes">,
  *    options: { ensureNewMutations: boolean, wasReversed: boolean }
  *  ) => arg)[] } attribute_change_processors
+ * @typedef {((node: Node, attributeName: string, attributeValue: string) => boolean)[]} set_attribute_overrides
+ * @typedef {((commit: EditorCommit) => void)[]} on_committed_handlers
  * @typedef { ((root: HTMLElement) => void)[] } on_content_updated_handlers
  * @typedef { ((record: SerializedMutation[]) => void)[] } on_attribute_changed_handlers
  * @typedef { ((record: SerializedMutation[], currentOperation: EditorCommitType) => void)[] } on_new_records_handled_handlers

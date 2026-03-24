@@ -4,28 +4,19 @@ import { withSequence } from "@html_editor/utils/resource";
 import { _t } from "@web/core/l10n/translation";
 
 /**
- * @typedef { import("./selection_plugin").EditorSelection } EditorSelection
- * @typedef { import("../utils/dom_map").SerializedNode } SerializedNode
- * @typedef { import("../utils/dom_map").SerializedSelection } SerializedSelection
- * @typedef { import("../utils/dom_map").NodeId } NodeId
- *
- * @typedef { import("./dom_mutation_plugin").EditorMutation } EditorMutation
- *
  * @typedef { import("../utils/commit").EditorCommit } EditorCommit
  * @typedef { import("../utils/commit").EditorCommitId } EditorCommitId
- * @typedef { import("../utils/commit").EditorCommitType } EditorCommitType
- * @typedef { import("../utils/commit").EditorCommitData } EditorCommitData
  */
 /**
  * @typedef { Object } HistoryShared
  * @property { HistoryPlugin['write'] } write
  * @property { HistoryPlugin['undo'] } undo
  * @property { HistoryPlugin['redo'] } redo
- * @property { HistoryPlugin['addExternalCommit'] } addExternalCommit
- * @property { HistoryPlugin['canRedo'] } canRedo
  * @property { HistoryPlugin['canUndo'] } canUndo
+ * @property { HistoryPlugin['canRedo'] } canRedo
  * @property { HistoryPlugin['getHistoryCommits'] } getHistoryCommits
  * @property { HistoryPlugin['reset'] } reset
+ * @property { HistoryPlugin['addExternalCommit'] } addExternalCommit
  * @property { HistoryPlugin['resetFromCommits'] } resetFromCommits
  * @property { HistoryPlugin['getCommitsUntil'] } getCommitsUntil
  */
@@ -34,13 +25,10 @@ import { _t } from "@web/core/l10n/translation";
  * @typedef {(() => void)[]} on_history_cleaned_handlers
  * @typedef {(() => void)[]} on_history_reset_handlers
  * @typedef {(() => void)[]} on_history_reset_from_commits_handlers
- * @typedef {((revertedCommit: EditorCommit) => void)[]} on_redone_handlers
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_undone_handlers
- * @typedef {((commit: EditorCommit) => void)[]} on_committed_handlers
+ * @typedef {((revertedCommit: EditorCommit) => void)[]} on_redone_handlers
  *
  * @typedef {((commit: EditorCommit) => boolean | undefined)[]} is_commit_reversible_predicates
- *
- * @typedef {((node: Node, attributeName: string, attributeValue: string) => boolean)[]} set_attribute_overrides
  */
 
 export const COMMIT_DEBOUNCE_DELAY = 250;
@@ -49,18 +37,20 @@ export class HistoryPlugin extends Plugin {
     static id = "history";
     static dependencies = ["selection"];
     static shared = [
-        // Main
+        // Main public API
         "write",
         "undo",
         "redo",
-        // From original
-        "addExternalCommit",
-        "canRedo",
         "canUndo",
+        "canRedo",
         "getHistoryCommits",
         "reset",
+
+        // Collaboration compatibility
+        "addExternalCommit",
         "resetFromCommits",
-        // Had to add
+
+        // Preview
         "getCommitsUntil",
     ];
     /** @type {import("plugins").EditorResources} */
@@ -114,12 +104,28 @@ export class HistoryPlugin extends Plugin {
 
     setup() {
         this._onKeyupResetContenteditableNodes = [];
-        this.addDomListener(this.document, "beforeinput", this._onDocumentBeforeInput.bind(this));
-        this.addDomListener(this.document, "input", this._onDocumentInput.bind(this));
+        this.addDomListener(this.document, "beforeinput", this.onDocumentBeforeInput.bind(this));
+        this.addDomListener(this.document, "input", this.onDocumentInput.bind(this));
         this.clean();
     }
 
+    clean() {
+        /** @type { EditorCommit[] } */
+        this.commits = [];
+        /** @type {Set<EditorCommitId>} Commits reverted by undo/redo operations */
+        this.revertedCommits = new Set();
+        /** @type {Set<EditorCommitId>} Commits reverted by restoring to a save point */
+        this.discardedCommits = new Set();
+        this.trigger("on_history_cleaned_handlers");
+    }
+
+    // ===============
+    // Main public API
+    // ===============
+
     /**
+     * Write a commit to history.
+     *
      * @param { EditorCommit } commit
      * @returns { EditorCommit }
      */
@@ -141,13 +147,16 @@ export class HistoryPlugin extends Plugin {
         return commit;
     }
 
+    /**
+     * Undo the last undo-able batch of commits.
+     */
     undo() {
         if (this.commits.length === 1) {
             return;
         }
         this.trigger("on_will_undo_handlers");
         let revertedCommit;
-        for (revertedCommit of this.getNextUndoCommits()) {
+        for (revertedCommit of this.getNextRevisionCommits("undo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
             this.revertedCommits.add(revertedCommit.id);
             this.trigger("on_single_commit_undone_handlers", revertedCommit);
@@ -155,10 +164,13 @@ export class HistoryPlugin extends Plugin {
         this.trigger("on_undone_handlers", revertedCommit);
     }
 
+    /**
+     * Redo the last redo-able batch of commits.
+     */
     redo() {
         this.trigger("on_will_redo_handlers");
         let revertedCommit;
-        for (revertedCommit of this.getNextRedoCommits()) {
+        for (revertedCommit of this.getNextRevisionCommits("redo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
             this.revertedCommits.add(revertedCommit.id);
             this.trigger("on_single_commit_redone_handlers", revertedCommit);
@@ -166,24 +178,34 @@ export class HistoryPlugin extends Plugin {
         this.trigger("on_redone_handlers", revertedCommit);
     }
 
-    // Private
-
-    applyCommit(commit) {
-        this.delegateTo("apply_commit_overrides", commit);
+    /**
+     * Return true if there is at least one commit in history that can be
+     * undone, false otherwise.
+     *
+     * @returns { boolean }
+     */
+    canUndo() {
+        return this.getNextRevisionIndex("undo") > 0;
     }
 
-    revertCommit(commit, { ensureNewMutations = false } = {}) {
-        this.delegateTo("revert_commit_overrides", commit, { ensureNewMutations });
+    /**
+     * Return true if there is at least one commit in history that can be
+     * redone, false otherwise.
+     *
+     * @returns { boolean }
+     */
+    canRedo() {
+        return this.getNextRevisionIndex("redo") > 0;
     }
 
-    clean() {
-        /** @type { EditorCommit[] } */
-        this.commits = [];
-        /** @type {Set<EditorCommitId>} Commits reverted by undo/redo operations */
-        this.revertedCommits = new Set();
-        /** @type {Set<EditorCommitId>} Commits reverted by restoring to a save point */
-        this.discardedCommits = new Set();
-        this.trigger("on_history_cleaned_handlers");
+    /**
+     * Return the list of commits in history.
+     * TODO AGE: This should pass a copy but doing so breaks tests!
+     *
+     * @returns { EditorCommit[] }
+     */
+    getHistoryCommits() {
+        return this.commits;
     }
 
     /**
@@ -196,7 +218,125 @@ export class HistoryPlugin extends Plugin {
         this.trigger("on_history_reset_handlers", content);
     }
 
-    // NEW: process commit
+    // ===========================
+    // Commit application/reversal
+    // ===========================
+
+    /**
+     * Delegate the application of the changes in a given commit to the
+     * concerned plugins.
+     *
+     * @param { EditorCommit } commit
+     */
+    applyCommit(commit) {
+        if (!this.delegateTo("apply_commit_overrides", commit)) {
+            console.warn("Can't apply commit: no plugin responded.", commit);
+        }
+    }
+
+    /**
+     * Delegate the reversal of the changes in a given commit to the concerned
+     * plugins.
+     *
+     * @param { EditorCommit } commit
+     * @param { Object } [param1 = {}]
+     * @param { boolean } [param1.ensureNewMutations = false]
+     */
+    revertCommit(commit, { ensureNewMutations = false } = {}) {
+        if (!this.delegateTo("revert_commit_overrides", commit, { ensureNewMutations })) {
+            console.warn("Can't revert commit: no plugin responded.", commit);
+        }
+    }
+
+    // ============================
+    // Revision (undo/redo) helpers
+    // ============================
+
+    /**
+     * Return the index in the history of the next commit to undo or redo, or -1
+     * if none could be found.
+     *
+     * @param {"undo" | "redo"} type
+     * @param { number } [fromIndex = this.commits.length] commit index from which to search
+     * @returns { number }
+     */
+    getNextRevisionIndex(type, fromIndex = this.commits.length) {
+        const regularTypes = ["original", "reset"];
+        // Do not undo/redo the initial commit.
+        for (let index = fromIndex - 1; index > 0; index--) {
+            const commit = this.commits[index];
+            if (this.isReversibleCommit(commit) && !this.discardedCommits.has(commit.id)) {
+                if (type === "redo" && regularTypes.includes(commit.type)) {
+                    return -1;
+                } else if (
+                    !this.revertedCommits.has(commit.id) &&
+                    // Go back to first commit that can be undone.
+                    ((type === "undo" && [...regularTypes, "redo"].includes(commit.type)) ||
+                        // Look for an "undo" commit that has not yet been redone.
+                        (type === "redo" && commit.type === "undo"))
+                ) {
+                    return index;
+                }
+            }
+        }
+        // There is no commits left to be undone/redone, return an index that
+        // does not point to any commit
+        return -1;
+    }
+
+    /**
+     * Returns the commits to be reverted/redone by a single undo or redo.
+     *
+     * @param {"undo" | "redo"} type
+     * @returns { EditorCommit[] }
+     */
+    getNextRevisionCommits(type) {
+        let referenceCommitIndex = this.getNextRevisionIndex(type);
+        // Do not undo/redo the initial commit.
+        if (referenceCommitIndex <= 0) {
+            return [];
+        }
+        let nextCommitIndex = this.getNextRevisionIndex(type, referenceCommitIndex);
+        const result = [this.commits[referenceCommitIndex]];
+        while (
+            nextCommitIndex >= 0 &&
+            this.canCommitsBeBatched(referenceCommitIndex, nextCommitIndex)
+        ) {
+            result.push(this.commits[nextCommitIndex]);
+            referenceCommitIndex = nextCommitIndex;
+            nextCommitIndex = this.getNextRevisionIndex(type, nextCommitIndex);
+        }
+        return result;
+    }
+
+    /**
+     * Returns true if commits can be batched in a single revision (undo/redo),
+     * false otherwise.
+     * Currrently: commits with a single mutation on the same text node.
+     *
+     * @param { number } index1
+     * @param { number } index2
+     * @returns { boolean }
+     */
+    canCommitsBeBatched(index1, index2) {
+        const commit1 = this.commits[index1];
+        const commit2 = this.commits[index2];
+        if (!commit1.metadata.batchable || !commit2.metadata.batchable) {
+            return false;
+        }
+        // Keep only if close enough in time.
+        if (
+            Math.abs(commit1.metadata.commitTimestamp - commit2.metadata.commitTimestamp) >
+            COMMIT_DEBOUNCE_DELAY
+        ) {
+            return false;
+        }
+        return true;
+    }
+
+    // ===========================
+    // Collaboration compatibility
+    // ===========================
 
     /**
      * Insert a commit in the history.
@@ -224,168 +364,6 @@ export class HistoryPlugin extends Plugin {
         this.trigger("on_external_commit_added_handlers");
     }
 
-    getHistoryCommits() {
-        return this.commits;
-    }
-
-    // Before applying a commit
-
-    canUndo() {
-        return this.getNextUndoIndex() > 0;
-    }
-
-    canRedo() {
-        return this.getNextRedoIndex() > 0;
-    }
-
-    /**
-     * Get the commit index in the history to undo.
-     * Return -1 if no undo index can be found.
-     *
-     * @param { number } fromIndex commit index from which to search
-     */
-    getNextUndoIndex(fromIndex = this.commits.length) {
-        // Go back to first commit that can be undone ("original", "reset" or "redo").
-        // Do not undo the initial commit.
-        for (let index = fromIndex - 1; index > 0; index--) {
-            const commit = this.commits[index];
-            if (!this.isReversibleCommit(commit) || this.discardedCommits.has(commit.id)) {
-                continue;
-            }
-            if (
-                ["original", "reset", "redo"].includes(commit.type) &&
-                !this.revertedCommits.has(commit.id)
-            ) {
-                return index;
-            }
-        }
-        // There is no commits left to be undone, return an index that does not
-        // point to any commit
-        return -1;
-    }
-    /**
-     * Returns the commits to be reverted by a single undo.
-     */
-    getNextUndoCommits() {
-        let referenceCommitIndex = this.getNextUndoIndex();
-        // Do not undo the initial commit.
-        if (referenceCommitIndex <= 0) {
-            return [];
-        }
-        let nextCommitIndex = this.getNextUndoIndex(referenceCommitIndex);
-        const result = [this.commits[referenceCommitIndex]];
-        while (
-            nextCommitIndex >= 0 &&
-            this.canCommitsBeBatched(referenceCommitIndex, nextCommitIndex)
-        ) {
-            result.push(this.commits[nextCommitIndex]);
-            referenceCommitIndex = nextCommitIndex;
-            nextCommitIndex = this.getNextUndoIndex(nextCommitIndex);
-        }
-        return result;
-    }
-    /**
-     * Returns true if commits can be batched in a single undo/redo.
-     * Currrently: commits with a single mutation on the same text node.
-     * @param { number } index1
-     * @param { number } index2
-     */
-    canCommitsBeBatched(index1, index2) {
-        const commit1 = this.commits[index1];
-        const commit2 = this.commits[index2];
-        if (!commit1.metadata.batchable || !commit2.metadata.batchable) {
-            return false;
-        }
-        // Keep only if close enough in time.
-        if (
-            Math.abs(commit1.metadata.commitTimestamp - commit2.metadata.commitTimestamp) >
-            COMMIT_DEBOUNCE_DELAY
-        ) {
-            return false;
-        }
-        return true;
-    }
-    /**
-     * Get the commit index in the history to redo.
-     * Return -1 if no redo index can be found.
-     *
-     * @param { number } fromIndex commit index from which to search
-     */
-    getNextRedoIndex(fromIndex = this.commits.length) {
-        // Look for an "undo" commit that has not yet been redone. Stop search if
-        // a "original" commit is found.
-        // Do not undo the initial commit.
-        for (let index = fromIndex - 1; index > 0; index--) {
-            const commit = this.commits[index];
-            if (!this.isReversibleCommit(commit) || this.discardedCommits.has(commit.id)) {
-                continue;
-            }
-            if (["original", "reset"].includes(commit.type)) {
-                return -1;
-            }
-            if (commit.type === "undo" && !this.revertedCommits.has(commit.id)) {
-                return index;
-            }
-        }
-        return -1;
-    }
-    /**
-     * Returns the commits to be redone by a single redo.
-     */
-    getNextRedoCommits() {
-        let referenceCommitIndex = this.getNextRedoIndex();
-        // Do not revert the initial commit.
-        if (referenceCommitIndex <= 0) {
-            return [];
-        }
-        let nextCommitIndex = this.getNextRedoIndex(referenceCommitIndex);
-        const result = [this.commits[referenceCommitIndex]];
-        while (
-            nextCommitIndex >= 0 &&
-            this.canCommitsBeBatched(referenceCommitIndex, nextCommitIndex)
-        ) {
-            result.push(this.commits[nextCommitIndex]);
-            referenceCommitIndex = nextCommitIndex;
-            nextCommitIndex = this.getNextRedoIndex(nextCommitIndex);
-        }
-        return result;
-    }
-
-    // Applying a commit
-
-    /**
-     * Get the commits saved in commits between the commit of given id (not
-     * included) and the most recent one. If no commit id is given, return all
-     * commits but the first.
-     *
-     * @param {EditorCommitId} [commitId]
-     * @returns { { ...EditorCommit, discard: false | () => void }[] }
-     */
-    getCommitsUntil(commitId) {
-        const commitIndex = this.commits.findLastIndex((commit) => commit?.id === commitId);
-        return this.commits
-            .slice(commitIndex === -1 ? 1 : commitIndex + 1)
-            .map((commit) => {
-                if (commit && this.isReversibleCommit(commit)) {
-                    commit.discard = () => {
-                        this.discardedCommits.add(commit.id);
-                    };
-                }
-                return commit;
-            })
-            .filter(Boolean)
-            .reverse();
-    }
-
-    /**
-     * Meant to be overriden.
-     *
-     * @param { EditorCommit } commit
-     */
-    isReversibleCommit(commit) {
-        return this.checkPredicates("is_commit_reversible_predicates", commit) ?? true;
-    }
-
     /**
      * @param { EditorCommit[] } commits
      */
@@ -405,9 +383,56 @@ export class HistoryPlugin extends Plugin {
         // dispatch again. Why was it needed?
     }
 
-    // Listeners to handle contenteditable stuff
+    /**
+     * Give a chance to other plugins to prevent the reversal of the given
+     * commit. Return true if it's reversible, false otherwise.
+     *
+     * @param { EditorCommit } commit
+     * @returns { boolean }
+     */
+    isReversibleCommit(commit) {
+        return this.checkPredicates("is_commit_reversible_predicates", commit) ?? true;
+    }
 
-    _onDocumentBeforeInput(ev) {
+    // =======
+    // Preview
+    // =======
+
+    // TODO AGE: review the domMutation/history distribution of preview stuff.
+
+    /**
+     * Get the commits saved in commits between the commit of given id (not
+     * included) and the most recent one. If no commit id is given, return all
+     * commits but the first.
+     *
+     * @param { EditorCommitId } [commitId]
+     * // TODO AGE: review this.
+     * @returns { { ...EditorCommit, discard: false | () => void }[] }
+     */
+    getCommitsUntil(commitId) {
+        const commitIndex = this.commits.findLastIndex((commit) => commit?.id === commitId);
+        return this.commits
+            .slice(commitIndex === -1 ? 1 : commitIndex + 1)
+            .map((commit) => {
+                if (commit && this.isReversibleCommit(commit)) {
+                    commit.discard = () => {
+                        this.discardedCommits.add(commit.id);
+                    };
+                }
+                return commit;
+            })
+            .filter(Boolean)
+            .reverse();
+    }
+
+    // =============
+    // DOM Listeners
+    // =============
+
+    /**
+     * @param { InputEvent } ev
+     */
+    onDocumentBeforeInput(ev) {
         if (this.editable.contains(ev.target)) {
             return;
         }
@@ -425,7 +450,10 @@ export class HistoryPlugin extends Plugin {
         }
     }
 
-    _onDocumentInput(ev) {
+    /**
+     * @param { InputEvent } ev
+     */
+    onDocumentInput(ev) {
         if (
             ["historyUndo", "historyRedo"].includes(ev.inputType) &&
             this._onKeyupResetContenteditableNodes.length
