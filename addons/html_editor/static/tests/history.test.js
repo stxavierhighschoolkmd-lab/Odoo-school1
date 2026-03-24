@@ -1108,7 +1108,7 @@ describe("unobserved mutations", () => {
             editor.shared.domMutation.ignoreDOMMutations(() => editor.editable.append(p2));
             expect(getContent(editor.editable)).toBe("<p>p1</p><p>p2</p>");
             // Only p1 should be present in the snapshot commit
-            const snapshotCommit = editor.shared.domMutation.createSnapshotCommit();
+            const snapshotCommit = editor.shared.history.createSnapshotCommit();
             expect(snapshotCommit.data.mutations.length).toBe(1);
             const childNodeId = snapshotCommit.data.mutations[0].nodeId;
             const domMutationPlugin = plugins.get("domMutation");
@@ -1123,7 +1123,7 @@ describe("unobserved mutations", () => {
             editor.shared.domMutation.ignoreDOMMutations(() => p.append(span));
             expect(getContent(editor.editable)).toBe("<p>test<span>unobserved</span></p>");
             // Only p and its text node should be present in the snapshot commit
-            const snapshotCommit = editor.shared.domMutation.createSnapshotCommit();
+            const snapshotCommit = editor.shared.history.createSnapshotCommit();
             expect(snapshotCommit.data.mutations.length).toBe(1);
             const serializedNode = snapshotCommit.data.mutations[0].serializedNode;
             expect(serializedNode.tagName).toBe("P");

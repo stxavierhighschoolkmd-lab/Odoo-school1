@@ -206,7 +206,7 @@ export class CollaborationPlugin extends Plugin {
         index++;
         while (index < commits.length) {
             if (commits[index].data.previousCommitId === newCommit.data.previousCommitId) {
-                if (commits[index].data.authorTimestamp > newCommit.data.authorTimestamp) {
+                if (commits[index].authorTimestamp > newCommit.authorTimestamp) {
                     break;
                 } else {
                     concurentCommits = [commits[index].id];
@@ -287,7 +287,7 @@ export class CollaborationPlugin extends Plugin {
         const historyLength = this.dependencies.history.getHistoryCommits().length;
         if (!this.lastSnapshotLength || this.lastSnapshotLength < historyLength) {
             this.lastSnapshotLength = historyLength;
-            const commit = this.dependencies.domMutation.createSnapshotCommit();
+            const commit = this.dependencies.history.createSnapshotCommit();
             const snapshot = {
                 time: Date.now(),
                 commit,

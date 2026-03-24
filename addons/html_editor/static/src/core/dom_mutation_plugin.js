@@ -5,7 +5,6 @@ import { childNodes, descendants, getCommonAncestor } from "@html_editor/utils/d
 import { omit, pick } from "@web/core/utils/objects";
 import { toggleClass } from "@html_editor/utils/dom";
 import { withSequence } from "@html_editor/utils/resource";
-import { EditorCommit } from "@html_editor/utils/commit";
 
 /**
  * DOM
@@ -42,7 +41,6 @@ import { EditorCommit } from "@html_editor/utils/commit";
  * @typedef { import("@html_editor/utils/commit").EditorCommitMetadata } EditorCommitMetadata
  *
  * @typedef { Object } DomMutationCommitData
- * @property { number } authorTimestamp              // timestamp of the commit authoring, before any mutation is applied
  * @property { SerializedMutation[] } mutations      // the mutations to apply/revert
  * @property { NodeId } activeElementId              // the ID of the active element before applying the mutations
  * @property { SerializedSelection } selection       // the serialized selection before applying the mutations
@@ -143,7 +141,6 @@ import { EditorCommit } from "@html_editor/utils/commit";
  * @property { DomMutationPlugin['makePreviewableOperation'] } makePreviewableOperation
  * @property { DomMutationPlugin['makePreviewableAsyncOperation'] } makePreviewableAsyncOperation
  * @property { DomMutationPlugin['makeSavePoint'] } makeSavePoint
- * @property { DomMutationPlugin['createSnapshotCommit'] } createSnapshotCommit
  * @property { DomMutationPlugin['stageSelection'] } stageSelection
  * @property { DomMutationPlugin['stageFocus'] } stageFocus
  * @property { DomMutationPlugin['getIsPreviewing'] } getIsPreviewing
@@ -197,9 +194,6 @@ export class DomMutationPlugin extends Plugin {
         "stageSelection",
         "stageFocus",
 
-        // Commit creation
-        "createSnapshotCommit",
-
         // Commit application/reversal
         "applyCustomMutation",
 
@@ -224,7 +218,6 @@ export class DomMutationPlugin extends Plugin {
             this.lastEnableObserverCallback = undefined;
         },
         on_history_reset_handlers: withSequence(0, () => {
-            this.dependencies.history.write(this.createSnapshotCommit("reset"));
             this.stageSelection();
         }),
         on_prepare_drag_handlers: this.disableHasStagedMutationsWarning.bind(this),
@@ -293,6 +286,18 @@ export class DomMutationPlugin extends Plugin {
         }),
         commit_root_providers: (commit) =>
             this.getMutationsRoot(commit.data.mutations || []) || this.editable,
+        snapshot_commit_data_processors: (data) => {
+            data.mutations = childNodes(this.editable)
+                .filter((node) => this.nodeMap.hasNode(node))
+                .map((node) => ({
+                    type: "add",
+                    parentNodeId: "root",
+                    nodeId: this.getNodeId(node),
+                    serializedNode: this.serializeTree(nodeToTree(node)),
+                    nextNodeId: null,
+                }));
+            return data;
+        },
     };
 
     setup() {
@@ -370,29 +375,24 @@ export class DomMutationPlugin extends Plugin {
         );
 
         /**
-         * 2. Create the commit.
+         * 2. Write the changes to history.
          */
 
-        // Set the type of the commit here. That way, the state of undo and redo
-        // is truly accessible when executing the `onChange` callback. It is
-        // useful for external components if they execute `can(Undo|Redo)`.
-        let commit = this.createCommit({ type, data: this.currentChanges.data, metadata });
+        const commit = this.dependencies.history.write({
+            type,
+            data: this.currentChanges.data,
+            metadata,
+        });
 
         /**
-         * 3. Write the commit to history.
-         */
-
-        commit = this.dependencies.history.write(commit);
-
-        /**
-         * 4. Reset the current state for the next commit.
+         * 3. Reset the current state for the next commit.
          */
 
         this.currentChanges = new CurrentChanges();
         this.stageSelection();
 
         /**
-         * 5. Notify of changes.
+         * 4. Notify of changes.
          */
 
         // Note AGE: will not trigger for a reset commit (it calls history.write
@@ -1323,63 +1323,6 @@ export class DomMutationPlugin extends Plugin {
         return Math.floor(Math.random() * Math.pow(2, 52)).toString();
     }
 
-    // ===============
-    // Commit creation
-    // ===============
-
-    /**
-     * @param { Object } param0
-     * @param { EditorCommitId } [param0.id]
-     * @param { EditorCommitType } [param0.type]
-     * @param { DomMutationCommitData } [param0.data]
-     * @param { EditorCommitMetadata } [param0.metadata]
-     * @returns { EditorCommit<DomMutationCommitData> }
-     */
-    createCommit({ id, type, data, metadata }) {
-        return this.processThrough(
-            "editor_commit_processors",
-            new EditorCommit({
-                id,
-                type,
-                data,
-                metadata,
-            })
-        );
-    }
-
-    /**
-     * @param { CommitType } [type = "original"]
-     * @returns { EditorCommit<DomMutationCommitData> }
-     */
-    createSnapshotCommit(type = "original") {
-        const authorTimestamp = this.currentChanges.authorTimestamp || Date.now();
-        return this.createCommit({
-            id: this.dependencies.history.getHistoryCommits().at(-1)?.id,
-            type,
-            data: {
-                authorTimestamp,
-                mutations: childNodes(this.editable)
-                    .filter((node) => this.nodeMap.hasNode(node))
-                    .map((node) => ({
-                        type: "add",
-                        parentNodeId: "root",
-                        nodeId: this.getNodeId(node),
-                        serializedNode: this.serializeTree(nodeToTree(node)),
-                        nextNodeId: null,
-                    })),
-                activeElementId: null,
-                selection: {
-                    anchorNode: undefined,
-                    anchorOffset: undefined,
-                    focusNode: undefined,
-                    focusOffset: undefined,
-                },
-                selectionAfter: null,
-            },
-            selectionAfter: null,
-        });
-    }
-
     // ===========================
     // Commit application/reversal
     // ===========================
@@ -1868,8 +1811,6 @@ export class DomMutationPlugin extends Plugin {
 
 class CurrentChanges {
     constructor() {
-        /** @type { number } */
-        this._authorTimestamp = Date.now();
         /** @type { SerializedMutation[] } */
         this._mutations = [];
         /** @type { NodeId | null } */
@@ -1887,17 +1828,12 @@ class CurrentChanges {
      */
     get data() {
         return {
-            authorTimestamp: this._authorTimestamp,
             mutations: [...this._mutations],
             activeElementId: this._activeElementId,
             selection: { ...this._selection },
             selectionAfter: { ...(this._selectionAfter || {}) },
             external: { ...this._external },
         };
-    }
-
-    get authorTimestamp() {
-        return this._authorTimestamp;
     }
 
     get mutations() {

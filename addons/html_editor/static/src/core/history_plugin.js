@@ -2,9 +2,13 @@ import { Plugin } from "../plugin";
 import { hasTouch } from "@web/core/browser/feature_detection";
 import { withSequence } from "@html_editor/utils/resource";
 import { _t } from "@web/core/l10n/translation";
+import { EditorCommit } from "../utils/commit";
 
 /**
  * @typedef { import("../utils/commit").EditorCommit } EditorCommit
+ * @typedef { import("../utils/commit").EditorCommitType } EditorCommitType
+ * @typedef { import("../utils/commit").EditorCommitData } EditorCommitData
+ * @typedef { import("../utils/commit").EditorCommitMetadata } EditorCommitMetadata
  * @typedef { import("../utils/commit").EditorCommitId } EditorCommitId
  */
 /**
@@ -19,6 +23,7 @@ import { _t } from "@web/core/l10n/translation";
  * @property { HistoryPlugin['addExternalCommit'] } addExternalCommit
  * @property { HistoryPlugin['resetFromCommits'] } resetFromCommits
  * @property { HistoryPlugin['getCommitsUntil'] } getCommitsUntil
+ * @property { HistoryPlugin['createSnapshotCommit'] } createSnapshotCommit
  */
 /**
  * @typedef {(() => void)[]} on_external_commit_added_handlers
@@ -29,6 +34,8 @@ import { _t } from "@web/core/l10n/translation";
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_redone_handlers
  *
  * @typedef {((commit: EditorCommit) => boolean | undefined)[]} is_commit_reversible_predicates
+ *
+ * @typedef {((data: EditorCommitData) => EditorCommitData | undefined)[]} snapshot_commit_data_processors
  */
 
 export const COMMIT_DEBOUNCE_DELAY = 250;
@@ -45,6 +52,9 @@ export class HistoryPlugin extends Plugin {
         "canRedo",
         "getHistoryCommits",
         "reset",
+
+        // Commit creation
+        "createSnapshotCommit",
 
         // Collaboration compatibility
         "addExternalCommit",
@@ -116,6 +126,7 @@ export class HistoryPlugin extends Plugin {
         this.revertedCommits = new Set();
         /** @type {Set<EditorCommitId>} Commits reverted by restoring to a save point */
         this.discardedCommits = new Set();
+        this.authorTimestamp = Date.now();
         this.trigger("on_history_cleaned_handlers");
     }
 
@@ -124,26 +135,21 @@ export class HistoryPlugin extends Plugin {
     // ===============
 
     /**
-     * Write a commit to history.
+     * Create a commit from data and write it to history.
      *
-     * @param { EditorCommit } commit
-     * @returns { EditorCommit }
+     * @template { EditorCommitData } T
+     * @param { Object } params
+     * @param { EditorCommitType } params.type
+     * @param { T } params.data
+     * @param { EditorCommitMetadata } params.metadata
+     * @returns { EditorCommit<T> }
      */
-    write(commit) {
-        // Set the timestamp of the commit or keep the timestamp of the commit
-        // it reverts (see `DomMutation`: `on_single_commit_(un|re)done_handlers`).
-        commit.stamp();
-        // @todo @phoenix should we allow to pause the making of a commit?
-        // if (!this.commitsActive) {
-        //     return;
-        // }
-        // @todo @phoenix link zws plugin
-        // this._resetLinkZws();
-        // @todo @phoenix sanitize plugin
-        // this.sanitize();
-        this.commits.push(commit);
-        // @todo @phoenix add this in the linkzws plugin.
-        // this._setLinkZws();
+    write({ type, data, metadata }) {
+        // Set the type of the commit here. That way, the state of undo and redo
+        // is truly accessible when executing the `onChange` callback. It is
+        // useful for external components if they execute `can(Undo|Redo)`.
+        const commit = this.createCommit({ type, data, metadata });
+        this.writeCommit(commit);
         return commit;
     }
 
@@ -214,7 +220,80 @@ export class HistoryPlugin extends Plugin {
      */
     reset(content) {
         this.clean();
+        this.writeCommit(this.createSnapshotCommit("reset"));
         this.trigger("on_history_reset_handlers", content);
+    }
+
+    // =======================
+    // Commit creation/writing
+    // =======================
+
+    /**
+     * @param { EditorCommit } commit
+     * @returns { EditorCommit }
+     */
+    writeCommit(commit) {
+        // Set the timestamp of the commit or keep the timestamp of the commit
+        // it reverts (see `DomMutation`: `on_single_commit_(un|re)done_handlers`).
+        commit.stamp();
+        // @todo @phoenix should we allow to pause the making of a commit?
+        // if (!this.commitsActive) {
+        //     return;
+        // }
+        // @todo @phoenix link zws plugin
+        // this._resetLinkZws();
+        // @todo @phoenix sanitize plugin
+        // this.sanitize();
+        this.commits.push(commit);
+        // @todo @phoenix add this in the linkzws plugin.
+        // this._setLinkZws();
+        this.authorTimestamp = Date.now();
+        return commit;
+    }
+
+    /**
+     * @param { Object } param0
+     * @param { EditorCommitId } [param0.id]
+     * @param { EditorCommitType } [param0.type]
+     * @param { DomMutationCommitData } [param0.data]
+     * @param { EditorCommitMetadata } [param0.metadata]
+     * @returns { EditorCommit<DomMutationCommitData> }
+     */
+    createCommit({ id, type, data, metadata }) {
+        return this.processThrough(
+            "editor_commit_processors",
+            new EditorCommit({
+                id,
+                type,
+                data,
+                metadata,
+                authorTimestamp: this.authorTimestamp,
+            })
+        );
+    }
+
+    /**
+     * @param { CommitType } [type = "original"]
+     * @returns { EditorCommit }
+     */
+    createSnapshotCommit(type = "original") {
+        const authorTimestamp = this.authorTimestamp || Date.now(); // TODO AGE: I don't think the || is needed.
+        const data = this.processThrough("snapshot_commit_data_processors", {
+            activeElementId: null,
+            selection: {
+                anchorNode: undefined,
+                anchorOffset: undefined,
+                focusNode: undefined,
+                focusOffset: undefined,
+            },
+            selectionAfter: null,
+        });
+        return this.createCommit({
+            id: this.commits.at(-1)?.id,
+            type,
+            authorTimestamp,
+            data,
+        });
     }
 
     // ===========================
