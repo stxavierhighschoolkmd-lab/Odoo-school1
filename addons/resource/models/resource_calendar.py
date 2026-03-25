@@ -777,6 +777,22 @@ class ResourceCalendar(models.Model):
             result[day.date()] += recurrent_attendances._filter_by_date(day.date())
         return result
 
+    def get_attendances(self, date_from, date_to, fields_to_fetch, domain=None):
+        date_from = fields.Date.from_string(date_from)
+        date_to = fields.Date.from_string(date_to)
+        attendances_per_date = self._get_attendances_by_date(date_from, date_to, domain=domain)
+        formatted_attendances = defaultdict(self.env["resource.calendar.attendance"].browse)
+        for date, attendances in attendances_per_date.items():
+            new_formatted_attendances = attendances._read_format(fnames=fields_to_fetch)
+            for attendance in new_formatted_attendances:
+                if formatted_attendances[attendance['id']]:
+                    formatted_attendances[attendance['id']]['other_dates'].append(date)
+                else:
+                    attendance['date'] = date
+                    attendance['other_dates'] = []
+                    formatted_attendances[attendance['id']] = attendance
+        return list(formatted_attendances.values())
+
     def copy_from(self, date_from, date_to, force=False):
         self.ensure_one()
         date_from = fields.Date.from_string(date_from)

@@ -1,8 +1,15 @@
 import { CalendarModel } from "@web/views/calendar/calendar_model";
 import { deserializeDate, serializeDate } from "@web/core/l10n/dates";
 import { _t } from "@web/core/l10n/translation";
+import { addFieldDependencies } from "@web/model/relational_model/utils";
 
 export class ResourceCalendarAttendanceCalendarModel extends CalendarModel {
+    setup(params, { notification }) {
+        super.setup(...arguments);
+        const { fields, activeFields } = this.meta;
+        addFieldDependencies(activeFields, fields, [{ name: "recurrency", type: "boolean" }]);
+    }
+
     _combineDate(date, floatTime) {
         const hours = Math.floor(floatTime);
         const minutes = Math.round((floatTime - hours) * 60);
@@ -16,11 +23,12 @@ export class ResourceCalendarAttendanceCalendarModel extends CalendarModel {
      * @override
      */
     fetchRecords(data) {
-        const { context, fieldNames, resModel, domain } = this.meta;
+        const { context, fieldNames, domain } = this.meta;
         return this.orm.call(
-            resModel,
+            "resource.calendar",
             "get_attendances",
             [
+                [this.meta.context.default_calendar_id],
                 serializeDate(data.range.start),
                 serializeDate(data.range.end),
                 [...new Set([...fieldNames, ...Object.keys(this.meta.activeFields)])],

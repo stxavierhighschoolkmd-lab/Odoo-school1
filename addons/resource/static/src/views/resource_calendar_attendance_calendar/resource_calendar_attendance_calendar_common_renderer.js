@@ -15,6 +15,7 @@ export class ResourceCalendarAttendanceCalendarCommonRenderer extends CalendarCo
             position: "right",
             onClose: () => {
                 this.fc.api.unselect();
+                this.popoverPromise.resolve();
             },
         });
         this.resourceCalendarAttendancePopoverService = useService(
@@ -34,6 +35,15 @@ export class ResourceCalendarAttendanceCalendarCommonRenderer extends CalendarCo
         };
     }
 
+    eventClassNames({ el, event }) {
+        const classes = super.eventClassNames({ el, event });
+        const pastEventClass = classes.indexOf("o_past_event");
+        if (pastEventClass != -1 && luxon.DateTime.now() <= event.end) {
+            classes.splice(pastEventClass, 1);
+        }
+        return classes;
+    }
+
     onEventDragStart(info) {
         this.popover.close();
         if (info.event.allDay) {
@@ -47,20 +57,41 @@ export class ResourceCalendarAttendanceCalendarCommonRenderer extends CalendarCo
         super.onEventDragStart(...arguments);
     }
 
+    onEventResize(info) {
+        const res = super.onEventResize(...arguments)
+        return res;
+    }
+
     onEventResizeStart(info) {
         this.popover.close();
         super.onEventResizeStart(...arguments);
     }
 
-    onEventDrop(info) {
+    async onEventDrop(info) {
         if (info.oldEvent.allDay) {
             info.view.calendar.setOption("defaultTimedEventDuration", "01:00");
         }
-        super.onEventDrop(...arguments);
+        const record = this.props.model.records[info.event.id];
+        if (record.rawRecord.recurrency) {
+            this.fc.api.unselect();
+            const dropTarget = document.elementFromPoint(
+                info.jsEvent.clientX,
+                info.jsEvent.clientY
+            );
+            dropTarget.fcSeg = info.el.fcSeg
+            record.delta = info.delta;
+            this.openPopover(dropTarget, record);
+            this.popoverPromise.promise.then(() => {
+                this.props.model.load()
+            });
+        } else {
+            super.onEventDrop(...arguments);
+        }
     }
 
     async onSelect(info) {
         info.jsEvent?.preventDefault();
+        this.popoverPromise = Promise.withResolvers();
         const start = luxon.DateTime.fromJSDate(info.start);
         const end = luxon.DateTime.fromJSDate(info.end);
         this.popover.open(
@@ -118,13 +149,30 @@ export class ResourceCalendarAttendanceCalendarCommonRenderer extends CalendarCo
      * @override
      */
     getPopoverProps(record) {
-        record = record?.rawRecord;
         return {
             onReload: async () => await this.props.model.load(),
-            originalRecord: record,
+            startOcurrenceDateTime: record?.startOcurrenceDateTime,
+            endOcurrenceDateTime: record?.endOcurrenceDateTime,
+            originalRecord: record?.rawRecord,
             recordProps: this.resourceCalendarAttendancePopoverService.recordProps,
             archInfo: this.resourceCalendarAttendancePopoverService.archInfo,
             context: this.props.model.meta.context,
+            delta: record?.delta,
         };
+    }
+
+    openPopover(target, record) {
+        this.popoverPromise = Promise.withResolvers();
+        const start = new luxon.DateTime.fromJSDate(target.fcSeg.start);
+        const end = new luxon.DateTime.fromJSDate(target.fcSeg.end);
+        record.startOcurrenceDateTime = start.set({
+            hour: record.start.hour,
+            minute: record.start.minute,
+        });
+        record.endOcurrenceDateTime = end.set({
+            hour: record.end.hour,
+            minute: record.end.minute,
+        });
+        return super.openPopover(...arguments);
     }
 }

@@ -49,13 +49,13 @@
                         <field name="hour_to" nolabel="1" class="o_hr_narrow_field" widget="float_time"/>
                     </span>
                     <field name="recurrency" widget="boolean_toggle"/>
-                    <label for="interval" string="Repeat every" invisible="not recurrency"/>
+                    <label for="recurrency_interval" string="Repeat every" invisible="not recurrency"/>
                     <span class="d-flex gap-2" invisible="not recurrency">
-                        <field name="interval" style="width: 2rem" required="recurrency"/>
+                        <field name="recurrency_interval" style="width: 2rem" required="recurrency"/>
                         <field name="recurrency_type" style="width: 5rem" required="recurrency"/>
-                        <field name="end_type" class="oe_inline w-auto" required="recurrency"/>
-                        <field name="count" invisible="end_type != 'times'" style="width: 2rem" required="end_type == 'times'"/>
-                        <field name="until" invisible="end_type != 'date'" required="end_type == 'date'"/>
+                        <field name="recurrency_end_type" class="oe_inline w-auto" required="recurrency"/>
+                        <field name="recurrency_count" invisible="recurrency_end_type != 'times'" style="width: 2rem" required="recurrency_end_type == 'times'"/>
+                        <field name="recurrency_until" invisible="recurrency_end_type != 'date'" required="recurrency_end_type == 'date'"/>
                     </span>
                 </group>
             </form>

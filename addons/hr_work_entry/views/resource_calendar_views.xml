@@ -38,9 +38,9 @@
         <field name="model">resource.calendar.attendance</field>
         <field name="inherit_id" ref="resource.view_resource_calendar_multi_create_form"/>
         <field name="arch" type="xml">
-            <group position="inside">
+            <field name="recurrency" position="before">
                 <field name="work_entry_type_id" widget="many2one_work_entry_type"/>
-            </group>
+            </field>
         </field>
     </record>
 
