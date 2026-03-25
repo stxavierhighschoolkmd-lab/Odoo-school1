@@ -2,7 +2,8 @@
 
 from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
-from odoo.tests import Form
+from odoo.tests import Form, tagged
+from odoo import Command
 
 
 class TestMrpAnalyticAccount(TransactionCase):
@@ -498,3 +499,69 @@ class TestAnalyticAccount(TestMrpAnalyticAccount):
         mo.action_confirm()
         mo.button_mark_done()
         self.assertEqual(mo.move_raw_ids.analytic_account_line_ids.category, 'manufacturing_order')
+
+
+@tagged('post_install', '-at_install')
+class TestAnalyticAccountTimesheet(TestMrpAnalyticAccount):
+    def test_analytic_account_access(self):
+        """ This test make sure that a user can scrap an order even without accounting rights """
+        if not self.env['ir.module.module'].search([('name', '=', 'timesheet_grid'), ('state', '=', 'installed')]):
+            self.skipTest("timesheet_grid is not installed, the access error won't trigger")
+
+        test_user = self.env['res.users'].create({
+            'name': 'Test MRP User',
+            'login': 'test_mrp_user',
+            'groups_id': [Command.set([
+                self.ref('mrp.group_mrp_user'),
+                self.ref('project.group_project_user'),
+                self.ref('hr_timesheet.group_hr_timesheet_approver')
+            ])],
+        })
+        component = self.env['product.product'].create({
+            'name': 'Test Component',
+            'type': 'consu',
+            'standard_price': 20.0,
+            'is_storable': True,
+        })
+
+        finished_product = self.env['product.product'].create({
+            'name': 'Test Finished Product',
+            'type': 'consu',
+            'is_storable': True
+        })
+
+        quant = self.env['stock.quant'].with_context(inventory_mode=True).create({
+            'product_id': component.id,
+            'inventory_quantity': 10,
+            'location_id': self.env.ref("stock.warehouse0").lot_stock_id.id,
+        })
+        quant.action_apply_inventory()
+
+        bom = self.env['mrp.bom'].create({
+            'product_id': finished_product.id,
+            'product_tmpl_id': finished_product.product_tmpl_id.id,
+            'product_qty': 1.0,
+            'type': 'normal',
+            'bom_line_ids': [(0, 0, {
+                'product_id': component.id,
+                'product_qty': 1.0,
+            })],
+        })
+
+        def _create_confirmed_mo():
+            mo_form = Form(self.env['mrp.production'])
+            mo_form.product_id = finished_product
+            mo_form.bom_id = bom
+            mo_form.product_qty = 1.0
+            mo_form.project_id = self.project
+            mo = mo_form.save()
+            mo.action_confirm()
+            return mo
+
+        _create_confirmed_mo().button_mark_done()
+        mo2 = _create_confirmed_mo()
+        self.env['stock.scrap'].with_user(test_user).create({
+            'product_id': component.id,
+            'scrap_qty': 1.0,
+            'production_id': mo2.id,
+        }).action_validate()

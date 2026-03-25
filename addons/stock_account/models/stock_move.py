@@ -22,7 +22,7 @@ class StockMove(models.Model):
 
     def _inverse_picked(self):
         super()._inverse_picked()
-        self._account_analytic_entry_move()
+        self.sudo()._account_analytic_entry_move()
 
     def _filter_anglo_saxon_moves(self, product):
         return self.filtered(lambda m: m.product_id.id == product.id)
