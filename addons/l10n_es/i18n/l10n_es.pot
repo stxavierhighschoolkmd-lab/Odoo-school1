@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 19.3a1+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-12 19:13+0000\n"
-"PO-Revision-Date: 2026-03-12 19:13+0000\n"
+"POT-Creation-Date: 2026-03-25 11:17+0000\n"
+"PO-Revision-Date: 2026-03-25 11:17+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -113,11 +113,6 @@ msgid "Cooperatives - SMEs (2008)"
 msgstr ""
 
 #. module: l10n_es
-#: model:ir.model,website_form_label:l10n_es.model_res_partner
-msgid "Create a Customer"
-msgstr ""
-
-#. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__dua
 msgid "DUA"
 msgstr ""
@@ -145,11 +140,6 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_es.field_res_config_settings__display_name
 #: model:ir.model.fields,field_description:l10n_es.field_res_partner__display_name
 msgid "Display Name"
-msgstr ""
-
-#. module: l10n_es
-#: model:ir.model,name:l10n_es.model_account_tax
-msgid "ETA tax codes mixin"
 msgstr ""
 
 #. module: l10n_es
@@ -196,6 +186,31 @@ msgstr ""
 #. module: l10n_es
 #: model:res.country.group,name:l10n_es.mainland_es
 msgid "Mainland Spain VAT"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_111
+msgid "Modelo 111"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_115
+msgid "Modelo 115"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_130
+msgid "Modelo 130"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_303
+msgid "Modelo 303"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_420
+msgid "Modelo 420"
 msgstr ""
 
 #. module: l10n_es
@@ -276,6 +291,36 @@ msgstr ""
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__sujeto
 msgid "Sujeto o ISP intracomunitario"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.model,name:l10n_es.model_account_tax
+msgid "Tax"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_111
+msgid "Tax Report (Mod 111) ES"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_115
+msgid "Tax Report (Mod 115) ES"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_130
+msgid "Tax Report (Mod 130) ES"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_303
+msgid "Tax Report (Mod 303) ES"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_420
+msgid "Tax Report (Mod 420) ES"
 msgstr ""
 
 #. module: l10n_es

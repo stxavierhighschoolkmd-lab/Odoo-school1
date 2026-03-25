@@ -1,23 +1,19 @@
 # Translation of Odoo Server.
 # This file contains the translation of the following modules:
-# * l10n_es
+# 	* l10n_es
 #
-# Weblate <noreply-mt-weblate@weblate.org>, 2025.
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 18.1alpha1\n"
+"Project-Id-Version: Odoo Server 19.3a1+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-20 12:31+0000\n"
-"PO-Revision-Date: 2025-11-17 03:11+0000\n"
-"Last-Translator: Weblate <noreply-mt-weblate@weblate.org>\n"
-"Language-Team: Spanish <https://translate.odoo.com/projects/odoo-19-l10n/"
-"l10n_es/es/>\n"
-"Language: es\n"
+"POT-Creation-Date: 2026-03-25 11:18+0000\n"
+"PO-Revision-Date: 2026-03-25 11:18+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
-"Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 5.12.2\n"
+"Plural-Forms: \n"
 
 #. module: l10n_es
 #: model_terms:ir.ui.view,arch_db:l10n_es.res_config_settings_view_form
@@ -27,32 +23,32 @@ msgstr "Por encima de este límite no se realizará la factura simplificada"
 #. module: l10n_es
 #: model:ir.model,name:l10n_es.model_account_chart_template
 msgid "Account Chart Template"
-msgstr "Plantilla de Plan de Cuentas"
+msgstr "Plantilla de plan contable"
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_exempt_reason__e1
 msgid "Art. 20"
-msgstr "Art. 20"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_exempt_reason__e2
 msgid "Art. 21"
-msgstr "Art. 21"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_exempt_reason__e3
 msgid "Art. 22"
-msgstr "Art. 22"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_exempt_reason__e4
 msgid "Art. 23 y 24"
-msgstr "Art. 23 y 24"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_exempt_reason__e5
 msgid "Art. 25"
-msgstr "Art. 25"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields,field_description:l10n_es.field_account_tax__l10n_es_bien_inversion
@@ -86,7 +82,7 @@ msgstr "Común"
 #. module: l10n_es
 #: model:ir.model,name:l10n_es.model_res_company
 msgid "Company"
-msgstr ""
+msgstr "Compañía"
 
 #. module: l10n_es
 #. odoo-python
@@ -97,7 +93,7 @@ msgstr "Completo (2008)"
 #. module: l10n_es
 #: model:ir.model,name:l10n_es.model_res_config_settings
 msgid "Config Settings"
-msgstr "Opciones de configuración"
+msgstr "Ajustes de configuración"
 
 #. module: l10n_es
 #: model:ir.model,name:l10n_es.model_res_partner
@@ -117,14 +113,9 @@ msgid "Cooperatives - SMEs (2008)"
 msgstr "Cooperativas - PyMEs (2008)"
 
 #. module: l10n_es
-#: model:ir.model,website_form_label:l10n_es.model_res_partner
-msgid "Create a Customer"
-msgstr "Crear un cliente"
-
-#. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__dua
 msgid "DUA"
-msgstr "DUA"
+msgstr ""
 
 #. module: l10n_es
 #: model:product.template,name:l10n_es.product_dua_valuation_10_product_template
@@ -152,11 +143,6 @@ msgid "Display Name"
 msgstr "Nombre mostrado"
 
 #. module: l10n_es
-#: model:ir.model,name:l10n_es.model_account_tax
-msgid "ETA tax codes mixin"
-msgstr ""
-
-#. module: l10n_es
 #: model:ir.model.fields,field_description:l10n_es.field_account_tax__l10n_es_exempt_reason
 msgid "Exempt Reason (Spain)"
 msgstr "Motivo de exención (España)"
@@ -164,7 +150,7 @@ msgstr "Motivo de exención (España)"
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__exento
 msgid "Exento"
-msgstr "Exento"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields,field_description:l10n_es.field_account_chart_template__id
@@ -174,12 +160,12 @@ msgstr "Exento"
 #: model:ir.model.fields,field_description:l10n_es.field_res_config_settings__id
 #: model:ir.model.fields,field_description:l10n_es.field_res_partner__id
 msgid "ID"
-msgstr "ID"
+msgstr ""
 
 #. module: l10n_es
 #: model_terms:ir.ui.view,arch_db:l10n_es.report_invoice_document
 msgid "ID:"
-msgstr "ID:"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__ignore
@@ -203,14 +189,39 @@ msgid "Mainland Spain VAT"
 msgstr "España Peninsula IVA"
 
 #. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_111
+msgid "Modelo 111"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_115
+msgid "Modelo 115"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_130
+msgid "Modelo 130"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_303
+msgid "Modelo 303"
+msgstr ""
+
+#. module: l10n_es
+#: model:ir.actions.client,name:l10n_es.action_account_report_mod_420
+msgid "Modelo 420"
+msgstr ""
+
+#. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__no_deducible
 msgid "No Deducible"
-msgstr "No Deducible"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__no_sujeto
 msgid "No Sujeto"
-msgstr "No Sujeto"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__no_sujeto_loc
@@ -226,12 +237,13 @@ msgstr "Entidades sin ánimo de lucro (2008)"
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_exempt_reason__e6
 msgid "Otros"
-msgstr "Otros"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields,help:l10n_es.field_res_company__l10n_es_simplified_invoice_limit
 #: model:ir.model.fields,help:l10n_es.field_res_config_settings__l10n_es_simplified_invoice_limit
-msgid "Over this amount is not legally possible to create a simplified invoice"
+msgid ""
+"Over this amount is not legally possible to create a simplified invoice"
 msgstr ""
 "Por encima de este importe no es legalmente posible crear una factura "
 "simplificada"
@@ -239,7 +251,7 @@ msgstr ""
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__recargo
 msgid "Recargo de Equivalencia"
-msgstr "Recargo de Equivalencia"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__retencion
@@ -271,17 +283,47 @@ msgstr "Localización Española"
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__sujeto_agricultura
 msgid "Sujeto Agricultura"
-msgstr "Sujeto Agricultura"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__sujeto_isp
 msgid "Sujeto ISP"
-msgstr "Sujeto ISP"
+msgstr ""
 
 #. module: l10n_es
 #: model:ir.model.fields.selection,name:l10n_es.selection__account_tax__l10n_es_type__sujeto
 msgid "Sujeto o ISP intracomunitario"
 msgstr ""
+
+#. module: l10n_es
+#: model:ir.model,name:l10n_es.model_account_tax
+msgid "Tax"
+msgstr "Impuesto"
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_111
+msgid "Tax Report (Mod 111) ES"
+msgstr "Mod 111"
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_115
+msgid "Tax Report (Mod 115) ES"
+msgstr "Mod 115"
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_130
+msgid "Tax Report (Mod 130) ES"
+msgstr "Mod 130"
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_303
+msgid "Tax Report (Mod 303) ES"
+msgstr "Mod 303"
+
+#. module: l10n_es
+#: model:ir.ui.menu,name:l10n_es.menu_action_account_report_mod_420
+msgid "Tax Report (Mod 420) ES"
+msgstr "Mod 420"
 
 #. module: l10n_es
 #: model:ir.model.fields,field_description:l10n_es.field_account_tax__l10n_es_type
