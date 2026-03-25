@@ -14,8 +14,8 @@ class ResPartner(models.Model):
         :rtype: set
         """
         return {
-            'name', 'phone', 'email', 'street', 'street2', 'city', 'state_id', 'country_id', 'zip',
-            'zipcode', 'vat', 'parent_name',
+            'name', 'phone', 'email', 'street', 'street2', 'city', 'city_id', 'state_id',
+            'country_id', 'zip', 'zipcode', 'vat', 'parent_name',
         }
 
     def _can_edit_country(self):

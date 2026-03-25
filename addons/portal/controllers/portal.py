@@ -355,11 +355,17 @@ class CustomerPortal(Controller):
         :return: The set of common mandatory address field names.
         :rtype: set
         """
-        field_names = {'street', 'city', 'country_id'}
+        field_names = {'street', 'country_id'}
         if country_sudo.state_required:
             field_names.add('state_id')
         if country_sudo.zip_required:
             field_names.add('zip')
+
+        if country_sudo._enforce_city_choice():
+            field_names.add('city_id')
+        else:
+            field_names.add('city')
+
         return field_names
 
     @route(
@@ -463,6 +469,8 @@ class CustomerPortal(Controller):
             'use_delivery_as_billing': use_delivery_as_billing,
             'state_id': state_id,
             'country_states': country_sudo.state_ids,
+            'city': partner_sudo.city_id,
+            'state_cities': country_sudo._get_cities(state_id=state_id),
             'zip_before_city': (
                 'zip' in address_fields
                 and address_fields.index('zip') < address_fields.index('city')
@@ -636,6 +644,12 @@ class CustomerPortal(Controller):
 
         if 'zipcode' in form_data and not form_data.get('zip'):
             address_values['zip'] = form_data.pop('zipcode', '')
+
+        country_id = address_values.get('country_id')
+        country_sudo = request.env['res.country'].browse(country_id)
+        if country_sudo.enforce_cities and form_data.get('city_id'):
+            if city := request.env['res.city'].sudo().browse(int(form_data['city_id'])):
+                address_values['city'] = city.name
 
         return address_values, extra_form_data
 
@@ -873,7 +887,8 @@ class CustomerPortal(Controller):
             required_fields = self._get_mandatory_billing_address_fields(country)
         else:
             required_fields = self._get_mandatory_delivery_address_fields(country)
-        return {
+
+        country_info = {
             'fields': address_fields,
             'zip_before_city': (
                 'zip' in address_fields
@@ -882,6 +897,37 @@ class CustomerPortal(Controller):
             'states': [(st.id, st.name, st.code) for st in country.sudo().state_ids],
             'phone_code': country.phone_code,
             'required_fields': list(required_fields),
+        }
+
+        if country._enforce_city_choice():
+            country_info['cities'] = country._get_cities().read(
+                country._get_cities_fields_to_fetch(), load='',
+            )
+
+        return country_info
+
+    @route(
+        '/my/address/state_info/<model("res.country.state"):state>',
+        type='jsonrpc',
+        auth='public',
+        methods=['POST'],
+        website=True,
+        readonly=True,
+    )
+    def portal_address_state_info(self, state, **kw):
+        country = state.country_id
+
+        if country._enforce_city_choice():
+            return {
+                'cities': request.env['res.city'].sudo().search_read(
+                    [('state_id', '=', state.id)],
+                    country._get_cities_fields_to_fetch(),
+                    load='',  # we only want the ids of relational fields
+                )
+            }
+
+        return {
+            'cities': [],
         }
 
     @route('/my/address/archive', type='jsonrpc', auth='user', website=True, methods=['POST'])

@@ -2,10 +2,10 @@
 
 from odoo.http import request
 
-from odoo.addons.portal_address_extended.controllers.portal import CustomerPortalExtended
+from odoo.addons.portal.controllers.portal import CustomerPortal
 
 
-class L10nBRPortalAccount(CustomerPortalExtended):
+class L10nBRPortalAccount(CustomerPortal):
 
     def _is_brazilean_fiscal_country(self):
         return request.env.company.account_fiscal_country_id.code == 'BR'

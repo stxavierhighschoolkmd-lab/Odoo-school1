@@ -7,8 +7,10 @@ export class CustomerAddress extends Interaction {
     // /my/address & /my/account
     static selector = '.o_customer_address_fill';
     dynamicContent = {
-        'select[name="country_id"]': { 't-on-change': this.debounced(this.onChangeCountry, 500) },
+        'input[name="zip"]': { 't-on-input': this.onChangeZip.bind(this) },
+        'select[name="city_id"]': { 't-on-change': this.onChangeCity.bind(this) },
         'select[name="state_id"]': { 't-on-change': this.onChangeState },
+        'select[name="country_id"]': { 't-on-change': this.debounced(this.onChangeCountry, 500) },
         '#save_address': { 't-on-click.prevent': this.locked(this.saveAddress, true) },
     };
 
@@ -20,6 +22,8 @@ export class CustomerAddress extends Interaction {
         this.countryCode = this.addressForm.dataset.companyCountryCode;
         this.requiredFields = this.addressForm.required_fields.value.split(',');
         this.requiredFields.forEach((fieldName) => this._markRequired(fieldName, true));
+        this.elementState = this.addressForm.state_id;
+        this.elementCities = this.addressForm.city_id;
     }
 
     async willStart() {
@@ -33,6 +37,10 @@ export class CustomerAddress extends Interaction {
     /**
      * Overridable hook.
      */
+    async onChangeZip() {}
+
+    async onChangeCity() {}
+
     async onChangeState() {}
 
     async _onChangeCountry(init=false) {
@@ -85,6 +93,19 @@ export class CustomerAddress extends Interaction {
             });
         }
 
+        let choices = [];
+        if (this._getSelectedCountryEnforceCities()) {
+            const cityInput = this.addressForm.city;
+            cityInput.value = '';
+            this._hideInput('city');
+            this._showInput('city_id');
+            choices = data.cities || [];
+        } else {
+            this._hideInput('city_id');
+            this._showInput('city');
+        }
+        this._changeOption(this.elementCities, choices);
+
         const required_fields = this.addressForm.querySelectorAll(':required');
         required_fields.forEach((element) => {
             // remove requirement on previously required fields
@@ -119,6 +140,26 @@ export class CustomerAddress extends Interaction {
     _hideInput(name) {
         // show parent div, containing label and input
         this.addressForm[name].parentElement.style.display = 'none';
+    }
+
+    _changeOption(selectElement, choices) {
+        selectElement.options.length = 1;
+        if (choices.length) {
+            choices.forEach((choice) => {
+                const option = new Option(choice.name, choice.id);
+                Object.keys(choice).forEach((key) => {
+                    if (!['name', 'id'].includes(key) && choice[key]) {
+                        option.dataset[key] = choice[key];
+                    }
+                });
+                selectElement.appendChild(option);
+            });
+        }
+    }
+
+    _getSelectedCountryEnforceCities() {
+        const country = this.addressForm.country_id;
+        return country.value ? country.selectedOptions[0].getAttribute('enforce-cities') : false;
     }
 
     _markRequired(name, required) {
