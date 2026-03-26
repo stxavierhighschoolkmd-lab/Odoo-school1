@@ -159,8 +159,8 @@ import { withSequence } from "@html_editor/utils/resource";
  * @typedef { ((record: SerializedMutation[], currentOperation: EditorCommitType) => void)[] } on_new_records_handled_handlers
  * @typedef { (() => void)[] } on_savepoint_restored_handlers
  * @typedef { ((node: Node, childTreesToSerialize: Tree[]) => Tree[])[] } serializable_descendants_processors
- * @typedef { ((isRevision: boolean) => void)[] } on_will_commit_handlers
- * @typedef { ((isRevision: boolean) => void)[] } on_normalized_for_commit_handlers
+ * @typedef { ((isRevision: boolean) => void)[] } on_flushed_mutations_handlers
+ * @typedef { ((isRevision: boolean) => void)[] } on_normalized_flushed_mutations_handlers
  * @typedef { ((records: NativeMutation[]) => void)[] } on_will_filter_mutation_record_handlers
  * @typedef { ((record: NativeMutation) => boolean | undefined)[] } is_mutation_savable_predicates
  * @typedef { ((record: EditorMutation<"classList">) => boolean | undefined)[] } is_classlist_mutation_savable_predicates
@@ -257,9 +257,9 @@ export class DomMutationPlugin extends Plugin {
             for (const [key, value] of Object.entries(revisedCommitData.external)) {
                 this.updateExternal(key, value);
             }
-            const data = this.prepareDataForCommit(true);
-            if (data) {
-                return data;
+            this.flush(true);
+            if (this.currentChanges.mutations.length !== 0) {
+                return { ...this.currentChanges.data };
             }
         },
         commit_root_providers: (commit) =>
@@ -294,7 +294,9 @@ export class DomMutationPlugin extends Plugin {
                 this.stageSelection();
             }
         });
-        this.observer = new MutationObserver((records) => this.flush({ records }));
+        this.observer = new MutationObserver((records) =>
+            this.processAndStageMutations({ records })
+        );
         this.enableObserverCallbacks = new Set();
         this._cleanups.push(() => this.observer.disconnect());
         this.clean();
@@ -316,14 +318,16 @@ export class DomMutationPlugin extends Plugin {
     // ===============
 
     /**
-     * Update `this.currentChanges` to set the correct data on the commit.
+     * Update `this.currentChanges` to set the correct data on the next commit,
+     * by processing and staging all new mutations, normalizing the mutated
+     * nodes, and updating any other data that needs updating, including by
+     * letting other plugins respond.
      *
-     * @param { boolean } isRevision
-     * @returns { CommitData | false }
+     * @param { boolean } [isRevision = false]
      */
-    prepareDataForCommit(isRevision = false) {
+    flush(isRevision = false) {
         // Stage the observer's current changes.
-        this.flush({ dispatch: true, isRevision });
+        this.processAndStageMutations({ dispatch: true, isRevision });
         const currentMutationsCount = this.currentChanges.mutations.length;
         if (currentMutationsCount === 0) {
             return false;
@@ -332,8 +336,8 @@ export class DomMutationPlugin extends Plugin {
         // Normalize the mutated nodes. Note: this can cause other commits to be written.
         const commitRoot = this.getMutationsRoot(this.currentChanges.mutations) || this.editable;
         this.processThrough("normalize_processors", commitRoot);
-        this.trigger("on_normalized_for_commit_handlers", isRevision);
-        this.flush({ dispatch: false, isRevision });
+        this.trigger("on_normalized_flushed_mutations_handlers", isRevision);
+        this.processAndStageMutations({ dispatch: false, isRevision });
         if (currentMutationsCount === this.currentChanges.mutations.length) {
             // If there was no registered mutation during the normalization
             // commit, force the dispatch of a content_updated to allow i.e. the
@@ -344,13 +348,11 @@ export class DomMutationPlugin extends Plugin {
 
         // Give a chance to other plugins to update the current changes'
         // external data before we create the commit object.
-        this.trigger("on_will_commit_handlers", isRevision);
+        this.trigger("on_flushed_mutations_handlers", isRevision);
 
         this.currentChanges.updateSelectionAfter(
             this.serializeSelection(this.dependencies.selection.getEditableSelection())
         );
-
-        return { ...this.currentChanges.data };
     }
 
     /**
@@ -366,10 +368,11 @@ export class DomMutationPlugin extends Plugin {
     commit({ type = "original", batchable, metadata = {} } = {}) {
         metadata.batchable = batchable ?? metadata.batchable ?? false;
 
-        const data = this.prepareDataForCommit(type === "undo" || type === "redo");
-        if (!data) {
+        this.flush();
+        if (this.currentChanges.mutations.length === 0) {
             return false;
         }
+        const data = this.currentChanges.data;
 
         return this.dependencies.history.write({ type, data, metadata });
     }
@@ -377,7 +380,7 @@ export class DomMutationPlugin extends Plugin {
     discard() {
         const changes = this.currentChanges.data;
         // Discard current draft.
-        this.flush();
+        this.processAndStageMutations();
         this.revertMutations(this.currentChanges.mutations);
         this.observer.takeRecords();
         this.currentChanges.resetMutations();
@@ -428,7 +431,11 @@ export class DomMutationPlugin extends Plugin {
      * TODO AGE: see if I can get rid of all these arguments. Should this be
      * called `stage`?
      */
-    flush({ records = this.observer.takeRecords(), dispatch = true, isRevision = false } = {}) {
+    processAndStageMutations({
+        records = this.observer.takeRecords(),
+        dispatch = true,
+        isRevision = false,
+    } = {}) {
         if (this.observer.takeRecords().length) {
             throw new Error("MutationObserver has pending records");
         }
@@ -451,7 +458,7 @@ export class DomMutationPlugin extends Plugin {
             if (dispatch) {
                 this.trigger("on_new_records_handled_handlers", serializedRecords, isRevision);
                 // Process potential new mutations caused by the handlers.
-                this.flush({ dispatch: false });
+                this.processAndStageMutations({ dispatch: false });
             }
             this.dispatchContentUpdated();
         }
@@ -494,11 +501,11 @@ export class DomMutationPlugin extends Plugin {
             if (this.enableObserverCallbacks.size > 0) {
                 return;
             }
-            this.flush();
+            this.processAndStageMutations();
             this.isObserverDisabled = false;
         };
         this.enableObserverCallbacks.add(enableObserver);
-        this.flush();
+        this.processAndStageMutations();
         this.isObserverDisabled = true;
         return enableObserver;
     }
@@ -509,7 +516,7 @@ export class DomMutationPlugin extends Plugin {
      * TODO AGE: why do we need this _and_ disableObserver?
      */
     withObserverOff(callback) {
-        this.flush();
+        this.processAndStageMutations();
         this.observer.disconnect();
         callback();
         this.enableObserver();
@@ -1560,7 +1567,7 @@ export class DomMutationPlugin extends Plugin {
             // the state change is done with the intermediate attribute value
             // and not with the final value in the DOM after all commits were
             // reverted then applied again.
-            this.flush({ dispatch: false });
+            this.processAndStageMutations({ dispatch: false });
             if (commitToRestore.discard) {
                 commitToRestore.discard();
                 lastRevertedChanges = commitToRestore.data;
@@ -1573,7 +1580,7 @@ export class DomMutationPlugin extends Plugin {
             this.applyMutations(irreversibleCommit.data.mutations, {
                 ensureNewMutations: true,
             });
-            this.flush({ dispatch: false });
+            this.processAndStageMutations({ dispatch: false });
         }
         // TODO ABD TODO @phoenix: review selections, this selection could be obsolete
         // depending on the non-reversible commits that were applied.
@@ -1590,7 +1597,7 @@ export class DomMutationPlugin extends Plugin {
      * @returns { Function }
      */
     makeSavePoint() {
-        this.flush();
+        this.processAndStageMutations();
         const draftMutations = [...this.currentChanges.mutations];
         // TODO ABD TODO @phoenix: selection may become obsolete, it should evolve with mutations.
         const selectionToRestore = this.dependencies.selection.preserveSelection();
@@ -1626,7 +1633,7 @@ export class DomMutationPlugin extends Plugin {
             // Apply draft mutations to recover the same currentChanges state
             // as before.
             this.applyMutations(draftMutations, { ensureNewMutations: true });
-            this.flush();
+            this.processAndStageMutations();
             // TODO ABD TODO @phoenix: evaluate if the selection is not restorable at the desired position
             selectionToRestore.restore();
             Object.entries(dataToPreserve).forEach(([key, value]) => {

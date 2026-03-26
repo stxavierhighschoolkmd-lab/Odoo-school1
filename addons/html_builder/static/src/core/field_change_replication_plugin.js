@@ -13,9 +13,9 @@ export class FieldChangeReplicationPlugin extends Plugin {
     /** @type {import("plugins").BuilderResources} */
     resources = {
         on_new_records_handled_handlers: this.handleMutations.bind(this),
-        on_normalized_for_commit_handlers: withSequence(
+        on_normalized_flushed_mutations_handlers: withSequence(
             9000,
-            this.onNormalizedForCommit.bind(this)
+            this.onNormalizedFlushedMutations.bind(this)
         ),
     };
 
@@ -44,7 +44,7 @@ export class FieldChangeReplicationPlugin extends Plugin {
     /**
      * @param { boolean } isRevision
      */
-    onNormalizedForCommit(isRevision) {
+    onNormalizedFlushedMutations(isRevision) {
         const fields = this.fieldsToReplicate;
         this.fieldsToReplicate = new Set();
         if (isRevision) {
