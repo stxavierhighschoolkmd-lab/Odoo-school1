@@ -13,7 +13,10 @@ export class FieldChangeReplicationPlugin extends Plugin {
     /** @type {import("plugins").BuilderResources} */
     resources = {
         on_new_records_handled_handlers: this.handleMutations.bind(this),
-        normalize_processors: withSequence(9000, this.normalizeProcessor.bind(this)),
+        on_normalized_for_commit_handlers: withSequence(
+            9000,
+            this.onNormalizedForCommit.bind(this)
+        ),
     };
 
     setup() {
@@ -39,13 +42,12 @@ export class FieldChangeReplicationPlugin extends Plugin {
     }
 
     /**
-     * @param { Node } commonAncestor
-     * @param { "original"|"undo"|"redo"|"restore" } commitType
+     * @param { boolean } isRevision
      */
-    normalizeProcessor(commonAncestor, commitType) {
+    onNormalizedForCommit(isRevision) {
         const fields = this.fieldsToReplicate;
         this.fieldsToReplicate = new Set();
-        if (commitType !== "original") {
+        if (isRevision) {
             return;
         }
         const touchedEls = new Set();
