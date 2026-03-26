@@ -6,7 +6,7 @@ import { user } from "@web/core/user";
 
 export class SignaturePlugin extends Plugin {
     static id = "signature";
-    static dependencies = ["dom", "domMutation", "media"];
+    static dependencies = ["dom", "history", "media"];
     resources = {
         user_commands: [
             {
@@ -39,7 +39,7 @@ export class SignaturePlugin extends Plugin {
                 img.style = "width: 50%";
                 img.src = signature.signatureImage;
                 this.dependencies.dom.insert(img);
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
                 close();
             },
         });

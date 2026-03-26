@@ -15,7 +15,7 @@ import { reactive } from "@web/owl2/utils";
 
 export class EmojiPlugin extends Plugin {
     static id = "emoji";
-    static dependencies = ["domMutation", "history", "overlay", "dom", "selection", "delete"];
+    static dependencies = ["history", "overlay", "dom", "selection", "delete"];
     static shared = ["showEmojiPicker"];
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -109,7 +109,7 @@ export class EmojiPlugin extends Plugin {
             });
             this.emojiListOverlay.close();
             this.dependencies.dom.insert(emoji.codepoints);
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
             this.match = match;
             return;
         }
@@ -157,7 +157,7 @@ export class EmojiPlugin extends Plugin {
                         return;
                     }
                     this.dependencies.dom.insert(str);
-                    this.dependencies.domMutation.commit();
+                    this.dependencies.history.write();
                 },
             },
             target,
@@ -188,7 +188,7 @@ export class EmojiPlugin extends Plugin {
                         selection.extend(this.searchNode, this.offset);
                         this.dependencies.delete.deleteSelection();
                         this.dependencies.dom.insert(value);
-                        this.dependencies.domMutation.commit();
+                        this.dependencies.history.write();
                         this.emojiListOverlay.close();
                     },
                     overlay: this.emojiListOverlay,

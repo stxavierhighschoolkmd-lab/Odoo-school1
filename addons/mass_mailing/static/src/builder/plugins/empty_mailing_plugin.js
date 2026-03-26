@@ -8,7 +8,7 @@ export class EmptyMailingPlugin extends Plugin {
         "baseContainer",
         "builderOptions",
         "disableSnippets",
-        "domMutation",
+        "history",
         "selection",
     ];
 
@@ -35,7 +35,7 @@ export class EmptyMailingPlugin extends Plugin {
                 anchorNode: baseContainer,
                 anchorOffset: 0,
             });
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
             this.dependencies.builderOptions.updateContainers(textSnippet);
             this.dependencies.disableSnippets.disableUndroppableSnippets();
         }

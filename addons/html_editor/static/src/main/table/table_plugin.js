@@ -82,7 +82,7 @@ export class TablePlugin extends Plugin {
     static dependencies = [
         "baseContainer",
         "dom",
-        "domMutation",
+        "history",
         "selection",
         "delete",
         "split",
@@ -327,7 +327,7 @@ export class TablePlugin extends Plugin {
             if (shouldAddNewRow) {
                 this.addRow("after", findInSelection(selection, "tr"));
                 this.shiftCursorToTableCell(1);
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
             }
             return true;
         }
@@ -408,7 +408,7 @@ export class TablePlugin extends Plugin {
         this.dependencies.selection.setCursorStart(
             table.querySelector(baseContainerGlobalSelector)
         );
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
     /**
      * @param {'before'|'after'} position

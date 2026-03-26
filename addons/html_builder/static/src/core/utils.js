@@ -228,7 +228,7 @@ export function useSelectableComponent(id, { onItemChange } = {}) {
     });
 
     function refreshCurrentItem() {
-        if (env.editor.isDestroyed || env.editor.shared.domMutation.getIsPreviewing()) {
+        if (env.editor.isDestroyed || env.editor.shared.history.getIsPreviewing()) {
             return;
         }
         let currentItem;
@@ -611,8 +611,7 @@ export function useClickableBuilderComponent() {
     const onReady = usePrepareAction(getAllActions);
     const { reload } = useReloadAction(getAllActions);
 
-    const applyOperation =
-        comp.env.editor.shared.domMutation.makePreviewableAsyncOperation(callApply);
+    const applyOperation = comp.env.editor.shared.history.makePreviewableAsyncOperation(callApply);
     const inheritedActionIds =
         comp.props.inheritedActions || comp.env.weContext.inheritedActions || [];
 
@@ -770,7 +769,7 @@ export function useOperationWithReload(callApply, reload) {
         env.services.ui.block();
         const applyResults = await callApply(...args);
         if (!applyResults.includes(BuilderAction.cancelReload)) {
-            env.editor.shared.domMutation.commit();
+            env.editor.shared.history.write();
             await env.editor.shared.savePlugin.save();
             const target = env.editor.shared.builderOptions.getReloadSelector(editingElement);
             const url = reload.getReloadUrl?.();
@@ -948,8 +947,7 @@ export function useInputBuilderComponent({
         return await Promise.all(proms);
     }
 
-    const applyOperation =
-        comp.env.editor.shared.domMutation.makePreviewableAsyncOperation(callApply);
+    const applyOperation = comp.env.editor.shared.history.makePreviewableAsyncOperation(callApply);
     const operationWithReload = useOperationWithReload(callApply, reload);
     function getState(editingElement) {
         if (!isConnectedElement(editingElement)) {

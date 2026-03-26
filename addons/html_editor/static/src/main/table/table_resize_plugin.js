@@ -10,7 +10,7 @@ import { isTableCell } from "@html_editor/utils/dom_info";
 
 export class TableResizePlugin extends Plugin {
     static id = "tableResize";
-    static dependencies = ["table", "domMutation"];
+    static dependencies = ["table", "history"];
 
     setup() {
         this.addDomListener(this.editable, "dblclick", this.fitToContent);
@@ -334,7 +334,7 @@ export class TableResizePlugin extends Plugin {
                 ev.preventDefault();
                 this.isResizingTable = false;
                 this.setTableResizeCursor(false);
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
                 this.document.removeEventListener("mousemove", resizeTable);
                 this.document.removeEventListener("mouseup", stopResizing);
                 this.document.removeEventListener("mouseleave", stopResizing);

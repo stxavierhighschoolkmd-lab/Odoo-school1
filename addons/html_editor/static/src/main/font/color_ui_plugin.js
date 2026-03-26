@@ -17,7 +17,7 @@ const HEX_OPACITY = "99";
 
 export class ColorUIPlugin extends Plugin {
     static id = "colorUi";
-    static dependencies = ["color", "domMutation", "selection"];
+    static dependencies = ["color", "history", "selection"];
     static shared = ["getPropsForColorSelector"];
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -49,7 +49,7 @@ export class ColorUIPlugin extends Plugin {
 
     setup() {
         this.selectedColors = reactive({ color: "", backgroundColor: "" });
-        this.previewableApplyColor = this.dependencies.domMutation.makePreviewableOperation(
+        this.previewableApplyColor = this.dependencies.history.makePreviewableOperation(
             (color, mode, previewMode) =>
                 this.dependencies.color.applyColor(color, mode, previewMode)
         );

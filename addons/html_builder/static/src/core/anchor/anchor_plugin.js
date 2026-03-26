@@ -30,7 +30,7 @@ export function canHaveAnchor(element) {
  */
 export class AnchorPlugin extends Plugin {
     static id = "anchor";
-    static dependencies = ["domMutation"];
+    static dependencies = ["history"];
     static shared = ["createOrEditAnchorLink"];
     /** @type {import("plugins").BuilderResources} */
     resources = {
@@ -74,7 +74,7 @@ export class AnchorPlugin extends Plugin {
         } else {
             this.deleteAnchor(element);
         }
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 
     createAnchor(element) {
@@ -138,7 +138,7 @@ export class AnchorPlugin extends Plugin {
                             },
                             deleteAnchor: () => {
                                 this.deleteAnchor(element);
-                                this.dependencies.domMutation.commit();
+                                this.dependencies.history.write();
                             },
                             formatAnchor: this.formatAnchor,
                         });

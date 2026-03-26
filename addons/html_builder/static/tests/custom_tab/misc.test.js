@@ -721,7 +721,7 @@ test("An option should only appear if its target is inside an editable area, unl
             <div class="test-target test-editable">IN EDITABLE</div>
         </div>`
     );
-    editor.shared.domMutation.commit();
+    editor.shared.history.write();
 
     await contains(":iframe .test-not-editable").click();
     expect(queryAllTexts(".options-container [data-class-action]")).toEqual(["Option B"]);

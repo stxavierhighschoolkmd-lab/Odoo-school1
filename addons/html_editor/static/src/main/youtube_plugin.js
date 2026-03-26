@@ -8,7 +8,7 @@ export const YOUTUBE_URL_GET_VIDEO_ID =
 
 export class YoutubePlugin extends Plugin {
     static id = "youtube";
-    static dependencies = ["domMutation", "dom"];
+    static dependencies = ["history", "dom"];
 
     mediaSpecificClasses = VideoSelector.mediaSpecificClasses;
 
@@ -32,7 +32,7 @@ export class YoutubePlugin extends Plugin {
                 run: async () => {
                     const videoElement = await this.getYoutubeVideoElement(youtubeUrl[0]);
                     this.dependencies.dom.insert(videoElement);
-                    this.dependencies.domMutation.commit();
+                    this.dependencies.history.write();
                 },
             };
         }

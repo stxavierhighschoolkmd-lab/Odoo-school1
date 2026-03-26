@@ -13,7 +13,15 @@ const DUMMY_CONTENT_ATTRS = ["data-oe-demo", "data-oe-expression-readable"];
 
 export class DynamicFieldPlugin extends Plugin {
     static id = "dynamicField";
-    static dependencies = ["selection", "domMutation", "overlay", "dom", "toolbar", QWebPlugin.id];
+    static dependencies = [
+        "selection",
+        "domMutation",
+        "history",
+        "overlay",
+        "dom",
+        "toolbar",
+        QWebPlugin.id,
+    ];
 
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -178,7 +186,7 @@ export class DynamicFieldPlugin extends Plugin {
                     }
 
                     if (path !== initialPath || label !== initialLabel) {
-                        this.dependencies.domMutation.commit();
+                        this.dependencies.history.write();
                     }
                 },
             },
@@ -221,7 +229,7 @@ export class DynamicFieldPlugin extends Plugin {
 
                     selection.restore();
                     this.dependencies.dom.insert(el);
-                    this.dependencies.domMutation.commit();
+                    this.dependencies.history.write();
                 },
             },
         });

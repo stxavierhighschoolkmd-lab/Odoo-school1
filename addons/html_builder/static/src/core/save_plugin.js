@@ -31,7 +31,7 @@ import { _t } from "@web/core/l10n/translation";
 export class SavePlugin extends Plugin {
     static id = "savePlugin";
     static shared = ["save", "ignoreDirty", "groupElements"];
-    static dependencies = ["history", "domMutation"];
+    static dependencies = ["history", "domReference"];
 
     /** @type {import("plugins").BuilderResources} */
     resources = {
@@ -155,7 +155,7 @@ export class SavePlugin extends Plugin {
             if (record.type === "attributes" && record.attributeName === "contenteditable") {
                 continue;
             }
-            let targetEl = this.dependencies.domMutation.getNodeById(
+            let targetEl = this.dependencies.domReference.getNodeById(
                 ((record.type === "add" || record.type === "remove") && record.parentNodeId) ||
                     record.nodeId
             );

@@ -6,7 +6,7 @@ import { ProductsDesignPanel } from "./products_design_panel";
 
 export class ProductsDesignPanelPlugin extends Plugin {
     static id = "productsDesignPanel";
-    static dependencies = ["builderActions", "builderComponents", "domMutation"];
+    static dependencies = ["builderActions", "builderComponents", "domReference"];
     static shared = ["registerPanel", "unregisterPanel"];
 
     resources = {
@@ -67,7 +67,7 @@ export class ProductsDesignPanelPlugin extends Plugin {
             if (record.type === "attributes" && record.attributeName === "contenteditable") {
                 continue;
             }
-            let targetEl = this.dependencies.domMutation.getNodeById(record.nodeId);
+            let targetEl = this.dependencies.domReference.getNodeById(record.nodeId);
             if (!targetEl.isConnected) {
                 continue;
             }

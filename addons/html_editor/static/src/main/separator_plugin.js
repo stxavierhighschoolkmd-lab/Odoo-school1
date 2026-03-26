@@ -14,7 +14,7 @@ export class SeparatorPlugin extends Plugin {
         "baseContainer",
         "delete",
         "dom",
-        "domMutation",
+        "history",
         "lineBreak",
         "selection",
         "split",
@@ -100,7 +100,7 @@ export class SeparatorPlugin extends Plugin {
                 this.dependencies.dom.insert(sep);
             }
         }
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 
     deselectHR(root = this.editable) {

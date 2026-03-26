@@ -24,7 +24,7 @@ import { EmphasizeAnimatedText } from "./emphasize_animated_text";
 
 export class AnimateOptionPlugin extends Plugin {
     static id = "animateOption";
-    static dependencies = ["domMutation", "selection", "split"];
+    static dependencies = ["history", "selection", "split"];
     static shared = ["forceAnimation", "getDirectionsItems", "getEffectsItems"];
     /** @type {import("plugins").WebsiteResources} */
     resources = {
@@ -143,14 +143,14 @@ export class AnimateOptionPlugin extends Plugin {
             const cursors = this.dependencies.selection.preserveSelection();
             el.replaceWith(...el.childNodes);
             cursors.restore();
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
         };
 
         const existingAnimatedTextEl = this.getAnimatedText();
         if (existingAnimatedTextEl) {
             return { element: existingAnimatedTextEl, onReset: resetAnimatedText };
         }
-        const savePoint = this.dependencies.domMutation.makeSavePoint();
+        const savePoint = this.dependencies.history.makeSavePoint();
         const { element: createdAnimatedTextEl, didRemoveOtherTextAnimation } =
             this.createDefaultTextAnimation();
         if (createdAnimatedTextEl) {
@@ -286,7 +286,7 @@ export class AnimateOptionPlugin extends Plugin {
                       focusOffset: 0,
                   }
         );
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
 
         return { element: span, didRemoveOtherTextAnimation };
     }

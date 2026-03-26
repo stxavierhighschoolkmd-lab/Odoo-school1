@@ -4,7 +4,7 @@ import { unformat } from "../_helpers/format";
 
 const splitBlockSegments = async (editor) => {
     editor.shared.split.splitBlockSegments();
-    editor.shared.domMutation.commit();
+    editor.shared.history.write();
     await tick();
 };
 

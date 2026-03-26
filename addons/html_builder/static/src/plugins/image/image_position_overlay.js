@@ -1,11 +1,6 @@
 import { useExternalListener, useLayoutEffect, useRef } from "@web/owl2/utils";
 import { scrollTo } from "@html_builder/utils/scrolling";
-import {
-    Component,
-    onMounted,
-    onWillStart,
-    onWillUnmount,
-} from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount } from "@odoo/owl";
 
 export class ImagePositionOverlay extends Component {
     static template = "html_builder.ImagePositionOverlay";
@@ -21,7 +16,7 @@ export class ImagePositionOverlay extends Component {
          */
         getDelta: { type: Function },
         editable: { validate: (p) => p.nodeType === Node.ELEMENT_NODE },
-        domMutation: { type: Object, optional: true },
+        history: { type: Object, optional: true },
         scrollToElement: { type: Boolean, optional: true },
     };
     static defaultProps = { scrollToElement: true };
@@ -76,7 +71,7 @@ export class ImagePositionOverlay extends Component {
         });
 
         onMounted(() => {
-            this.reloadSavePoint = this.props.domMutation?.makeSavePoint() ?? (() => {});
+            this.reloadSavePoint = this.props.history?.makeSavePoint() ?? (() => {});
             this.dimensionOverlay();
             this.props.targetEl.classList.add("o_we_image_positioning");
         });

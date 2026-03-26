@@ -28,7 +28,7 @@ export class BuilderOverlay {
         {
             iframe,
             overlayContainer,
-            domMutation,
+            history,
             hasOverlayOptions,
             next,
             isMobileView,
@@ -37,7 +37,7 @@ export class BuilderOverlay {
             isHoverOverlay = false,
         }
     ) {
-        this.domMutation = domMutation;
+        this.history = history;
         this.next = next;
         this.hasOverlayOptions = hasOverlayOptions;
         this.iframe = iframe;
@@ -512,7 +512,7 @@ export class BuilderOverlay {
         let sizingResolve;
         const sizingProm = new Promise((resolve) => (sizingResolve = () => resolve()));
         this.next(async () => await sizingProm, { withLoadingEffect: false, canTimeout: false });
-        const cancelSizing = this.domMutation.makeSavePoint();
+        const cancelSizing = this.history.makeSavePoint();
 
         const handleEl = ev.currentTarget;
         const isGridHandle = handleEl.classList.contains("o_grid_handle");
@@ -638,7 +638,7 @@ export class BuilderOverlay {
             // mutations).
             const wasResized = !directions.every((dir) => dir.initialIndex === dir.currentIndex);
             if (wasResized) {
-                this.domMutation.commit();
+                this.history.write();
             } else {
                 cancelSizing();
             }

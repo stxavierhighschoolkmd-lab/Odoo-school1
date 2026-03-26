@@ -47,7 +47,7 @@ import { execCommand } from "./_helpers/userCommands";
  */
 function insert(editor, value) {
     editor.shared.dom.insert(value);
-    editor.shared.domMutation.commit();
+    editor.shared.history.write();
 }
 
 describe("Conflict resolution", () => {
@@ -195,7 +195,7 @@ describe("collaborative makeSavePoint", () => {
             peerIds: ["c1", "c2"],
             contentBefore: `<p>[c1}{c1]<br></p><p>[c2}{c2]<br></p>`,
         });
-        const savepoint = peerInfos.c1.editor.shared.domMutation.makeSavePoint();
+        const savepoint = peerInfos.c1.editor.shared.history.makeSavePoint();
         insert(peerInfos.c2.editor, "a");
         mergePeersCommits(peerInfos);
         insert(peerInfos.c1.editor, "z");
@@ -221,7 +221,7 @@ describe("collaborative makeSavePoint", () => {
         });
         const e1 = peerInfos.c1.editor;
         const e2 = peerInfos.c2.editor;
-        const savepoint = e2.shared.domMutation.makeSavePoint();
+        const savepoint = e2.shared.history.makeSavePoint();
         await manuallyDispatchProgrammaticEvent(e1.editable, "beforeinput", {
             inputType: "insertParagraph",
         });
@@ -243,7 +243,7 @@ describe("history addExternalCommit", () => {
         peerInfos.c1.editor.shared.dom.insert("b");
         insert(peerInfos.c2.editor, "a");
         mergePeersCommits(peerInfos);
-        peerInfos.c1.editor.shared.domMutation.commit();
+        peerInfos.c1.editor.shared.history.write();
         mergePeersCommits(peerInfos);
         cleanHints(peerInfos.c1.editor);
         cleanHints(peerInfos.c2.editor);
@@ -264,7 +264,7 @@ test("wrapInlinesInBlocks should not create impossible mutations in a collaborat
     const cursors1 = e1.shared.selection.preserveSelection();
     e1.shared.dom.wrapInlinesInBlocks(div1, cursors1);
     cursors1.restore();
-    e1.shared.domMutation.commit();
+    e1.shared.history.write();
     mergePeersCommits(peerInfos);
     expect(getContent(e1.editable, { sortAttrs: true })).toBe(
         '<p data-selection-placeholder=""><br></p>' +
@@ -593,7 +593,7 @@ describe("selection", () => {
         });
         const e1 = peerInfos.c1.editor;
         e1.shared.dom.insert(parseHTML(e1.document, `<span contenteditable="false">a</span>`));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         mergePeersCommits(peerInfos);
         const e2 = peerInfos.c2.editor;
         expect(getContent(e1.editable)).toBe(`<p>a<span contenteditable="false">a</span>[]</p>`);
@@ -698,7 +698,7 @@ describe("data-oe-protected", () => {
                 `)
             )
         );
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         mergePeersCommits(peerInfos);
         expect(getContent(e1.editable, { sortAttrs: true })).toBe(
             unformat(`
@@ -737,7 +737,7 @@ describe("serialize/unserialize", () => {
                 editor.editable.append(divA);
                 const p = editor.editable.querySelector("p:not([data-selection-placeholder])");
                 divA.append(p);
-                editor.shared.domMutation.commit();
+                editor.shared.history.write();
             },
         });
         mergePeersCommits(peerInfos);
@@ -761,7 +761,7 @@ describe("serialize/unserialize", () => {
                 divB.textContent = "b";
                 editor.editable.append(divB);
                 divB.append(divA);
-                editor.shared.domMutation.commit();
+                editor.shared.history.write();
             },
         });
         mergePeersCommits(peerInfos);
@@ -851,7 +851,7 @@ describe("Collaboration with embedded components", () => {
         const e1 = peerInfos.c1.editor;
         const e2 = peerInfos.c2.editor;
         e1.shared.dom.insert(parseHTML(e1.document, `<span data-embedded="counter"></span>`));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         mergePeersCommits(peerInfos);
         await animationFrame();
         expect.verifySteps(["1 mounted", "2 mounted"]);
@@ -908,13 +908,13 @@ describe("Collaboration with embedded components", () => {
         const e1 = peerInfos.c1.editor;
         const e2 = peerInfos.c2.editor;
         e1.shared.dom.insert(parseHTML(e1.document, `<span data-embedded="counter"></span>`));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         await animationFrame();
         e2.shared.dom.insert(parseHTML(e2.document, `<span data-embedded="counter"></span>`));
-        e2.shared.domMutation.commit();
+        e2.shared.history.write();
         await animationFrame();
         e2.shared.dom.insert(parseHTML(e2.document, `<span data-embedded="counter"></span>`));
-        e2.shared.domMutation.commit();
+        e2.shared.history.write();
         await animationFrame();
         expect.verifySteps(["1 mounted", "2 mounted", "3 mounted"]);
         expect(getContent(e1.editable, { sortAttrs: true })).toBe(
@@ -970,14 +970,14 @@ describe("Collaboration with embedded components", () => {
                 `)
             )
         );
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         const deep1 = e1.editable.querySelector("[data-embedded-editable='deep'] > p");
         deep1.append(e1.document.createTextNode("1"));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         mergePeersCommits(peerInfos);
         const deep2 = e2.editable.querySelector("[data-embedded-editable='deep'] > p");
         deep2.append(e2.document.createTextNode("2"));
-        e2.shared.domMutation.commit();
+        e2.shared.history.write();
         mergePeersCommits(peerInfos);
         // Before mount:
         let editable = unformat(`
@@ -1009,10 +1009,10 @@ describe("Collaboration with embedded components", () => {
         expect(getContent(e1.editable, { sortAttrs: true })).toBe(editable);
         expect(getContent(e2.editable, { sortAttrs: true })).toBe(editable);
         deep1.append(e1.document.createTextNode("3"));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         mergePeersCommits(peerInfos);
         deep2.append(e2.document.createTextNode("4"));
-        e2.shared.domMutation.commit();
+        e2.shared.history.write();
         mergePeersCommits(peerInfos);
         editable = unformat(`
             <p data-selection-placeholder=""><br></p>
@@ -1065,7 +1065,7 @@ describe("Collaboration with embedded components", () => {
                 `)
             )
         );
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         // ensure wrappers[0] is for c1
         await animationFrame();
         mergePeersCommits(peerInfos);
@@ -1076,12 +1076,12 @@ describe("Collaboration with embedded components", () => {
         // change state for c1
         wrappers[0].state.switch = true;
         deep1.append(e1.document.createTextNode("1"));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         // wait for patch for c1
         await animationFrame();
         mergePeersCommits(peerInfos);
         deep2.append(e2.document.createTextNode("2"));
-        e2.shared.domMutation.commit();
+        e2.shared.history.write();
         mergePeersCommits(peerInfos);
         expect(getContent(e1.editable, { sortAttrs: true })).toBe(
             unformat(`
@@ -1145,7 +1145,7 @@ describe("Collaboration with embedded components", () => {
                 `)
             )
         );
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         await ensureDistinctHistoryCommit();
         mergePeersCommits(peerInfos);
         await animationFrame();
@@ -1156,12 +1156,12 @@ describe("Collaboration with embedded components", () => {
         undo(e1);
         const deep1 = e1.editable.querySelector("[data-embedded-editable='deep'] > p");
         deep1.append(e1.document.createTextNode("1"));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         mergePeersCommits(peerInfos);
         await animationFrame();
         const deep2 = e2.editable.querySelector("[data-embedded-editable='deep'] > p");
         deep2.append(e2.document.createTextNode("2"));
-        e2.shared.domMutation.commit();
+        e2.shared.history.write();
         mergePeersCommits(peerInfos);
         const editable = unformat(`
             <p data-selection-placeholder=""><br></p>
@@ -1211,22 +1211,22 @@ describe("Collaboration with embedded components", () => {
                 `)
             )
         );
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         mergePeersCommits(peerInfos);
         const shallow1 = e1.editable.querySelector("[data-embedded-editable='deep'] > p");
         shallow1.append(e1.document.createTextNode("1"));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         const deep1 = e1.editable.querySelectorAll("[data-embedded-editable='deep'] > p")[1];
         deep1.append(e1.document.createTextNode("9"));
-        e1.shared.domMutation.commit();
+        e1.shared.history.write();
         await animationFrame();
         mergePeersCommits(peerInfos);
         const shallow2 = e2.editable.querySelector("[data-embedded-editable='deep'] > p");
         shallow2.append(e2.document.createTextNode("2"));
-        e2.shared.domMutation.commit();
+        e2.shared.history.write();
         const deep2 = e2.editable.querySelectorAll("[data-embedded-editable='deep'] > p")[1];
         deep2.append(e2.document.createTextNode("8"));
-        e2.shared.domMutation.commit();
+        e2.shared.history.write();
         mergePeersCommits(peerInfos);
         const editable = unformat(`
             <p data-selection-placeholder=""><br></p>
@@ -1424,7 +1424,7 @@ describe("Collaboration with embedded components", () => {
             expect(getContent(e2.editable, { sortAttrs: true })).toBe(
                 `<p>a[]</p><div contenteditable="false" data-embedded="obj" data-embedded-props='{"obj":{"1":1,"2":2}}' data-embedded-state='{"stateChangeId":1,"previous":{"obj":{"1":1}},"next":{"obj":{"1":1,"2":2}}}' data-oe-protected="true"><div class="obj">1_1,2_2</div></div><p data-selection-placeholder=""><br></p>`
             );
-            const savepoint = e1.shared.domMutation.makeSavePoint();
+            const savepoint = e1.shared.history.makeSavePoint();
             delete obj2.embeddedState.obj["1"];
             await animationFrame();
             mergePeersCommits(peerInfos);
@@ -1487,7 +1487,7 @@ describe("Collaboration with embedded components", () => {
                     `<span data-embedded="counter" data-embedded-props='{"value":1}'></span>`
                 )
             );
-            e2.shared.domMutation.commit();
+            e2.shared.history.write();
             await animationFrame();
             const counter2 = [...peerInfos.c2.plugins.get("embeddedComponents").components][0].root
                 .node.component;
@@ -1711,7 +1711,7 @@ describe("Collaboration with embedded components", () => {
             const e2 = peerInfos.c2.editor;
             const obj1 = [...peerInfos.c1.plugins.get("embeddedComponents").components][0].root.node
                 .component;
-            const savepoint = e1.shared.domMutation.makeSavePoint();
+            const savepoint = e1.shared.history.makeSavePoint();
             obj1.embeddedState.obj["2"] = 2;
             await animationFrame();
             mergePeersCommits(peerInfos);
@@ -1831,7 +1831,7 @@ describe("Collaboration with embedded components", () => {
                     `<div data-embedded="obj" data-embedded-props='{"obj":{"1":"&lt;style"}}'></div>`
                 ).children
             );
-            e1.shared.domMutation.commit();
+            e1.shared.history.write();
             await animationFrame();
             mergePeersCommits(peerInfos);
             await animationFrame();

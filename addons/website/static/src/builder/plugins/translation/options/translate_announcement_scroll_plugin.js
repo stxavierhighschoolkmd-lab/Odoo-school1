@@ -5,7 +5,7 @@ import { registry } from "@web/core/registry";
 
 export class TranslateAnnouncementScrollPlugin extends Plugin {
     static id = "translateAnnouncementScroll";
-    static dependencies = ["domMutation"];
+    static dependencies = ["history"];
 
     /** @type {import("plugins").WebsiteResources} */
     resources = {
@@ -20,7 +20,7 @@ export class TranslateAnnouncementScrollPlugin extends Plugin {
 
         for (const announcementScrollEl of announcementScrollEls) {
             this.addDomListener(announcementScrollEl, "click", () => {
-                this.rollbackMutations = this.dependencies.domMutation.makeSavePoint();
+                this.rollbackMutations = this.dependencies.history.makeSavePoint();
 
                 const translatableEl = announcementScrollEl.querySelector(
                     ".s_announcement_scroll_marquee_item:first-child > [data-oe-translation-source-sha]"
@@ -53,7 +53,7 @@ export class TranslateAnnouncementScrollPlugin extends Plugin {
         if (inputValue !== translatableEl.textContent) {
             translatableEl.textContent = inputValue;
             translatableEl.dataset.oeTranslationState = "translated";
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
         }
     }
 }

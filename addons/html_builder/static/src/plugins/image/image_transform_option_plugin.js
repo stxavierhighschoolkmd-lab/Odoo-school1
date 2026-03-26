@@ -16,7 +16,7 @@ export class ImageTransformOptionPlugin extends Plugin {
 
 export class TransformImageAction extends BuilderAction {
     static id = "transformImage";
-    static dependencies = ["domMutation"];
+    static dependencies = ["history"];
     isApplied({ editingElement }) {
         return editingElement.matches(`[style*="transform"], [style*="width"], [style*="height"]`);
     }
@@ -34,7 +34,7 @@ export class TransformImageAction extends BuilderAction {
                     editable: this.editable,
                     destroy: () => closeImageTransformation(),
                     onApply: () => {
-                        this.dependencies.domMutation.commit();
+                        this.dependencies.history.write();
                     },
                     onComponentMounted: () => {
                         deferredTillMounted.resolve();

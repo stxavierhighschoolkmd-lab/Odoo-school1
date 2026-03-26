@@ -17,7 +17,7 @@ import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 export class BannerPlugin extends Plugin {
     static id = "banner";
     // sanitize plugin is required to handle `contenteditable` attribute.
-    static dependencies = ["baseContainer", "domMutation", "dom", "emoji", "selection", "sanitize"];
+    static dependencies = ["baseContainer", "history", "dom", "emoji", "selection", "sanitize"];
     static shared = ["insertBanner"];
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -186,7 +186,7 @@ export class BannerPlugin extends Plugin {
             } else {
                 icon.remove();
             }
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
             return;
         }
         const blockEl = closestBlock(selection.anchorNode);
@@ -216,7 +216,7 @@ export class BannerPlugin extends Plugin {
         this.dependencies.selection.setCursorEnd(
             bannerElement.querySelector(`.o_editor_banner_content > ${baseContainer.tagName}`)
         );
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 
     onBannerEmojiChange(iconElement) {
@@ -224,7 +224,7 @@ export class BannerPlugin extends Plugin {
             target: iconElement,
             onSelect: (emoji) => {
                 iconElement.textContent = emoji;
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
             },
         });
     }

@@ -11,7 +11,7 @@ import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 export class ImageCropPlugin extends Plugin {
     static id = "imageCrop";
-    static dependencies = ["selection", "domMutation", "imagePostProcess"];
+    static dependencies = ["selection", "history", "imagePostProcess"];
     static shared = ["openCropImage"];
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -55,7 +55,7 @@ export class ImageCropPlugin extends Plugin {
                             newDataset,
                         });
                     updateImageAttributes();
-                    this.dependencies.domMutation.commit();
+                    this.dependencies.history.write();
                 },
                 document: this.document,
                 ...imageCropProps,

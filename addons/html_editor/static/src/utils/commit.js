@@ -1,11 +1,7 @@
 /**
  * @typedef { string } EditorCommitId
- * @typedef { "original" | "undo" | "redo" | "restore" | "reset" } EditorCommitType
+ * @typedef { "standard" | "undo" | "redo" | "restore" } EditorCommitType
  * @typedef { { [key: string]: any } } EditorCommitData
- *
- * @typedef { Object } EditorCommitMetadata
- * @property { boolean } [batchable = false]
- * @property { number | null } [commitTimestamp = null]
  */
 
 /**
@@ -15,37 +11,16 @@ export class EditorCommit {
     /**
      * @param { Object } [param0 = {}]
      * @param { EditorCommitId } [param0.id = this.generateId()]
-     * @param { EditorCommitType } [param0.type = "original"]
+     * @param { EditorCommitType } [param0.type = "standard"]
      * @param { T } [param0.data = {}]
-     * @param { EditorCommitMetadata } [param0.metadata = {}]
-     * @param { Date } [param0.authorTimestamp = Date.now()]
      */
-    constructor({
-        id = this.generateId(),
-        type = "original",
-        data = {},
-        metadata = {},
-        authorTimestamp = Date.now(),
-    } = {}) {
+    constructor({ id = this.generateId(), type = "standard", data = {} } = {}) {
         /** @type { EditorCommitId } */
         this.id = id;
         /** @type { EditorCommitType } */
         this.type = type;
         /** @type { EditorCommitData & T } */
         this.data = data;
-        /** @type { EditorCommitMetadata } */
-        this.metadata = {
-            batchable: metadata.batchable || false,
-            commitTimestamp: metadata.commitTimestamp ?? null,
-        };
-        this.authorTimestamp = authorTimestamp;
-    }
-
-    /**
-     * Set the date at which the commit was written (unless written before).
-     */
-    stamp() {
-        this.metadata.commitTimestamp ??= Date.now();
     }
 
     /**
@@ -54,14 +29,6 @@ export class EditorCommit {
      */
     updateData(key, value) {
         this.data[key] = value;
-    }
-
-    /**
-     * @param {keyof (EditorCommitMetadata & U)} key
-     * @param {any} value
-     */
-    updateMetadata(key, value) {
-        this.metadata[key] = value;
     }
 
     /**

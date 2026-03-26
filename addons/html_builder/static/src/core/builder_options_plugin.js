@@ -128,7 +128,7 @@ import { omit } from "@web/core/utils/objects";
 
 export class BuilderOptionsPlugin extends Plugin {
     static id = "builderOptions";
-    static dependencies = ["operation", "domMutation"];
+    static dependencies = ["operation", "domMutation", "history"];
     static shared = [
         "checkElement",
         "closestWithOption",
@@ -148,6 +148,10 @@ export class BuilderOptionsPlugin extends Plugin {
     ];
     /** @type {import("plugins").BuilderResources} */
     resources = {
+        history_data_keys: ["currentTarget", "nextTarget"],
+        on_current_history_data_reset_handlers: () => {
+            this.targetState = {};
+        },
         on_flushed_mutations_handlers: this.onFlushedMutations.bind(this),
         on_history_written_handlers: this.onHistoryWritten.bind(this),
         on_undone_handlers: (revertedCommit) => this.restoreContainers(revertedCommit, "undo"),
@@ -170,9 +174,27 @@ export class BuilderOptionsPlugin extends Plugin {
             }
             return buttons;
         },
+        revision_commit_data_processors: (data, revertedCommit) => ({
+            ...data,
+            currentTarget: revertedCommit.data.currentTarget,
+            nextTarget: revertedCommit.data.nextTarget,
+        }),
+        pending_commit_data_processors: this.processCommitData.bind(this),
+        save_point_data_processors: (savePoint) => ({
+            ...savePoint,
+            targetState: { ...this.targetState },
+        }),
+        on_savepoint_restored_handlers: (savePoint) => {
+            // Note AGE: this is the `extraStepInfos` stuff.
+            if ("targetState" in savePoint) {
+                this.targetState = { ...savePoint.targetState };
+            }
+        },
     };
 
     setup() {
+        /** @type { current?: Node, next?: Node } */
+        this.targetState = {};
         this.builderOptions = this.computeBuilderOptionsFromTemplate();
         this.builderOptionsContext = new Map();
         this.builderOptionsDependencies = new Map();
@@ -275,7 +297,7 @@ export class BuilderOptionsPlugin extends Plugin {
                 "Should not have any mutations in the current commit when you update the container selection"
             );
         }
-        if (this.dependencies.domMutation.getIsPreviewing()) {
+        if (this.dependencies.history.getIsPreviewing()) {
             return;
         }
         if (target) {
@@ -322,6 +344,14 @@ export class BuilderOptionsPlugin extends Plugin {
 
     getTarget() {
         return this.target;
+    }
+
+    processCommitData(data) {
+        return {
+            ...data,
+            currentTarget: this.targetState.current,
+            nextTarget: this.targetState.next,
+        };
     }
 
     deactivateContainers() {
@@ -455,7 +485,7 @@ export class BuilderOptionsPlugin extends Plugin {
                 button.handler = (...args) => {
                     this.dependencies.operation.next(async () => {
                         await handler(...args);
-                        this.dependencies.domMutation.commit();
+                        this.dependencies.history.write();
                     });
                 };
             }
@@ -483,24 +513,32 @@ export class BuilderOptionsPlugin extends Plugin {
      * @param {HTMLElement|Boolean} targetEl the element to activate or `false`
      */
     setNextTarget(targetEl) {
-        if (this.dependencies.domMutation.getIsPreviewing()) {
+        if (this.dependencies.history.getIsPreviewing()) {
             return;
         }
         // Store the next target to activate in the current commit.
-        this.dependencies.domMutation.updateExternal("nextTarget", targetEl);
+        this.targetState.next = targetEl;
     }
 
     onFlushedMutations(isRevision) {
         if (!isRevision) {
             // Store the current target in the current commit.
-            this.dependencies.domMutation.updateExternal("currentTarget", this.target);
+            this.targetState.current = this.target;
         }
     }
 
     onHistoryWritten(commit) {
+        if (commit.type === "undo") {
+            if ("currentTarget" in commit.data) {
+                this.targetState.current = commit.data.currentTarget;
+            }
+            if ("nextTarget" in commit.data) {
+                this.targetState.next = commit.data.nextTarget;
+            }
+        }
         // If a target is specified, activate its containers, otherwise simply
         // update them.
-        const nextTargetEl = commit.data.external.nextTarget;
+        const nextTargetEl = commit.data.nextTarget;
         if (nextTargetEl) {
             this.updateContainers(nextTargetEl, { forceUpdate: true });
         } else if (nextTargetEl === false) {
@@ -517,11 +555,11 @@ export class BuilderOptionsPlugin extends Plugin {
      * @param {String} mode "undo" or "redo"
      */
     restoreContainers(revertedCommit, mode) {
-        if (revertedCommit && revertedCommit.data.external.currentTarget) {
-            let targetEl = revertedCommit.data.external.currentTarget;
+        if (revertedCommit && revertedCommit.data.currentTarget) {
+            let targetEl = revertedCommit.data.currentTarget;
             // If the commit was supposed to activate another target, activate
             // this one instead.
-            const nextTarget = revertedCommit.data.external.nextTarget;
+            const nextTarget = revertedCommit.data.nextTarget;
             if (mode === "redo" && (nextTarget || nextTarget === false)) {
                 targetEl = nextTarget;
             }

@@ -10,6 +10,13 @@ import { EditorCommit } from "../utils/commit";
  * @typedef { import("../utils/commit").EditorCommitData } EditorCommitData
  * @typedef { import("../utils/commit").EditorCommitMetadata } EditorCommitMetadata
  * @typedef { import("../utils/commit").EditorCommitId } EditorCommitId
+ * @typedef { import("./selection_plugin").SerializedSelection } SerializedSelection
+ *
+ * @typedef { Object } HistoryCommitData
+ * @property { number } authorTimestamp
+ * @property { number } [commitTimestamp]
+ * @property { EditorCommitId } [previousCommitId]
+ * @property { boolean } [batchable]
  */
 /**
  * @typedef { Object } HistoryShared
@@ -22,8 +29,11 @@ import { EditorCommit } from "../utils/commit";
  * @property { HistoryPlugin['reset'] } reset
  * @property { HistoryPlugin['addExternalCommit'] } addExternalCommit
  * @property { HistoryPlugin['resetFromCommits'] } resetFromCommits
- * @property { HistoryPlugin['getCommitsUntil'] } getCommitsUntil
  * @property { HistoryPlugin['createSnapshotCommit'] } createSnapshotCommit
+ * @property { HistoryPlugin['getIsPreviewing'] } getIsPreviewing
+ * @property { HistoryPlugin['makePreviewableOperation'] } makePreviewableOperation
+ * @property { HistoryPlugin['makePreviewableAsyncOperation'] } makePreviewableAsyncOperation
+ * @property { HistoryPlugin['makeSavePoint'] } makeSavePoint
  */
 /**
  * @typedef {(() => void)[]} on_external_commit_added_handlers
@@ -31,21 +41,34 @@ import { EditorCommit } from "../utils/commit";
  * @typedef {(() => void)[]} on_history_reset_handlers
  * @typedef {(() => void)[]} on_history_reset_from_commits_handlers
  * @typedef {((commit: EditorCommit) => void)[]} on_history_written_handlers
+ * @typedef {((commit: EditorCommit, options?: { ensureNewMutations?: boolean }) => void)[]} on_apply_commit_handlers
+ * @typedef {((commit: EditorCommit, options?: { ensureNewMutations?: boolean, restoreFocus?: boolean }) => void)[]} on_revert_commit_handlers
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_undone_handlers
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_redone_handlers
+ * @typedef {(() => void)[]} on_preview_handlers
+ * @typedef { (() => void)[] } on_restore_save_point_handlers
+ * @typedef { (() => void)[] } on_commit_restored_handlers
+ * @typedef { (() => void)[] } on_irreversible_commit_applied_handlers
+ * @typedef { ((savePoint: Object) => void)[] } on_will_restore_save_point_handlers
+ * @typedef { ((savePoint: Object, lastRevertedChanges: EditorCommitData) => void)[] } on_savepoint_restored_handlers
+ * @typedef { ((lastRevertedChanges: EditorCommitData) => void)[] } on_restored_to_commit_handlers
+ * @typedef { (() => void)[] } on_current_history_data_reset_handlers
  *
  * @typedef {((commit: EditorCommit) => boolean | undefined)[]} is_commit_reversible_predicates
+ * @typedef {((commit: EditorCommit) => boolean | undefined)[]} has_commit_changes_predicates
  *
- * @typedef { ((commit: EditorCommit) => EditorCommit | undefined)[] } editor_commit_processors
+ * @typedef { ((data: EditorCommitData) => EditorCommitData | undefined)[] } pending_commit_data_processors
  * @typedef {((data: EditorCommitData) => EditorCommitData | undefined)[]} snapshot_commit_data_processors
- * @typedef {((data: EditorCommitData) => EditorCommitData | undefined)[]} revision_commit_data_processors
+ * @typedef {((data: EditorCommitData, revertedCommit: EditorCommit) => EditorCommitData | undefined)[]} revision_commit_data_processors
+ * @typedef {((data: EditorCommitData) => EditorCommitData | undefined)[]} restoration_commit_data_processors
+ * @typedef { ((savePoint: Object) => Object | void)[] } save_point_data_processors
  */
 
 export const COMMIT_DEBOUNCE_DELAY = 250;
 
 export class HistoryPlugin extends Plugin {
     static id = "history";
-    static dependencies = ["selection"];
+    static dependencies = ["domReference", "selection"];
     static shared = [
         // Main public API
         "write",
@@ -64,7 +87,10 @@ export class HistoryPlugin extends Plugin {
         "resetFromCommits",
 
         // Preview
-        "getCommitsUntil",
+        "getIsPreviewing",
+        "makePreviewableOperation",
+        "makePreviewableAsyncOperation",
+        "makeSavePoint",
     ];
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -106,16 +132,16 @@ export class HistoryPlugin extends Plugin {
             { hotkey: "control+y", commandId: "historyRedo", global: true },
             { hotkey: "control+shift+z", commandId: "historyRedo", global: true },
         ],
+        history_data_keys: ["authorTimestamp", "commitTimestamp", "batchable", "previousCommitId"],
+
         on_editor_started_handlers: () => {
             this.reset(this.config.content);
-        },
-        editor_commit_processors: (commit) => {
-            commit.updateData("previousCommitId", this.commits.at(-1)?.id);
-            return commit;
         },
     };
 
     setup() {
+        /** @type { HistoryCommitData } */
+        this.authorTimestamp = Date.now();
         this._onKeyupResetContenteditableNodes = [];
         this.addDomListener(this.document, "beforeinput", this.onDocumentBeforeInput.bind(this));
         this.addDomListener(this.document, "input", this.onDocumentInput.bind(this));
@@ -129,8 +155,13 @@ export class HistoryPlugin extends Plugin {
         this.revertedCommits = new Set();
         /** @type {Set<EditorCommitId>} Commits reverted by restoring to a save point */
         this.discardedCommits = new Set();
-        this.authorTimestamp = Date.now();
+        this.resetCurrentData();
         this.trigger("on_history_cleaned_handlers");
+    }
+
+    resetCurrentData() {
+        this.authorTimestamp = Date.now();
+        this.trigger("on_current_history_data_reset_handlers");
     }
 
     // ===============
@@ -141,23 +172,21 @@ export class HistoryPlugin extends Plugin {
      * Create a commit from data and write it to history.
      *
      * @template { EditorCommitData } T
-     * @param { Object } params
-     * @param { EditorCommitType } params.type
-     * @param { T } params.data
-     * @param { EditorCommitMetadata } params.metadata
+     * @param { object } params
+     * @param { boolean } [params.batchable = false]
      * @returns { EditorCommit<T> }
      */
-    write({ type, data, metadata }) {
+    write({ batchable = false } = {}) {
         // Set the type of the commit here. That way, the state of undo and redo
         // is truly accessible when executing the `onChange` callback. It is
         // useful for external components if they execute `can(Undo|Redo)`.
-        const commit = this.createCommit({ type, data, metadata });
-        this.writeCommit(commit);
-        // Note AGE: will not trigger for a reset commit (it calls writeCommit
-        // directly). That's like it used to be before my changes: reset caused
-        // a step without calling addStep but by using steps.push directly.
-        this.trigger("on_history_written_handlers", commit);
-        return commit;
+        const commit = new EditorCommit({
+            data: this.processThrough("pending_commit_data_processors", {
+                batchable,
+                authorTimestamp: this.authorTimestamp,
+            }),
+        });
+        return this.writeCommit(commit);
     }
 
     /**
@@ -172,14 +201,20 @@ export class HistoryPlugin extends Plugin {
         for (revertedCommit of this.getNextRevisionCommits("undo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
             this.revertedCommits.add(revertedCommit.id);
-            const commitData = this.processThrough("revision_commit_data_processors", {
-                ...revertedCommit.data,
-            });
-            this.write({
-                type: "undo",
-                data: commitData,
-                metadata: revertedCommit.metadata,
-            });
+            const commitData = this.processThrough(
+                "revision_commit_data_processors",
+                {
+                    batchable: revertedCommit.data.batchable,
+                    commitTimestamp: revertedCommit.data.commitTimestamp,
+                },
+                revertedCommit
+            );
+            this.writeCommit(
+                new EditorCommit({
+                    type: "undo",
+                    data: commitData,
+                })
+            );
         }
         this.trigger("on_undone_handlers", revertedCommit);
     }
@@ -193,14 +228,20 @@ export class HistoryPlugin extends Plugin {
         for (revertedCommit of this.getNextRevisionCommits("redo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
             this.revertedCommits.add(revertedCommit.id);
-            const commitData = this.processThrough("revision_commit_data_processors", {
-                ...revertedCommit.data,
-            });
-            this.write({
-                type: "redo",
-                data: commitData,
-                metadata: revertedCommit.metadata,
-            });
+            const commitData = this.processThrough(
+                "revision_commit_data_processors",
+                {
+                    batchable: revertedCommit.data.batchable,
+                    commitTimestamp: revertedCommit.data.commitTimestamp,
+                },
+                revertedCommit
+            );
+            this.writeCommit(
+                new EditorCommit({
+                    type: "redo",
+                    data: commitData,
+                })
+            );
         }
         this.trigger("on_redone_handlers", revertedCommit);
     }
@@ -241,7 +282,7 @@ export class HistoryPlugin extends Plugin {
      */
     reset(content) {
         this.clean();
-        this.writeCommit(this.createSnapshotCommit("reset"));
+        this.writeCommit(this.createSnapshotCommit(), true);
         this.trigger("on_history_reset_handlers", content);
     }
 
@@ -251,12 +292,15 @@ export class HistoryPlugin extends Plugin {
 
     /**
      * @param { EditorCommit } commit
+     * @param { boolean } [silent = false] if true, skips any outside notification.
      * @returns { EditorCommit }
      */
-    writeCommit(commit) {
+    writeCommit(commit, silent = false) {
         // Set the timestamp of the commit or keep the timestamp of the commit
-        // it reverts (see `DomMutation`: `on_single_commit_(un|re)done_handlers`).
-        commit.stamp();
+        // it reverts:
+        commit.data.commitTimestamp ??= Date.now();
+        commit.data.authorTimestamp ??= this.authorTimestamp;
+        commit.data.previousCommitId = this.commits.at(-1)?.id;
         // @todo @phoenix should we allow to pause the making of a commit?
         // if (!this.commitsActive) {
         //     return;
@@ -265,56 +309,30 @@ export class HistoryPlugin extends Plugin {
         // this._resetLinkZws();
         // @todo @phoenix sanitize plugin
         // this.sanitize();
-        this.commits.push(commit);
-        // @todo @phoenix add this in the linkzws plugin.
-        // this._setLinkZws();
-        this.authorTimestamp = Date.now();
-        return commit;
+        if (silent || (this.checkPredicates("has_commit_changes_predicates", commit) ?? false)) {
+            this.commits.push(commit);
+            // @todo @phoenix add this in the linkzws plugin.
+            // this._setLinkZws();
+            this.resetCurrentData();
+            if (!silent) {
+                // Notify of changes.
+                this.trigger("on_history_written_handlers", commit);
+                this.config.onChange?.({ isPreviewing: this.isPreviewing });
+            }
+            return commit;
+        } else {
+            return false;
+        }
     }
 
     /**
-     * @param { Object } param0
-     * @param { EditorCommitId } [param0.id]
-     * @param { EditorCommitType } [param0.type]
-     * @param { DomMutationCommitData } [param0.data]
-     * @param { EditorCommitMetadata } [param0.metadata]
-     * @returns { EditorCommit<DomMutationCommitData> }
-     */
-    createCommit({ id, type, data, metadata }) {
-        return this.processThrough(
-            "editor_commit_processors",
-            new EditorCommit({
-                id,
-                type,
-                data,
-                metadata,
-                authorTimestamp: this.authorTimestamp,
-            })
-        );
-    }
-
-    /**
-     * @param { CommitType } [type = "original"]
      * @returns { EditorCommit }
      */
-    createSnapshotCommit(type = "original") {
-        const authorTimestamp = this.authorTimestamp || Date.now(); // TODO AGE: I don't think the || is needed.
+    createSnapshotCommit() {
         const data = this.processThrough("snapshot_commit_data_processors", {
-            activeElementId: null,
-            selection: {
-                anchorNode: undefined,
-                anchorOffset: undefined,
-                focusNode: undefined,
-                focusOffset: undefined,
-            },
-            selectionAfter: null,
+            authorTimestamp: this.authorTimestamp || Date.now(), // TODO AGE: I don't think the || is needed.
         });
-        return this.createCommit({
-            id: this.commits.at(-1)?.id,
-            type,
-            authorTimestamp,
-            data,
-        });
+        return new EditorCommit({ id: this.commits.at(-1)?.id, data });
     }
 
     // ===========================
@@ -327,10 +345,8 @@ export class HistoryPlugin extends Plugin {
      *
      * @param { EditorCommit } commit
      */
-    applyCommit(commit) {
-        if (!this.delegateTo("apply_commit_overrides", commit)) {
-            console.warn("Can't apply commit: no plugin responded.", commit);
-        }
+    applyCommit(commit, { ensureNewMutations = false } = {}) {
+        this.trigger("on_apply_commit_handlers", commit, { ensureNewMutations });
     }
 
     /**
@@ -339,12 +355,15 @@ export class HistoryPlugin extends Plugin {
      *
      * @param { EditorCommit } commit
      * @param { Object } [param1 = {}]
+     * TODO AGE: get rid of both these options.
      * @param { boolean } [param1.ensureNewMutations = false]
+     * @param { boolean } [param1.restoreFocus = true]
      */
-    revertCommit(commit, { ensureNewMutations = false } = {}) {
-        if (!this.delegateTo("revert_commit_overrides", commit, { ensureNewMutations })) {
-            console.warn("Can't revert commit: no plugin responded.", commit);
-        }
+    revertCommit(commit, { ensureNewMutations = false, restoreFocus = true } = {}) {
+        this.trigger("on_revert_commit_handlers", commit, {
+            ensureNewMutations,
+            restoreFocus,
+        });
     }
 
     // ============================
@@ -360,17 +379,16 @@ export class HistoryPlugin extends Plugin {
      * @returns { number }
      */
     getNextRevisionIndex(type, fromIndex = this.commits.length) {
-        const regularTypes = ["original", "reset"];
         // Do not undo/redo the initial commit.
         for (let index = fromIndex - 1; index > 0; index--) {
             const commit = this.commits[index];
             if (this.isReversibleCommit(commit) && !this.discardedCommits.has(commit.id)) {
-                if (type === "redo" && regularTypes.includes(commit.type)) {
+                if (type === "redo" && commit.type === "standard") {
                     return -1;
                 } else if (
                     !this.revertedCommits.has(commit.id) &&
                     // Go back to first commit that can be undone.
-                    ((type === "undo" && [...regularTypes, "redo"].includes(commit.type)) ||
+                    ((type === "undo" && ["standard", "redo"].includes(commit.type)) ||
                         // Look for an "undo" commit that has not yet been redone.
                         (type === "redo" && commit.type === "undo"))
                 ) {
@@ -420,12 +438,12 @@ export class HistoryPlugin extends Plugin {
     canCommitsBeBatched(index1, index2) {
         const commit1 = this.commits[index1];
         const commit2 = this.commits[index2];
-        if (!commit1.metadata.batchable || !commit2.metadata.batchable) {
+        if (!commit1.data.batchable || !commit2.data.batchable) {
             return false;
         }
         // Keep only if close enough in time.
         if (
-            Math.abs(commit1.metadata.commitTimestamp - commit2.metadata.commitTimestamp) >
+            Math.abs(commit1.data.commitTimestamp - commit2.data.commitTimestamp) >
             COMMIT_DEBOUNCE_DELAY
         ) {
             return false;
@@ -497,7 +515,176 @@ export class HistoryPlugin extends Plugin {
     // Preview
     // =======
 
-    // TODO AGE: review the domMutation/history distribution of preview stuff.
+    /**
+     * Returns a function that can be later called to revert history to the
+     * current state.
+     * @returns { Function }
+     */
+    makeSavePoint() {
+        const savePoint = this.processThrough("save_point_data_processors", {
+            commit: this.commits.at(-1),
+            hasBeenRestored: false,
+        });
+        return () => {
+            if (savePoint.hasBeenRestored) {
+                return;
+            }
+            this.trigger("on_will_restore_save_point_handlers", savePoint);
+            const lastRevertedChanges = this.restoreToCommit(savePoint.commit);
+            savePoint.hasBeenRestored = true;
+            this.trigger("on_savepoint_restored_handlers", savePoint, lastRevertedChanges);
+        };
+    }
+
+    /**
+     * Restores the editable to the state of a previous commit.
+     * It does so by discarding the current draft and reverting reversible commits
+     * until the specified commit index, while ensuring that irreversible commits
+     * are maintained. This will add a new "restore" commit and set the reverted
+     * commits's state to "discarded".
+     *
+     * @param { EditorCommit } commit
+     * @returns { EditorCommitData | undefined }
+     */
+    restoreToCommit(commit) {
+        if (commit === this.commits.at(-1)) {
+            return;
+        }
+        let lastRevertedChanges = this.processThrough("pending_commit_data_processors", {
+            authorTimestamp: this.authorTimestamp,
+        });
+        const commitsToRestore = this.getCommitsUntil(commit.id);
+        const irreversibleCommits = [];
+        for (const commitToRestore of commitsToRestore) {
+            // Savepoint restoration is used for previews, so keep focus on the
+            // external UI (for example the color picker) while reverting the
+            // underlying editor commit.
+            this.revertCommit(commitToRestore, {
+                ensureNewMutations: true,
+                restoreFocus: false,
+            });
+            this.trigger("on_commit_restored_handlers");
+            if (commitToRestore.discard) {
+                commitToRestore.discard();
+                lastRevertedChanges = commitToRestore.data;
+            } else {
+                irreversibleCommits.unshift(commitToRestore);
+            }
+        }
+        // Re-apply every non reversible commit (typically collaborators commits).
+        for (const irreversibleCommit of irreversibleCommits) {
+            this.applyCommit(irreversibleCommit, { ensureNewMutations: true });
+            this.trigger("on_irreversible_commit_applied_handlers");
+        }
+        this.trigger("on_restored_to_commit_handlers", lastRevertedChanges);
+        // Register resulting mutations as a new "restore" commit (prevent undo).
+        const commitData = this.processThrough("restoration_commit_data_processors", {});
+        this.writeCommit(new EditorCommit({ type: "restore", data: commitData }));
+        return lastRevertedChanges;
+    }
+
+    /**
+     * Creates a set of functions to preview, apply, and revert an operation.
+     * @param { Function } operation
+     * @returns { PreviewableOperation }
+     */
+    makePreviewableOperation(operation) {
+        let revertOperation = () => {};
+
+        return {
+            preview: (...args) => {
+                revertOperation();
+                revertOperation = this.makeSavePoint();
+                this.isPreviewing = true;
+                this.trigger("on_preview_handlers");
+                operation(...args);
+                // todo: We should not add a commit on preview as it would send
+                // unnecessary commits in collaboration and let the other peer
+                // see what we preview.
+                //
+                // The operation should be similar to the 'commit' (normalize
+                // etc...) hence the call to 'commit' (but we need to remove it
+                // for the collaboration).
+                this.write();
+            },
+            commit: (...args) => {
+                revertOperation();
+                this.isPreviewing = false;
+                operation(...args);
+                this.write();
+            },
+            revert: () => {
+                revertOperation();
+                revertOperation = () => {};
+                this.isPreviewing = false;
+            },
+        };
+    }
+
+    /**
+     * Creates a set of functions to preview, apply, and revert an async operation.
+     * @param { Function } operation
+     * @returns { PreviewableOperation }
+     */
+    makePreviewableAsyncOperation(operation) {
+        let revertOperation = async () => {};
+
+        return {
+            preview: async (...args) => {
+                await revertOperation();
+                const { promise, resolve } = Promise.withResolvers();
+                const revertSavePoint = this.makeSavePoint();
+                revertOperation = async () => {
+                    await promise;
+                    revertSavePoint();
+                };
+                this.isPreviewing = true;
+                try {
+                    await operation(...args);
+                } catch (error) {
+                    revertSavePoint();
+                    throw error;
+                } finally {
+                    resolve();
+                }
+                if (this.isDestroyed) {
+                    return;
+                }
+                // todo: We should not add a commit on preview as it would send
+                // unnecessary commits in collaboration and let the other peer
+                // see what we preview.
+                //
+                // The operation should be similar to the 'commit' (normalize
+                // etc...) hence the call to 'commit' (but we need to remove it
+                // for the collaboration).
+                this.write();
+            },
+            commit: async (...args) => {
+                await revertOperation();
+                this.isPreviewing = false;
+                const revertSavePoint = this.makeSavePoint();
+                try {
+                    await operation(...args);
+                } catch (error) {
+                    revertSavePoint();
+                    throw error;
+                }
+                if (this.isDestroyed) {
+                    return;
+                }
+                this.write();
+            },
+            revert: async () => {
+                await revertOperation();
+                revertOperation = () => {};
+                this.isPreviewing = false;
+            },
+        };
+    }
+
+    getIsPreviewing() {
+        return !!this.isPreviewing;
+    }
 
     /**
      * Get the commits saved in commits between the commit of given id (not
