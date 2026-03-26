@@ -224,3 +224,73 @@ class WebsiteSaleProductTests(TestSaleProductAttributeValueCommon):
                 else:
                     self.assertAlmostEqual(sol.price_reduce_taxexcl, contextual_price)
                     self.assertAlmostEqual(sale_order.amount_untaxed, contextual_price)
+
+    def test_dynamic_variant_not_created_on_ecommerce_view(self):
+        """
+        Test that viewing a dynamic product on eCommerce does NOT create a variant.
+        Variants should only be created when adding to cart (via RPC).
+
+        - Viewing a dynamic product should NOT create a variant
+        - Only adding it to a Sales Order should trigger variant creation
+        """
+
+        size_attribute = self.env['product.attribute'].create({
+            'name': 'Test Size Dynamic',
+            'create_variant': 'dynamic',
+            'value_ids': [
+                Command.create({'name': 'S'}),
+                Command.create({'name': 'M'}),
+                Command.create({'name': 'L'}),
+            ],
+        })
+        color_attribute = self.env['product.attribute'].create({
+            'name': 'Test Color Dynamic',
+            'create_variant': 'dynamic',
+            'value_ids': [
+                Command.create({'name': 'Red'}),
+                Command.create({'name': 'Blue'}),
+            ],
+        })
+        size_s = size_attribute.value_ids.filtered(lambda value: value.name == 'S')
+        size_m = size_attribute.value_ids.filtered(lambda value: value.name == 'M')
+        size_l = size_attribute.value_ids.filtered(lambda value: value.name == 'L')
+        color_red = color_attribute.value_ids.filtered(lambda value: value.name == 'Red')
+        color_blue = color_attribute.value_ids.filtered(lambda value: value.name == 'Blue')
+
+        product_template = self.env['product.template'].create({
+            'name': 'T-Shirt Dynamic',
+            'type': 'consu',
+            'list_price': 50.0,
+            'attribute_line_ids': [
+                Command.create({
+                    'attribute_id': size_attribute.id,
+                    'value_ids': [
+                        Command.link(size_s.id),
+                        Command.link(size_m.id),
+                        Command.link(size_l.id),
+                    ],
+                }),
+                Command.create({
+                    'attribute_id': color_attribute.id,
+                    'value_ids': [
+                        Command.link(color_red.id),
+                        Command.link(color_blue.id),
+                    ],
+                }),
+            ],
+        })
+
+        initial_variant_count = len(product_template.product_variant_ids)
+
+        # Simulate lookups done while browsing product information on eCommerce.
+        # They must not create any variant for dynamic products.
+        product_template._get_variant_for_combination(product_template._get_first_possible_combination())
+        product_template._get_image_holder()
+
+        final_variant_count = len(product_template.product_variant_ids)
+        self.assertEqual(
+            initial_variant_count,
+            final_variant_count,
+            "Viewing a dynamic product should NOT create a variant. "
+            "The fix prevents automatic variant creation at page render time.",
+        )
