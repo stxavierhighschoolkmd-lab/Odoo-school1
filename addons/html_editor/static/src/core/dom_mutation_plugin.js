@@ -318,44 +318,6 @@ export class DomMutationPlugin extends Plugin {
     // ===============
 
     /**
-     * Update `this.currentChanges` to set the correct data on the next commit,
-     * by processing and staging all new mutations, normalizing the mutated
-     * nodes, and updating any other data that needs updating, including by
-     * letting other plugins respond.
-     *
-     * @param { boolean } [isRevision = false]
-     */
-    flush(isRevision = false) {
-        // Stage the observer's current changes.
-        this.processAndStageMutations({ dispatch: true, isRevision });
-        const currentMutationsCount = this.currentChanges.mutations.length;
-        if (currentMutationsCount === 0) {
-            return false;
-        }
-
-        // Normalize the mutated nodes. Note: this can cause other commits to be written.
-        const commitRoot = this.getMutationsRoot(this.currentChanges.mutations) || this.editable;
-        this.processThrough("normalize_processors", commitRoot);
-        this.trigger("on_normalized_flushed_mutations_handlers", isRevision);
-        this.processAndStageMutations({ dispatch: false, isRevision });
-        if (currentMutationsCount === this.currentChanges.mutations.length) {
-            // If there was no registered mutation during the normalization
-            // commit, force the dispatch of a content_updated to allow i.e. the
-            // hint plugin to react to non-observed changes (i.e. a div becoming
-            // a baseContainer).
-            this.dispatchContentUpdated();
-        }
-
-        // Give a chance to other plugins to update the current changes'
-        // external data before we create the commit object.
-        this.trigger("on_flushed_mutations_handlers", isRevision);
-
-        this.currentChanges.updateSelectionAfter(
-            this.serializeSelection(this.dependencies.selection.getEditableSelection())
-        );
-    }
-
-    /**
      * Stage the observer's current mutations, bundle them into a commit object,
      * and write that commit to history @see historyPlugin.
      *
@@ -417,51 +379,6 @@ export class DomMutationPlugin extends Plugin {
     stage(mutations) {
         mutations = Array.isArray(mutations) ? mutations : [mutations];
         this.currentChanges.addMutations(...mutations);
-    }
-
-    /**
-     * Process the given native mutation records (or take the observer's current
-     * mutation records by default) and stage them.
-     *
-     * @param { Object } [params]
-     * @param { NativeMutation[] } [params.records = this.observer.takeRecords()]
-     * @param { boolean } [params.dispatch = true]
-     * @param { CommitType } [params.isRevision]
-     *
-     * TODO AGE: see if I can get rid of all these arguments. Should this be
-     * called `stage`?
-     */
-    processAndStageMutations({
-        records = this.observer.takeRecords(),
-        dispatch = true,
-        isRevision = false,
-    } = {}) {
-        if (this.observer.takeRecords().length) {
-            throw new Error("MutationObserver has pending records");
-        }
-
-        // First process the records:
-        const processedRecords = this.processNativeMutations(records);
-        const serializedRecords = this.serializeEditorMutations(processedRecords);
-
-        // Then stage them.
-        this.stage(serializedRecords);
-
-        // And finally, inform other plugins of changes.
-        if (serializedRecords.length) {
-            for (const mutation of serializedRecords) {
-                if (mutation.type === "attributes") {
-                    this.trigger("on_attribute_changed_handlers", mutation);
-                }
-            }
-            // TODO modify `handleMutations` of web_studio to handle `undoOperation`.
-            if (dispatch) {
-                this.trigger("on_new_records_handled_handlers", serializedRecords, isRevision);
-                // Process potential new mutations caused by the handlers.
-                this.processAndStageMutations({ dispatch: false });
-            }
-            this.dispatchContentUpdated();
-        }
     }
 
     /**
@@ -562,6 +479,89 @@ export class DomMutationPlugin extends Plugin {
     // =======
     // Staging
     // =======
+
+    /**
+     * Update `this.currentChanges` to set the correct data on the next commit,
+     * by processing and staging all new mutations, normalizing the mutated
+     * nodes, and updating any other data that needs updating, including by
+     * letting other plugins respond.
+     *
+     * @param { boolean } [isRevision = false]
+     */
+    flush(isRevision = false) {
+        // Stage the observer's current changes.
+        this.processAndStageMutations({ dispatch: true, isRevision });
+        const currentMutationsCount = this.currentChanges.mutations.length;
+        if (currentMutationsCount === 0) {
+            return;
+        }
+
+        // Normalize the mutated nodes. Note: this can cause other commits to be written.
+        const commitRoot = this.getMutationsRoot(this.currentChanges.mutations) || this.editable;
+        this.processThrough("normalize_processors", commitRoot);
+        this.trigger("on_normalized_flushed_mutations_handlers", isRevision);
+        this.processAndStageMutations({ dispatch: false, isRevision });
+        if (currentMutationsCount === this.currentChanges.mutations.length) {
+            // If there was no registered mutation during the normalization
+            // commit, force the dispatch of a content_updated to allow i.e. the
+            // hint plugin to react to non-observed changes (i.e. a div becoming
+            // a baseContainer).
+            this.dispatchContentUpdated();
+        }
+
+        // Give a chance to other plugins to update the current changes'
+        // external data before we create the commit object.
+        this.trigger("on_flushed_mutations_handlers", isRevision);
+
+        this.currentChanges.updateSelectionAfter(
+            this.serializeSelection(this.dependencies.selection.getEditableSelection())
+        );
+    }
+
+    /**
+     * Process the given native mutation records (or take the observer's current
+     * mutation records by default) and stage them.
+     *
+     * @param { Object } [params]
+     * @param { NativeMutation[] } [params.records = this.observer.takeRecords()]
+     * @param { boolean } [params.dispatch = true]
+     * @param { CommitType } [params.isRevision]
+     *
+     * TODO AGE: see if I can get rid of all these arguments. Should this be
+     * called `stage`?
+     */
+    processAndStageMutations({
+        records = this.observer.takeRecords(),
+        dispatch = true,
+        isRevision = false,
+    } = {}) {
+        if (this.observer.takeRecords().length) {
+            throw new Error("MutationObserver has pending records");
+        }
+
+        // First process the records:
+        const processedRecords = this.processNativeMutations(records);
+        const serializedRecords = this.serializeEditorMutations(processedRecords);
+
+        // Then stage them.
+        this.stage(serializedRecords);
+
+        // And finally, inform other plugins of changes.
+        if (serializedRecords.length) {
+            for (const mutation of serializedRecords) {
+                if (mutation.type === "attributes") {
+                    this.trigger("on_attribute_changed_handlers", mutation);
+                }
+            }
+            // TODO modify `handleMutations` of web_studio to handle `undoOperation`.
+            if (dispatch) {
+                this.trigger("on_new_records_handled_handlers", serializedRecords, isRevision);
+                // Process potential new mutations caused by the handlers.
+                this.processAndStageMutations({ dispatch: false });
+            }
+            this.dispatchContentUpdated();
+        }
+    }
 
     /**
      * Set the serialized selection of the currentChanges.
