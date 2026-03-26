@@ -34,7 +34,7 @@ export class CollaborationPlugin extends Plugin {
         /** Handlers */
         on_history_cleaned_handlers: this.onHistoryClean.bind(this),
         on_history_reset_handlers: this.onHistoryReset.bind(this),
-        on_committed_handlers: (commit) => this.onMutationsCommitted(commit),
+        on_history_written_handlers: (commit) => this.onMutationsCommitted(commit),
 
         /** Overrides */
         set_attribute_overrides: this.setAttribute.bind(this),

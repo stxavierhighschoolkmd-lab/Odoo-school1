@@ -55,10 +55,10 @@ export class ProductsDesignPanelPlugin extends Plugin {
     /**
      * Handles the flag of the closest product savable element
      * @param {import("@html_editor/core/dom_mutation_plugin").SerializedMutation[]} records - The observed mutations
-     * @param {import("@html_editor/utils/commit").EditorCommitType} currentOperation - The name of the current operation
+     * @param {boolean} isRevision
      */
-    handleMutations(records, currentOperation) {
-        if (currentOperation === "undo" || currentOperation === "redo") {
+    handleMutations(records, isRevision) {
+        if (isRevision) {
             // Do nothing as `o_dirty_product_design_list` has already been handled by the history
             // plugin.
             return;

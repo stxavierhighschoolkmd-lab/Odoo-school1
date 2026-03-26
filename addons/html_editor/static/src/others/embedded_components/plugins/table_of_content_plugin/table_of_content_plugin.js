@@ -34,7 +34,7 @@ export class TableOfContentPlugin extends Plugin {
         on_history_reset_handlers: () => this.delayedUpdateTableOfContents(this.editable),
         on_history_reset_from_commits_handlers: () =>
             this.delayedUpdateTableOfContents(this.editable),
-        on_committed_handlers: (commit) => {
+        on_history_written_handlers: (commit) => {
             let root;
             this.getResource("commit_root_providers").find((p) => {
                 root = p(commit);

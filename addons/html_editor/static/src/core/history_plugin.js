@@ -30,12 +30,15 @@ import { EditorCommit } from "../utils/commit";
  * @typedef {(() => void)[]} on_history_cleaned_handlers
  * @typedef {(() => void)[]} on_history_reset_handlers
  * @typedef {(() => void)[]} on_history_reset_from_commits_handlers
+ * @typedef {((commit: EditorCommit) => void)[]} on_history_written_handlers
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_undone_handlers
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_redone_handlers
  *
  * @typedef {((commit: EditorCommit) => boolean | undefined)[]} is_commit_reversible_predicates
  *
+ * @typedef { ((commit: EditorCommit) => EditorCommit | undefined)[] } editor_commit_processors
  * @typedef {((data: EditorCommitData) => EditorCommitData | undefined)[]} snapshot_commit_data_processors
+ * @typedef {((data: EditorCommitData) => EditorCommitData | undefined)[]} revision_commit_data_processors
  */
 
 export const COMMIT_DEBOUNCE_DELAY = 250;
@@ -150,6 +153,10 @@ export class HistoryPlugin extends Plugin {
         // useful for external components if they execute `can(Undo|Redo)`.
         const commit = this.createCommit({ type, data, metadata });
         this.writeCommit(commit);
+        // Note AGE: will not trigger for a reset commit (it calls writeCommit
+        // directly). That's like it used to be before my changes: reset caused
+        // a step without calling addStep but by using steps.push directly.
+        this.trigger("on_history_written_handlers", commit);
         return commit;
     }
 
@@ -165,7 +172,14 @@ export class HistoryPlugin extends Plugin {
         for (revertedCommit of this.getNextRevisionCommits("undo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
             this.revertedCommits.add(revertedCommit.id);
-            this.trigger("on_single_commit_undone_handlers", revertedCommit);
+            const commitData = this.processThrough("revision_commit_data_processors", {
+                ...revertedCommit.data,
+            });
+            this.write({
+                type: "undo",
+                data: commitData,
+                metadata: revertedCommit.metadata,
+            });
         }
         this.trigger("on_undone_handlers", revertedCommit);
     }
@@ -179,7 +193,14 @@ export class HistoryPlugin extends Plugin {
         for (revertedCommit of this.getNextRevisionCommits("redo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
             this.revertedCommits.add(revertedCommit.id);
-            this.trigger("on_single_commit_redone_handlers", revertedCommit);
+            const commitData = this.processThrough("revision_commit_data_processors", {
+                ...revertedCommit.data,
+            });
+            this.write({
+                type: "redo",
+                data: commitData,
+                metadata: revertedCommit.metadata,
+            });
         }
         this.trigger("on_redone_handlers", revertedCommit);
     }

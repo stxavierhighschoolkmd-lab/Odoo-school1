@@ -138,13 +138,13 @@ export class SavePlugin extends Plugin {
      * Handles the flag of the closest savable element to the mutation as dirty
      *
      * @param {import("@html_editor/core/dom_mutation_plugin").SerializedMutation[]} records - The observed mutations
-     * @param {import("@html_editor/utils/commit").EditorCommitType} currentOperation - The name of the current operation
+     * @param {boolean} isRevision
      */
-    handleMutations(records, currentOperation) {
+    handleMutations(records, isRevision) {
         if (!this.canObserve) {
             return;
         }
-        if (currentOperation === "undo" || currentOperation === "redo") {
+        if (isRevision) {
             // Do nothing as `o_dirty` has already been handled by the history
             // plugin.
             return;

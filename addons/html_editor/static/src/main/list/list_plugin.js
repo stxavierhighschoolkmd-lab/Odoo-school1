@@ -180,7 +180,7 @@ export class ListPlugin extends Plugin {
         hints: [{ selector: `LI, LI > ${baseContainerGlobalSelector}`, text: _t("List") }],
 
         /** Handlers */
-        on_committed_handlers: this.updateToolbarButtons.bind(this),
+        on_history_written_handlers: this.updateToolbarButtons.bind(this),
         on_deleted_handlers: this.adjustListPaddingOnDelete.bind(this),
         on_will_insert_separator_handlers: this.exitList.bind(this),
         on_will_format_selection_handlers: this.applyFormatToListItem.bind(this),

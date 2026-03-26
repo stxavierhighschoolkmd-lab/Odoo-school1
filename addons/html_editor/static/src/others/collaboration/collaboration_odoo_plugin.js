@@ -61,7 +61,7 @@ export class CollaborationOdooPlugin extends Plugin {
         clean_for_save_processors: (root) => this.attachHistoryIds(root),
         on_history_missing_parent_commit_handlers: this.onHistoryMissingParentCommit.bind(this),
         on_history_reset_handlers: this.onReset.bind(this),
-        on_committed_handlers: (commit) =>
+        on_history_written_handlers: (commit) =>
             this.ptp?.notifyAllPeers("oe_history_commit", commit, { transport: "rtc" }),
     };
 
