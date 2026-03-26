@@ -1,7 +1,7 @@
 import { Plugin } from "../plugin";
 import { trackOccurrences, trackOccurrencesPair } from "@html_editor/utils/tracking";
-import { treeToNodes, nodeToTree, NodeMap } from "@html_editor/utils/dom_info";
-import { childNodes, descendants, getCommonAncestor } from "@html_editor/utils/dom_traversal";
+import { treeToNodes, nodeToTree } from "@html_editor/utils/dom_info";
+import { childNodes, getCommonAncestor } from "@html_editor/utils/dom_traversal";
 import { omit, pick } from "@web/core/utils/objects";
 import { toggleClass } from "@html_editor/utils/dom";
 import { withSequence } from "@html_editor/utils/resource";
@@ -10,25 +10,9 @@ import { withSequence } from "@html_editor/utils/resource";
  * DOM
  */
 /**
- * @typedef { string } NodeId
- *
- * @typedef { Object } Tree
- * @property { Node } node
- * @property { Tree[] } children
- *
- * @typedef { Object } SerializedNode
- * @property { number } nodeType
- * @property { NodeId } nodeId
- * @property { string } textValue
- * @property { string } tagName
- * @property { SerializedNode[] } children
- * @property { Record<string, string> } attributes
- *
- * @typedef { Object } SerializedSelection
- * @property { NodeId } anchorNodeId
- * @property { number } anchorOffset
- * @property { NodeId } focusNodeId
- * @property { number } focusOffset
+ * @typedef { import("./dom_reference_plugin").NodeId } NodeId
+ * @typedef { import("./dom_reference_plugin").Tree } Tree
+ * @typedef { import("./dom_reference_plugin").SerializedNode } SerializedNode
  */
 
 /**
@@ -42,10 +26,6 @@ import { withSequence } from "@html_editor/utils/resource";
  *
  * @typedef { Object } DomMutationCommitData
  * @property { SerializedMutation[] } mutations      // the mutations to apply/revert
- * @property { NodeId } activeElementId              // the ID of the active element before applying the mutations
- * @property { SerializedSelection } selection       // the serialized selection before applying the mutations
- * @property { SerializedSelection } selectionAfter  // the serialized selection after applying the mutations
- * @property { Object } external                     // any data added from and managed by an external plugin
  */
 
 /**
@@ -132,20 +112,10 @@ import { withSequence } from "@html_editor/utils/resource";
  * @property { DomMutationPlugin['stage'] } stage
  * @property { DomMutationPlugin['stash'] } stash
  * @property { DomMutationPlugin['unstash'] } unstash
- * @property { DomMutationPlugin['updateExternal'] } updateExternal
  * @property { DomMutationPlugin['stageCustomMutation'] } stageCustomMutation
  * @property { DomMutationPlugin['applyCustomMutation'] } applyCustomMutation
  * @property { DomMutationPlugin['hasStagedMutations'] } hasStagedMutations
  * @property { DomMutationPlugin['ignoreDOMMutations'] } ignoreDOMMutations
- * @property { DomMutationPlugin['makePreviewableOperation'] } makePreviewableOperation
- * @property { DomMutationPlugin['makePreviewableAsyncOperation'] } makePreviewableAsyncOperation
- * @property { DomMutationPlugin['makeSavePoint'] } makeSavePoint
- * @property { DomMutationPlugin['stageSelection'] } stageSelection
- * @property { DomMutationPlugin['stageFocus'] } stageFocus
- * @property { DomMutationPlugin['getIsPreviewing'] } getIsPreviewing
- * @property { DomMutationPlugin['getNodeById'] } getNodeById
- * @property { DomMutationPlugin['getNodeId'] } getNodeId
- * @property { DomMutationPlugin['serializeSelection'] } serializeSelection
  */
 
 /**
@@ -157,7 +127,6 @@ import { withSequence } from "@html_editor/utils/resource";
  * @typedef { ((root: HTMLElement) => void)[] } on_content_updated_handlers
  * @typedef { ((record: SerializedMutation[]) => void)[] } on_attribute_changed_handlers
  * @typedef { ((record: SerializedMutation[], currentOperation: EditorCommitType) => void)[] } on_new_records_handled_handlers
- * @typedef { (() => void)[] } on_savepoint_restored_handlers
  * @typedef { ((node: Node, childTreesToSerialize: Tree[]) => Tree[])[] } serializable_descendants_processors
  * @typedef { ((isRevision: boolean) => void)[] } on_flushed_mutations_handlers
  * @typedef { ((isRevision: boolean) => void)[] } on_normalized_flushed_mutations_handlers
@@ -167,7 +136,7 @@ import { withSequence } from "@html_editor/utils/resource";
  */
 export class DomMutationPlugin extends Plugin {
     static id = "domMutation";
-    static dependencies = ["history", "selection", "sanitize"];
+    static dependencies = ["domReference", "history", "sanitize"];
     static shared = [
         // Main public API
         "commit",
@@ -175,33 +144,21 @@ export class DomMutationPlugin extends Plugin {
         "stage",
         "stash",
         "unstash",
-        "updateExternal",
 
         // Observer on/off
         "ignoreDOMMutations",
 
-        // DOM Map Handling
-        "getNodeById",
-        "getNodeId",
-        "serializeSelection",
-
         // Staging
         "stageCustomMutation",
         "hasStagedMutations",
-        "stageSelection",
-        "stageFocus",
 
         // Commit application/reversal
         "applyCustomMutation",
-
-        // Preview
-        "getIsPreviewing",
-        "makePreviewableOperation",
-        "makePreviewableAsyncOperation",
-        "makeSavePoint",
     ];
     /** @type {import("plugins").EditorResources} */
     resources = {
+        history_data_keys: ["mutations"],
+
         on_editor_started_handlers: withSequence(9, this.enableObserver.bind(this)),
         on_will_reset_history_from_commits_handlers: () => {
             // TODO AGE: this is only to replace the `withObserverOff` call in
@@ -214,9 +171,6 @@ export class DomMutationPlugin extends Plugin {
             this.lastEnableObserverCallback?.();
             this.lastEnableObserverCallback = undefined;
         },
-        on_history_reset_handlers: withSequence(0, () => {
-            this.stageSelection();
-        }),
         on_prepare_drag_handlers: this.disableHasStagedMutationsWarning.bind(this),
         on_history_cleaned_handlers: this.clean.bind(this),
         on_will_add_external_commit_handlers: () => {
@@ -228,72 +182,80 @@ export class DomMutationPlugin extends Plugin {
             // which should cancel it.
             this.unstash();
         },
-        apply_commit_overrides: (commit) => {
+        on_apply_commit_handlers: (commit) => {
             if (commit.data.mutations) {
                 this.applyMutations(commit.data.mutations);
                 // TODO AGE: check why reverting a commit involves also setting
                 // its serialized focus and selection, and updating the state,
                 // while _applying_ a commit doesn't. Couldn't we make this more
                 // coherent?
-                return true;
             }
         },
-        revert_commit_overrides: (commit, { ensureNewMutations = false } = {}) => {
+        on_revert_commit_handlers: (commit, { ensureNewMutations = false } = {}) => {
             if (commit.data.mutations) {
                 this.revertMutations(commit.data.mutations, { ensureNewMutations });
-                this.setSerializedFocus(commit.data.activeElementId);
-                this.stageFocus();
-                this.setSerializedSelection(commit.data.selection);
-                this.currentChanges.updateSelection(commit.data.selectionAfter);
-                return true;
             }
         },
         on_will_undo_handlers: this.discard.bind(this),
         on_will_redo_handlers: this.discard.bind(this),
-        revision_commit_data_processors: (revisedCommitData) => {
-            // Include any commit data stored in the reverted commit and
-            // that is not handled by this plugin.
-            // Note AGE: this is the `extraStepInfos` stuff.
-            for (const [key, value] of Object.entries(revisedCommitData.external)) {
-                this.updateExternal(key, value);
-            }
+        revision_commit_data_processors: (data) => {
             this.flush(true);
             if (this.currentChanges.mutations.length !== 0) {
-                return { ...this.currentChanges.data };
+                return { ...data, ...this.currentChanges.data };
             }
+        },
+        restoration_commit_data_processors: (data) => {
+            this.flush(true);
+            if (this.currentChanges.mutations.length !== 0) {
+                return { ...data, ...this.currentChanges.data };
+            }
+        },
+        on_commit_restored_handlers: () => {
+            // Process and stage mutations so that the attribute comparison for
+            // the state change is done with the intermediate attribute value
+            // and not with the final value in the DOM after all commits were
+            // reverted then applied again.
+            this.processAndStageMutations({ dispatch: false });
+        },
+        on_irreversible_commit_applied_handlers: () => {
+            this.processAndStageMutations({ dispatch: false });
         },
         commit_root_providers: (commit) =>
             this.getMutationsRoot(commit.data.mutations || []) || this.editable,
         snapshot_commit_data_processors: (data) => {
             data.mutations = childNodes(this.editable)
-                .filter((node) => this.nodeMap.hasNode(node))
+                .filter((node) => this.dependencies.domReference.hasNode(node))
                 .map((node) => ({
                     type: "add",
                     parentNodeId: "root",
-                    nodeId: this.getNodeId(node),
-                    serializedNode: this.serializeTree(nodeToTree(node)),
+                    nodeId: this.dependencies.domReference.getNodeId(node),
+                    serializedNode: this.dependencies.domReference.serializeTree(nodeToTree(node)),
                     nextNodeId: null,
                 }));
             return data;
         },
-        on_history_written_handlers: withSequence(0, () => {
-            // Reset the current state for the next commit.
+        on_current_history_data_reset_handlers: () => {
             this.currentChanges = new CurrentChanges();
-            this.stageSelection();
-            // Notify of changes.
-            this.config.onChange?.({ isPreviewing: this.isPreviewing });
+        },
+        save_point_data_processors: (savePoint) => {
+            this.processAndStageMutations();
+            return { ...savePoint, mutations: [...this.currentChanges.mutations] };
+        },
+        on_will_restore_save_point_handlers: withSequence(0, () => {
+            this.discard();
+        }),
+        on_savepoint_restored_handlers: withSequence(0, (savePoint) => {
+            // Apply draft mutations to recover the same currentChanges state
+            // as before.
+            this.applyMutations(savePoint.mutations, { ensureNewMutations: true });
+            this.processAndStageMutations();
+            this.dispatchContentUpdated();
         }),
     };
 
     setup() {
-        this.nodeMap = new NodeMap();
         this.mutationFilteredClasses = new Set(this.getResource("system_classes"));
         this.mutationFilteredAttributes = new Set(this.getResource("system_attributes"));
-        this.addGlobalDomListener("pointerup", (ev) => {
-            if (this.editable.contains(ev.target)) {
-                this.stageSelection();
-            }
-        });
         this.observer = new MutationObserver((records) =>
             this.processAndStageMutations({ records })
         );
@@ -305,12 +267,9 @@ export class DomMutationPlugin extends Plugin {
     }
 
     clean() {
-        this.currentChanges = new CurrentChanges();
         // TODO AGE: rename to clarify what it is.
         /** @type { WeakMap<Node, ObservedState } */
         this.lastObservedState = new WeakMap();
-        this.nodeMap = new NodeMap();
-        this.setNodeId(this.editable);
     }
 
     // ===============
@@ -321,22 +280,16 @@ export class DomMutationPlugin extends Plugin {
      * Stage the observer's current mutations, bundle them into a commit object,
      * and write that commit to history @see historyPlugin.
      *
-     * @param { Object } param0
-     * @param { EditorCommitType } [param0.type = "original"]
-     * @param { boolean } [param0.batchable]
-     * @param { EditorCommitMetadata } [param0.metadata = {}]
+     * @param { { batchable: boolean } } params
      * @returns { EditorCommit<DomMutationCommitData> | false }
      */
-    commit({ type = "original", batchable, metadata = {} } = {}) {
-        metadata.batchable = batchable ?? metadata.batchable ?? false;
-
+    commit({ batchable = false } = {}) {
         this.flush();
         if (this.currentChanges.mutations.length === 0) {
             return false;
         }
-        const data = this.currentChanges.data;
-
-        return this.dependencies.history.write({ type, data, metadata });
+        const data = { ...this.currentChanges.data, batchable };
+        return this.dependencies.history.write(data);
     }
 
     discard() {
@@ -379,16 +332,6 @@ export class DomMutationPlugin extends Plugin {
     stage(mutations) {
         mutations = Array.isArray(mutations) ? mutations : [mutations];
         this.currentChanges.addMutations(...mutations);
-    }
-
-    /**
-     * Set a key/value pair in the data of the next commit.
-     *
-     * @param { string } key
-     * @param { any } value
-     */
-    updateExternal(key, value) {
-        this.currentChanges.updateExternal(key, value);
     }
 
     // ===============
@@ -473,7 +416,7 @@ export class DomMutationPlugin extends Plugin {
      * @returns { boolean }
      */
     isObservedNode(node) {
-        return this.nodeMap.hasNode(node);
+        return this.dependencies.domReference.hasNode(node);
     }
 
     // =======
@@ -512,10 +455,6 @@ export class DomMutationPlugin extends Plugin {
         // Give a chance to other plugins to update the current changes'
         // external data before we create the commit object.
         this.trigger("on_flushed_mutations_handlers", isRevision);
-
-        this.currentChanges.updateSelectionAfter(
-            this.serializeSelection(this.dependencies.selection.getEditableSelection())
-        );
     }
 
     /**
@@ -560,43 +499,6 @@ export class DomMutationPlugin extends Plugin {
                 this.processAndStageMutations({ dispatch: false });
             }
             this.dispatchContentUpdated();
-        }
-    }
-
-    /**
-     * Set the serialized selection of the currentChanges.
-     *
-     * This method is used to save a serialized selection in the currentChanges.
-     * It will be necessary if the commit is reverted at some point because we
-     * need to set the selection to where it was before any mutation was made.
-     *
-     * It means that we should not call this method in the middle of mutations
-     * because if a selection is set onto a node that is edited/added/removed
-     * within the same commit, it might become impossible to set the selection
-     * when reverting the commit.
-     */
-    stageSelection() {
-        this.stageFocus();
-        const selection = this.dependencies.selection.getEditableSelection();
-        if (this.hasStagedMutations()) {
-            console.warn(
-                `should not have any "characterData", "remove" or "add" mutations in current changes when you update the selection`
-            );
-            return;
-        }
-        this.currentChanges.updateSelection(this.serializeSelection(selection));
-    }
-
-    /**
-     * Set the serialized focus of the currentChanges.
-     */
-    stageFocus() {
-        let activeElement = this.document.activeElement;
-        if (activeElement.contains(this.editable)) {
-            activeElement = this.editable;
-        }
-        if (this.editable.contains(activeElement)) {
-            this.currentChanges.updateActiveElement(this.setNodeId(activeElement));
         }
     }
 
@@ -675,9 +577,9 @@ export class DomMutationPlugin extends Plugin {
                     [firstAdded, firstRemoved].every((node) => node.nodeType === Node.TEXT_NODE) &&
                     firstAdded.textContent === firstRemoved.textContent
                 ) {
-                    const oldId = this.getNodeId(firstRemoved);
+                    const oldId = this.dependencies.domReference.getNodeId(firstRemoved);
                     if (oldId) {
-                        this.nodeMap.set(oldId, firstAdded);
+                        this.dependencies.domReference.set(oldId, firstAdded);
                         return false;
                     }
                 }
@@ -840,7 +742,7 @@ export class DomMutationPlugin extends Plugin {
      * @returns { EditorMutation<"add" | "remove">[] | false }
      */
     processChildListMutation(mutation, childListToTrees) {
-        if (!this.nodeMap.hasNode(mutation.target)) {
+        if (!this.dependencies.domReference.hasNode(mutation.target)) {
             throw new Error("Unknown parent node");
         }
 
@@ -881,8 +783,8 @@ export class DomMutationPlugin extends Plugin {
         // `isObservedNode`).
         trees.added
             .flatMap(treeToNodes)
-            .filter((node) => !this.nodeMap.hasNode(node))
-            .forEach((node) => this.nodeMap.set(this.generateId(), node));
+            .filter((node) => !this.dependencies.domReference.hasNode(node))
+            .forEach((node) => this.dependencies.domReference.setNodeId(node, false));
 
         // Split the mutation into single node mutations.
         return [
@@ -1096,90 +998,6 @@ export class DomMutationPlugin extends Plugin {
         return { ...record, oldValue: lastObservedValue };
     }
 
-    // ================
-    // DOM Map Handling
-    // ================
-
-    /**
-     * @param { NodeId } id
-     * @returns { Node | undefined }
-     */
-    getNodeById(id) {
-        return this.nodeMap.getNode(id);
-    }
-
-    /**
-     * @param {Node} node
-     * @returns {NodeId}
-     */
-    getNodeId(node) {
-        return this.nodeMap.getId(node);
-    }
-
-    /**
-     * @param { Node } node
-     */
-    setNodeId(node) {
-        let id = this.nodeMap.getId(node);
-        if (!id) {
-            id = node === this.editable ? "root" : this.generateId();
-            this.nodeMap.set(id, node);
-            node = node.firstChild;
-            while (node) {
-                this.setNodeId(node);
-                node = node.nextSibling;
-            }
-        }
-        return id;
-    }
-
-    /**
-     * @param { Tree } tree
-     * @returns { SerializedNode | null }
-     */
-    serializeTree(tree) {
-        const node = tree.node;
-        const nodeId = this.getNodeId(node);
-        if (!nodeId) {
-            return null;
-        }
-        const result = {
-            nodeType: node.nodeType,
-            nodeId: nodeId,
-        };
-        if (node.nodeType === Node.TEXT_NODE) {
-            result.textValue = node.nodeValue;
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-            const childTreesToSerialize = this.processThrough(
-                "serializable_descendants_processors",
-                tree.children,
-                node
-            );
-            result.tagName = node.tagName;
-            result.attributes = Object.fromEntries(
-                [...node.attributes].map((attr) => [attr.name, attr.value])
-            );
-            result.children = childTreesToSerialize
-                .map((tree) => this.serializeTree(tree))
-                .filter(Boolean);
-        }
-        return result;
-    }
-
-    /**
-     * Serialize an editor selection.
-     * @param { EditorSelection } selection
-     * @returns { SerializedSelection }
-     */
-    serializeSelection(selection) {
-        return {
-            anchorNodeId: this.getNodeId(selection.anchorNode),
-            anchorOffset: selection.anchorOffset,
-            focusNodeId: this.getNodeId(selection.focusNode),
-            focusOffset: selection.focusOffset,
-        };
-    }
-
     /**
      * Turn `EditorMutation`s into `SerializedMutation`s by replacing their
      * references to nodes with node IDs and serialized trees.
@@ -1193,7 +1011,7 @@ export class DomMutationPlugin extends Plugin {
                 case "characterData":
                 case "classList":
                 case "attributes": {
-                    const nodeId = this.getNodeId(record.target);
+                    const nodeId = this.dependencies.domReference.getNodeId(record.target);
                     return { ...omit(record, "target"), nodeId };
                 }
                 case "add":
@@ -1203,15 +1021,15 @@ export class DomMutationPlugin extends Plugin {
                         record.previousSibling,
                     ].map((sibling) =>
                         // Preserve undefined and null values
-                        sibling ? this.getNodeId(sibling) : sibling
+                        sibling ? this.dependencies.domReference.getNodeId(sibling) : sibling
                     );
                     // Note: IDs are assigned to added nodes in
                     // `processChildListMutation`.
                     return {
                         type: record.type,
-                        nodeId: this.getNodeId(record.tree.node),
-                        parentNodeId: this.getNodeId(record.parent),
-                        serializedNode: this.serializeTree(record.tree),
+                        nodeId: this.dependencies.domReference.getNodeId(record.tree.node),
+                        parentNodeId: this.dependencies.domReference.getNodeId(record.parent),
+                        serializedNode: this.dependencies.domReference.serializeTree(record.tree),
                         nextNodeId,
                         previousNodeId,
                     };
@@ -1221,76 +1039,6 @@ export class DomMutationPlugin extends Plugin {
                 }
             }
         });
-    }
-
-    /**
-     * Unserialize a node and its children.
-     *
-     * @param { SerializedNode } node
-     * @param { NodeMap } [nodeMap = this.nodeMap]
-     * @returns { Node | null }
-     */
-    unserializeNode(node, nodeMap = this.nodeMap) {
-        /** @type { Map<Node, string> } */
-        const newNodesMap = new Map();
-        /**
-         * Recursive helper.
-         *
-         * @param { SerializedNode } serializedNode
-         * @returns { Node | null }
-         */
-        const unserialize = (serializedNode) => {
-            let node = nodeMap.getNode(serializedNode.nodeId);
-            if (!node) {
-                if (serializedNode.nodeType === Node.TEXT_NODE) {
-                    node = this.document.createTextNode(serializedNode.textValue);
-                } else if (serializedNode.nodeType === Node.ELEMENT_NODE) {
-                    node = this.document.createElement(serializedNode.tagName);
-                    for (const key in serializedNode.attributes) {
-                        node.setAttribute(key, serializedNode.attributes[key]);
-                    }
-                    node.append(...serializedNode.children.map(unserialize).filter(Boolean));
-                } else {
-                    console.warn(`Can't unserialize a node of type ${serializedNode.nodeType}.`);
-                    return null;
-                }
-                newNodesMap.set(node, serializedNode.nodeId);
-            }
-            return node;
-        };
-
-        let unserializedNode = unserialize(node, nodeMap);
-        if (unserializedNode) {
-            const fakeNode = this.document.createElement("fake-el");
-            // TODO AGE: this next line has the effect of REMOVING THE NODE FROM
-            // THE DOM! But changing it for a clone breaks a bunch of tests.
-            fakeNode.appendChild(unserializedNode);
-            this.dependencies.sanitize.sanitize(fakeNode);
-            unserializedNode = fakeNode.firstChild;
-            if (unserializedNode) {
-                // Only assing id to the remaining nodes, otherwise the removed
-                // nodes will still be accessible through the nodeMap and could
-                // lead to security issues.
-                for (const node of [unserializedNode, ...descendants(unserializedNode)]) {
-                    if (!this.nodeMap.hasNode(node)) {
-                        const id = newNodesMap.get(node);
-                        if (id) {
-                            this.nodeMap.set(id, node);
-                        }
-                    }
-                }
-                return unserializedNode;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * @returns { NodeId  }
-     */
-    generateId() {
-        // No need for secure random number.
-        return Math.floor(Math.random() * Math.pow(2, 52)).toString();
     }
 
     // ===========================
@@ -1316,14 +1064,14 @@ export class DomMutationPlugin extends Plugin {
                     break;
                 }
                 case "characterData": {
-                    const node = this.getNodeById(mutation.nodeId);
+                    const node = this.dependencies.domReference.getNodeById(mutation.nodeId);
                     if (node) {
                         node.textContent = mutation.value;
                     }
                     break;
                 }
                 case "classList": {
-                    const node = this.getNodeById(mutation.nodeId);
+                    const node = this.dependencies.domReference.getNodeById(mutation.nodeId);
                     if (node) {
                         toggleClass(node, mutation.className, mutation.value);
                     }
@@ -1355,7 +1103,7 @@ export class DomMutationPlugin extends Plugin {
      * @param { boolean } [options.wasReversed = false] whether the change was reversed
      */
     applyAttributesMutation(mutation, options = {}) {
-        const node = this.getNodeById(mutation.nodeId);
+        const node = this.dependencies.domReference.getNodeById(mutation.nodeId);
         if (node) {
             const { value } = this.processThrough("attribute_change_processors", mutation, options);
             if (!this.delegateTo("set_attribute_overrides", node, mutation.attributeName, value)) {
@@ -1374,12 +1122,14 @@ export class DomMutationPlugin extends Plugin {
     applyAddMutation(mutation) {
         const { nodeId, serializedNode, parentNodeId, nextNodeId, previousNodeId } = mutation;
 
-        const toAdd = this.getNodeById(nodeId) || this.unserializeNode(serializedNode);
+        const toAdd =
+            this.dependencies.domReference.getNodeById(nodeId) ||
+            this.dependencies.domReference.unserializeNode(serializedNode);
         if (!toAdd) {
             return;
         }
 
-        const parent = this.getNodeById(parentNodeId);
+        const parent = this.dependencies.domReference.getNodeById(parentNodeId);
         if (!parent) {
             console.warn("Mutation could not be applied, parent node is missing.", mutation);
             return;
@@ -1393,12 +1143,12 @@ export class DomMutationPlugin extends Plugin {
             return;
         }
         const isValid = (node) => node?.parentNode === parent;
-        const previousNode = this.getNodeById(previousNodeId);
+        const previousNode = this.dependencies.domReference.getNodeById(previousNodeId);
         if (isValid(previousNode)) {
             previousNode.after(toAdd);
             return;
         }
-        const nextNode = this.getNodeById(nextNodeId);
+        const nextNode = this.dependencies.domReference.getNodeById(nextNodeId);
         if (isValid(nextNode)) {
             nextNode.before(toAdd);
             return;
@@ -1410,8 +1160,8 @@ export class DomMutationPlugin extends Plugin {
      * @param { SerializedMutation<"remove"> } mutation
      */
     applyRemoveMutation(mutation) {
-        const parent = this.getNodeById(mutation.parentNodeId);
-        const toRemove = this.getNodeById(mutation.nodeId);
+        const parent = this.dependencies.domReference.getNodeById(mutation.parentNodeId);
+        const toRemove = this.dependencies.domReference.getNodeById(mutation.nodeId);
         if (!toRemove) {
             console.warn("Mutation could not be applied, node to remove is unknown.", mutation);
             return;
@@ -1461,45 +1211,6 @@ export class DomMutationPlugin extends Plugin {
     }
 
     /**
-     * @param { SerializedSelection } selection
-     */
-    setSerializedSelection(selection) {
-        if (!selection.anchorNodeId) {
-            return;
-        }
-        const anchorNode = this.getNodeById(selection.anchorNodeId);
-        if (!anchorNode) {
-            return;
-        }
-        const newSelection = {
-            anchorNode,
-            anchorOffset: selection.anchorOffset,
-        };
-        const focusNode = this.getNodeById(selection.focusNodeId);
-        if (focusNode) {
-            newSelection.focusNode = focusNode;
-            newSelection.focusOffset = selection.focusOffset;
-        }
-        this.dependencies.selection.setSelection(newSelection, { normalize: false });
-        // @todo @phoenix add this in the selection or table plugin.
-        // // If a table must be selected, ensure it's in the same tick.
-        // this._handleSelectionInTable();
-    }
-
-    /**
-     * @param { NodeId } activeElementId
-     */
-    setSerializedFocus(activeElementId) {
-        const elementToFocus =
-            activeElementId === "root"
-                ? this.editable
-                : activeElementId && this.getNodeById(activeElementId);
-        if (elementToFocus?.isConnected && elementToFocus !== this.document.activeElement) {
-            elementToFocus.focus();
-        }
-    }
-
-    /**
      * When applying mutations for a new commit, we expect them to produce
      * observable mutations, which will then be stored in a new commit. However,
      * there are situations where applying a classList mutation would not
@@ -1526,7 +1237,7 @@ export class DomMutationPlugin extends Plugin {
             .filter(({ nodeId, className }) => isFirstOcurrence(nodeId, className))
             .map((mutation) => ({
                 ...mutation,
-                node: this.getNodeById(mutation.nodeId),
+                node: this.dependencies.domReference.getNodeById(mutation.nodeId),
             }))
             .filter(({ node, className, value }) => value === node?.classList.contains(className));
         if (nonObservableClassMutations.length) {
@@ -1534,216 +1245,6 @@ export class DomMutationPlugin extends Plugin {
                 toggleClass(node, className, oldValue);
             this.withObserverOff(() => nonObservableClassMutations.forEach(setToOldValue));
         }
-    }
-
-    // =======
-    // Preview
-    // =======
-
-    /**
-     * TODO AGE: review link with history and commits.
-     * Restores the editable to the state of a previous commit.
-     * It does so by discarding the current draft and reverting reversible commits
-     * until the specified commit index, while ensuring that irreversible commits
-     * are maintained. This will add a new "restore" commit and set the reverted
-     * commits's state to "discarded".
-     *
-     * @param { EditorCommit } commit
-     * @returns { CommitData | undefined }
-     */
-    restoreToCommit(commit) {
-        this.discard();
-        if (commit === this.dependencies.history.getHistoryCommits().at(-1)) {
-            return;
-        }
-        let lastRevertedChanges = this.currentChanges.data;
-        const commitsToRestore = this.dependencies.history.getCommitsUntil(commit.id);
-        const irreversibleCommits = [];
-        for (const commitToRestore of commitsToRestore) {
-            this.revertMutations(commitToRestore.data.mutations, {
-                ensureNewMutations: true,
-            });
-            // Process and stage mutations so that the attribute comparison for
-            // the state change is done with the intermediate attribute value
-            // and not with the final value in the DOM after all commits were
-            // reverted then applied again.
-            this.processAndStageMutations({ dispatch: false });
-            if (commitToRestore.discard) {
-                commitToRestore.discard();
-                lastRevertedChanges = commitToRestore.data;
-            } else {
-                irreversibleCommits.unshift(commitToRestore);
-            }
-        }
-        // Re-apply every non reversible commit (typically collaborators commits).
-        for (const irreversibleCommit of irreversibleCommits) {
-            this.applyMutations(irreversibleCommit.data.mutations, {
-                ensureNewMutations: true,
-            });
-            this.processAndStageMutations({ dispatch: false });
-        }
-        // TODO ABD TODO @phoenix: review selections, this selection could be obsolete
-        // depending on the non-reversible commits that were applied.
-        this.setSerializedSelection(lastRevertedChanges.selection);
-        // Register resulting mutations as a new "restore" commit (prevent undo).
-        this.dispatchContentUpdated();
-        this.commit({ type: "restore" });
-        return lastRevertedChanges;
-    }
-
-    /**
-     * Returns a function that can be later called to revert history to the
-     * current state.
-     * @returns { Function }
-     */
-    makeSavePoint() {
-        this.processAndStageMutations();
-        const draftMutations = [...this.currentChanges.mutations];
-        // TODO ABD TODO @phoenix: selection may become obsolete, it should evolve with mutations.
-        const selectionToRestore = this.dependencies.selection.preserveSelection();
-
-        // Preserve any current data not handled by this plugin for a later commit.
-        const dataToPreserve = { ...this.currentChanges.external };
-
-        const commit = this.dependencies.history.getHistoryCommits().at(-1);
-        let hasBeenRestored = false;
-        return () => {
-            if (hasBeenRestored) {
-                return;
-            }
-            hasBeenRestored = true;
-            const lastRevertedChanges = this.restoreToCommit(commit);
-
-            if (lastRevertedChanges?.selection && !draftMutations.length) {
-                selectionToRestore.setCursor((cursor) => {
-                    const anchorNode = this.nodeMap.getNode(
-                        lastRevertedChanges.selection.anchorNodeId
-                    );
-                    const focusNode = this.nodeMap.getNode(
-                        lastRevertedChanges.selection.focusNodeId
-                    );
-                    cursor.anchor.node = anchorNode;
-                    cursor.anchor.offset = lastRevertedChanges.selection.anchorOffset;
-
-                    cursor.focus.node = focusNode;
-                    cursor.focus.offset = lastRevertedChanges.selection.focusOffset;
-                });
-            }
-
-            // Apply draft mutations to recover the same currentChanges state
-            // as before.
-            this.applyMutations(draftMutations, { ensureNewMutations: true });
-            this.processAndStageMutations();
-            // TODO ABD TODO @phoenix: evaluate if the selection is not restorable at the desired position
-            selectionToRestore.restore();
-            Object.entries(dataToPreserve).forEach(([key, value]) => {
-                this.updateExternal(key, value);
-            });
-            this.trigger("on_savepoint_restored_handlers");
-        };
-    }
-
-    /**
-     * Creates a set of functions to preview, apply, and revert an operation.
-     * @param { Function } operation
-     * @returns { PreviewableOperation }
-     */
-    makePreviewableOperation(operation) {
-        let revertOperation = () => {};
-
-        return {
-            preview: (...args) => {
-                revertOperation();
-                revertOperation = this.makeSavePoint();
-                this.isPreviewing = true;
-                this.stageSelection();
-                operation(...args);
-                // todo: We should not add a commit on preview as it would send
-                // unnecessary commits in collaboration and let the other peer
-                // see what we preview.
-                //
-                // The operation should be similar to the 'commit' (normalize
-                // etc...) hence the call to 'commit' (but we need to remove it
-                // for the collaboration).
-                this.commit();
-            },
-            commit: (...args) => {
-                revertOperation();
-                this.isPreviewing = false;
-                operation(...args);
-                this.commit();
-            },
-            revert: () => {
-                revertOperation();
-                revertOperation = () => {};
-                this.isPreviewing = false;
-            },
-        };
-    }
-
-    /**
-     * Creates a set of functions to preview, apply, and revert an async operation.
-     * @param { Function } operation
-     * @returns { PreviewableOperation }
-     */
-    makePreviewableAsyncOperation(operation) {
-        let revertOperation = async () => {};
-
-        return {
-            preview: async (...args) => {
-                await revertOperation();
-                const { promise, resolve } = Promise.withResolvers();
-                const revertSavePoint = this.makeSavePoint();
-                revertOperation = async () => {
-                    await promise;
-                    revertSavePoint();
-                };
-                this.isPreviewing = true;
-                try {
-                    await operation(...args);
-                } catch (error) {
-                    revertSavePoint();
-                    throw error;
-                } finally {
-                    resolve();
-                }
-                if (this.isDestroyed) {
-                    return;
-                }
-                // todo: We should not add a commit on preview as it would send
-                // unnecessary commits in collaboration and let the other peer
-                // see what we preview.
-                //
-                // The operation should be similar to the 'commit' (normalize
-                // etc...) hence the call to 'commit' (but we need to remove it
-                // for the collaboration).
-                this.commit();
-            },
-            commit: async (...args) => {
-                await revertOperation();
-                this.isPreviewing = false;
-                const revertSavePoint = this.makeSavePoint();
-                try {
-                    await operation(...args);
-                } catch (error) {
-                    revertSavePoint();
-                    throw error;
-                }
-                if (this.isDestroyed) {
-                    return;
-                }
-                this.commit();
-            },
-            revert: async () => {
-                await revertOperation();
-                revertOperation = () => {};
-                this.isPreviewing = false;
-            },
-        };
-    }
-
-    getIsPreviewing() {
-        return !!this.isPreviewing;
     }
 
     // =============
@@ -1757,7 +1258,7 @@ export class DomMutationPlugin extends Plugin {
      */
     getMutationsRoot(mutations) {
         const nodes = mutations
-            .map((m) => this.getNodeById(m.parentNodeId || m.nodeId))
+            .map((m) => this.dependencies.domReference.getNodeById(m.parentNodeId || m.nodeId))
             .filter((node) => this.editable.contains(node));
         let commonAncestor = getCommonAncestor(nodes, this.editable);
         if (commonAncestor?.nodeType === Node.TEXT_NODE) {
@@ -1783,14 +1284,6 @@ class CurrentChanges {
     constructor() {
         /** @type { SerializedMutation[] } */
         this._mutations = [];
-        /** @type { NodeId | null } */
-        this._activeElementId = null;
-        /** @type { SerializedSelection | {} } */
-        this._selection = {};
-        /** @type { SerializedSelection | null } */
-        this._selectionAfter = null;
-        /** @type { Object } */
-        this._external = {};
     }
 
     /**
@@ -1799,31 +1292,11 @@ class CurrentChanges {
     get data() {
         return {
             mutations: [...this._mutations],
-            activeElementId: this._activeElementId,
-            selection: { ...this._selection },
-            selectionAfter: { ...(this._selectionAfter || {}) },
-            external: { ...this._external },
         };
     }
 
     get mutations() {
         return [...this._mutations];
-    }
-
-    get activeElementId() {
-        return this._activeElementId;
-    }
-
-    get selection() {
-        return this._selection;
-    }
-
-    get selectionAfter() {
-        return this._selectionAfter;
-    }
-
-    get external() {
-        return this._external;
     }
 
     /**
@@ -1835,36 +1308,5 @@ class CurrentChanges {
 
     resetMutations() {
         this._mutations = [];
-    }
-
-    /**
-     * @param { NodeId } nodeId
-     */
-    updateActiveElement(nodeId) {
-        this._activeElementId = nodeId;
-    }
-
-    /**
-     * @param { SerializedSelection } serializedSelection
-     */
-    updateSelection(serializedSelection) {
-        this._selection = serializedSelection;
-    }
-
-    /**
-     * @param { SerializedSelection } serializedSelection
-     */
-    updateSelectionAfter(serializedSelection) {
-        this._selectionAfter = serializedSelection;
-    }
-
-    /**
-     * Set a key/value pair in the external data.
-     *
-     * @param { string } key
-     * @param { any } value
-     */
-    updateExternal(key, value) {
-        this._external[key] = value;
     }
 }

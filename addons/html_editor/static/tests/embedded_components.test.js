@@ -207,7 +207,7 @@ describe("Mount and Destroy embedded components", () => {
             }
         );
 
-        editor.shared.domMutation.stageSelection();
+        editor.shared.selection.stageSelection();
 
         expect(getContent(el)).toBe(
             `<p>a<span data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></span>[]</p>`
@@ -255,12 +255,12 @@ describe("Mount and Destroy embedded components", () => {
                 config: getConfig([embedding("counter", Test)]),
             }
         );
-        editor.shared.domMutation.stageSelection();
+        editor.shared.selection.stageSelection();
         expect(getContent(el)).toBe(
             `<p>a<span data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></span>[]</p>`
         );
         expect.verifySteps(["mounted"]);
-        const savepoint = editor.shared.domMutation.makeSavePoint();
+        const savepoint = editor.shared.history.makeSavePoint();
         deleteBackward(editor);
         expect.verifySteps(["willunmount"]);
         expect(getContent(el)).toBe(`<p>a[]</p>`);
@@ -1016,9 +1016,9 @@ describe("In-editor manipulations", () => {
                 config: getConfig([embedding("counter", Counter)]),
             }
         );
-        const domMutationPlugin = plugins.get("domMutation");
-        const node = domMutationPlugin.unserializeNode(
-            domMutationPlugin.serializeTree(nodeToTree(el)),
+        const domReferencePlugin = plugins.get("domReference");
+        const node = domReferencePlugin.unserializeNode(
+            domReferencePlugin.serializeTree(nodeToTree(el)),
             new NodeMap()
         );
         expect(getContent(node, { sortAttrs: true })).toBe(
@@ -1040,9 +1040,9 @@ describe("In-editor manipulations", () => {
             `<div data-embedded="unknown"><p>UNKNOWN</p></div>`,
             { config: getConfig([]) }
         );
-        const domMutationPlugin = plugins.get("domMutation");
-        const node = domMutationPlugin.unserializeNode(
-            domMutationPlugin.serializeTree(nodeToTree(el)),
+        const domReferencePlugin = plugins.get("domReference");
+        const node = domReferencePlugin.unserializeNode(
+            domReferencePlugin.serializeTree(nodeToTree(el)),
             new NodeMap()
         );
         expect(getContent(node)).toBe(
@@ -1276,9 +1276,9 @@ describe("editable descendants", () => {
                 ]),
             }
         );
-        const domMutationPlugin = plugins.get("domMutation");
-        const node = domMutationPlugin.unserializeNode(
-            domMutationPlugin.serializeTree(nodeToTree(el)),
+        const domReferencePlugin = plugins.get("domReference");
+        const node = domReferencePlugin.unserializeNode(
+            domReferencePlugin.serializeTree(nodeToTree(el)),
             new NodeMap()
         );
         expect(getContent(node, { sortAttrs: true })).toBe(
@@ -1696,10 +1696,10 @@ describe("Embedded state", () => {
         expect(getContent(el)).toBe(
             `<p>a[]<span data-embedded="counter" data-embedded-props='{"value":1}' data-oe-protected="true" contenteditable="false"><span class="counter">Counter:1</span></span></p>`
         );
-        const savepoint1 = editor.shared.domMutation.makeSavePoint();
+        const savepoint1 = editor.shared.history.makeSavePoint();
         await click(".counter");
         await animationFrame();
-        const savepoint2 = editor.shared.domMutation.makeSavePoint();
+        const savepoint2 = editor.shared.history.makeSavePoint();
         await click(".counter");
         await animationFrame();
         expect(getContent(el)).toBe(

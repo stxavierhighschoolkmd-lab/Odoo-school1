@@ -97,7 +97,7 @@ export class SyntaxHighlightingPlugin extends Plugin {
                         const textarea = codeBlock.querySelector("textarea");
                         if (textarea !== codeBlock.ownerDocument.activeElement) {
                             textarea.focus();
-                            this.dependencies.domMutation.stageFocus();
+                            this.dependencies.selection.stageFocus();
                         }
                     }
                 }
@@ -116,9 +116,9 @@ export class SyntaxHighlightingPlugin extends Plugin {
     setupNewCodeBlock({ name, props }) {
         if (name === "syntaxHighlighting") {
             Object.assign(props, {
-                onTextareaFocus: () => this.dependencies.domMutation.stageFocus(),
+                onTextareaFocus: () => this.dependencies.selection.stageFocus(),
                 convertToParagraph: ({ target }) => {
-                    this.dependencies.domMutation.stageSelection();
+                    this.dependencies.selection.stageSelection();
                     const component = target.closest(`[data-embedded='${name}']`);
                     const embeddedProps = getEmbeddedProps(component);
                     const baseContainer = this.dependencies.baseContainer.createBaseContainer();

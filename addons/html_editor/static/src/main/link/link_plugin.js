@@ -160,6 +160,7 @@ export class LinkPlugin extends Plugin {
     static dependencies = [
         "dom",
         "domMutation",
+        "history",
         "input",
         "selection",
         "split",
@@ -622,7 +623,7 @@ export class LinkPlugin extends Plugin {
             }
         };
 
-        this.restoreSavePoint = this.dependencies.domMutation.makeSavePoint();
+        this.restoreSavePoint = this.dependencies.history.makeSavePoint();
         const props = {
             document: this.document,
             linkElement,
@@ -657,7 +658,7 @@ export class LinkPlugin extends Plugin {
                 this.currentOverlay.close();
             },
             onEdit: () => {
-                this.restoreSavePoint = this.dependencies.domMutation.makeSavePoint();
+                this.restoreSavePoint = this.dependencies.history.makeSavePoint();
             },
             getInternalMetaData: this.getInternalMetaData,
             getExternalMetaData: this.getExternalMetaData,

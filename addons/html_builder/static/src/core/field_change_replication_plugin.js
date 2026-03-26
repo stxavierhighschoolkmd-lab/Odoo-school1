@@ -8,7 +8,7 @@ import { withSequence } from "@html_editor/utils/resource";
 
 export class FieldChangeReplicationPlugin extends Plugin {
     static id = "fieldChangeReplication";
-    static dependencies = ["dom", "domMutation"];
+    static dependencies = ["dom", "domMutation", "domReference"];
 
     /** @type {import("plugins").BuilderResources} */
     resources = {
@@ -31,7 +31,7 @@ export class FieldChangeReplicationPlugin extends Plugin {
             .filter((r) => !(r.type === "attributes" && r.attributeName.startsWith("data-oe-t")))
             .map((r) =>
                 closestElement(
-                    this.dependencies.domMutation.getNodeById(r.nodeId),
+                    this.dependencies.domMutation.domReference(r.nodeId),
                     "[data-oe-model], [data-oe-translation-source-sha]"
                 )
             )

@@ -299,7 +299,7 @@ test("should protect disconnected nodes", async () => {
     expect(lastCommit.data.mutations.length).toBe(1);
     expect(lastCommit.data.mutations[0].type).toBe("remove");
     expect(
-        plugins.get("domMutation").unserializeNode(lastCommit.data.mutations[0].serializedNode)
+        plugins.get("domReference").unserializeNode(lastCommit.data.mutations[0].serializedNode)
             .outerHTML
     ).toBe(`<div data-oe-protected="true" contenteditable="false"></div>`);
 });
@@ -318,7 +318,7 @@ test("should not crash when changing attributes and removing a protecting anchor
     expect(lastCommit.data.mutations[0].type).toBe("attributes");
     expect(lastCommit.data.mutations[1].type).toBe("remove");
     expect(
-        plugins.get("domMutation").unserializeNode(lastCommit.data.mutations[1].serializedNode)
+        plugins.get("domReference").unserializeNode(lastCommit.data.mutations[1].serializedNode)
             .outerHTML
     ).toBe(
         `<div data-oe-protected="true" data-attr="other" contenteditable="false"><p>a</p></div>`
@@ -476,7 +476,8 @@ test("moving a protected node at an unprotected location, only remove should be 
     const lastCommit = historyCommits.at(-1);
     expect(lastCommit.data.mutations.length).toBe(1);
     expect(lastCommit.data.mutations[0].type).toBe("add");
-    expect(domMutationPlugin.getNodeById(lastCommit.data.mutations[0].nodeId)).toBe(a);
+    const domReferencePlugin = plugins.get("domReference");
+    expect(domReferencePlugin.getNodeById(lastCommit.data.mutations[0].nodeId)).toBe(a);
     expect(getContent(el)).toBe(
         unformat(`
             <p data-selection-placeholder=""><br></p>
@@ -515,7 +516,8 @@ test("moving an unprotected node at a protected location, only add should be ign
     const lastCommit = historyCommits.at(-1);
     expect(lastCommit.data.mutations.length).toBe(1);
     expect(lastCommit.data.mutations[0].type).toBe("remove");
-    expect(domMutationPlugin.getNodeById(lastCommit.data.mutations[0].nodeId)).toBe(a);
+    const domReferencePlugin = plugins.get("domReference");
+    expect(domReferencePlugin.getNodeById(lastCommit.data.mutations[0].nodeId)).toBe(a);
     expect(getContent(el)).toBe(
         unformat(`
             <p data-selection-placeholder=""><br></p>

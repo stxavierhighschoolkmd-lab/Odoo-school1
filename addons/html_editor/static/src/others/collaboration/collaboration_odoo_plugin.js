@@ -9,7 +9,7 @@ import { childNodeIndex } from "@html_editor/utils/position";
 
 /**
  * @typedef {Object} CollaborationSelection
- * @property {import("@html_editor/core/history_plugin").SerializedSelection} selection
+ * @property {import("@html_editor/core/selection_plugin").SerializedSelection} selection
  * @property {string} color
  * @property {string} peerId
  */
@@ -122,10 +122,8 @@ export class CollaborationOdooPlugin extends Plugin {
     }
 
     getCurrentCollaborativeSelection() {
-        const selection = this.dependencies.selection.getEditableSelection();
         return {
-            // TODO AGE: if I could get rid of this, I could put serializeSelection in CurrentChanges.
-            selection: this.dependencies.domMutation.serializeSelection(selection),
+            selection: this.dependencies.selection.serializeEditableSelection(),
             peerId: this.config.collaboration.peerId,
         };
     }

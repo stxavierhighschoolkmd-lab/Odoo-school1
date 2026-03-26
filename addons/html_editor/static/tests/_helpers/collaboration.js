@@ -95,7 +95,7 @@ export const setupMultiEditor = async (spec) => {
         peerInfo.editor = base.editor;
         if (selection && selection.anchorNode) {
             base.editor.shared.selection.setSelection(selection);
-            base.plugins.get("domMutation").stageSelection();
+            base.plugins.get("selection").stageSelection();
         } else {
             base.editor.document.getSelection().removeAllRanges();
         }
@@ -104,7 +104,7 @@ export const setupMultiEditor = async (spec) => {
         const getPlugin = (id) => base.editor.plugins.find((x) => x.constructor.id === id);
         peerInfo.collaborationPlugin = getPlugin("collaboration");
         peerInfo.historyPlugin = getPlugin("history");
-        peerInfo.domMutationPlugin = getPlugin("domMutation");
+        peerInfo.domReferencePlugin = getPlugin("domReference");
     }
 
     const peerInfosList = Object.values(peerInfos);
@@ -207,7 +207,7 @@ export function renderTextualSelection(peerInfos) {
     const cursorNodes = {};
     for (const peerInfo of peerInfosList) {
         const iframeDocument = peerInfo.editor.document;
-        const domMutationPlugin = peerInfo.domMutationPlugin;
+        const domReferencePlugin = peerInfo.domReferencePlugin;
         const peerSelection = iframeDocument.getSelection();
         if (peerSelection.anchorNode === null) {
             continue;
@@ -216,8 +216,8 @@ export function renderTextualSelection(peerInfos) {
         const { anchorNode, anchorOffset, focusNode, focusOffset } = peerSelection;
 
         const peerId = peerInfo.peerId;
-        const focusNodeId = domMutationPlugin.getNodeId(focusNode);
-        const anchorNodeId = domMutationPlugin.getNodeId(anchorNode);
+        const focusNodeId = domReferencePlugin.getNodeId(focusNode);
+        const anchorNodeId = domReferencePlugin.getNodeId(anchorNode);
         cursorNodes[focusNodeId] = cursorNodes[focusNodeId] || [];
         cursorNodes[focusNodeId].push({ type: "focus", peerId, offset: focusOffset });
         cursorNodes[anchorNodeId] = cursorNodes[anchorNodeId] || [];
@@ -231,9 +231,9 @@ export function renderTextualSelection(peerInfos) {
     }
 
     for (const peerInfo of peerInfosList) {
-        const domMutationPlugin = peerInfo.domMutationPlugin;
+        const domReferencePlugin = peerInfo.domReferencePlugin;
         for (const [nodeId, cursorsData] of Object.entries(cursorNodes)) {
-            const node = domMutationPlugin.getNodeById(nodeId);
+            const node = domReferencePlugin.getNodeById(nodeId);
             for (const cursorData of cursorsData) {
                 const cursorString =
                     cursorData.type === "anchor"

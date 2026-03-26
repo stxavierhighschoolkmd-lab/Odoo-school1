@@ -80,7 +80,7 @@ import { selectElements } from "@html_editor/utils/dom_traversal";
 
 export class DragAndDropPlugin extends Plugin {
     static id = "dragAndDrop";
-    static dependencies = ["dropzone", "domMutation", "operation", "builderOptions"];
+    static dependencies = ["dropzone", "domMutation", "history", "operation", "builderOptions"];
     /** @type {import("plugins").BuilderResources} */
     resources = {
         has_overlay_options: { hasOption: (el) => this.isDraggable(el) },
@@ -221,7 +221,7 @@ export class DragAndDropPlugin extends Plugin {
                     withLoadingEffect: false,
                     canTimeout: false,
                 });
-                const restoreDragSavePoint = this.dependencies.domMutation.makeSavePoint();
+                const restoreDragSavePoint = this.dependencies.history.makeSavePoint();
                 this.cancelDragAndDrop = () => {
                     this.dependencies.dropzone.removeDropzones();
                     // Undo the changes needed to ease the drag and drop.

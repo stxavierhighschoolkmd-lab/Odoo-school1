@@ -1000,7 +1000,7 @@ export function isRedundantElement(node) {
 }
 
 /**
- * @typedef {import("@html_editor/core/dom_mutation_plugin").Tree} Tree
+ * @typedef {import("@html_editor/core/dom_reference_plugin").Tree} Tree
  *
  * @param {Tree} tree
  * @returns {Node[]}
@@ -1010,7 +1010,7 @@ export function treeToNodes(tree) {
 }
 
 /**
- * @typedef {import("@html_editor/core/dom_mutation_plugin").Tree} Tree
+ * @typedef {import("@html_editor/core/dom_reference_plugin").Tree} Tree
  *
  * @param {Node} node
  * @returns {Tree}

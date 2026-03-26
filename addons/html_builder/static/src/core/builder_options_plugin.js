@@ -128,7 +128,7 @@ import { omit } from "@web/core/utils/objects";
 
 export class BuilderOptionsPlugin extends Plugin {
     static id = "builderOptions";
-    static dependencies = ["operation", "domMutation"];
+    static dependencies = ["operation", "domMutation", "history"];
     static shared = [
         "checkElement",
         "closestWithOption",
@@ -148,6 +148,10 @@ export class BuilderOptionsPlugin extends Plugin {
     ];
     /** @type {import("plugins").BuilderResources} */
     resources = {
+        history_data_keys: ["currentTarget", "nextTarget"],
+        on_current_history_data_reset_handlers: () => {
+            this.currentChanges = new CurrentChanges();
+        },
         on_flushed_mutations_handlers: this.onFlushedMutations.bind(this),
         on_history_written_handlers: this.onHistoryWritten.bind(this),
         on_undone_handlers: (revertedCommit) => this.restoreContainers(revertedCommit, "undo"),
@@ -169,6 +173,30 @@ export class BuilderOptionsPlugin extends Plugin {
                 });
             }
             return buttons;
+        },
+        revision_commit_data_processors: (data, revertedCommit) => ({
+            ...data,
+            currentTarget: revertedCommit.currentTarget,
+            nextTarget: revertedCommit.nextTarget,
+        }),
+        standard_commit_data_processors: (commit) => ({
+            ...commit,
+            currentTarget: this.currentChanges.currentTarget,
+            nextTarget: this.currentChanges.nextTarget,
+        }),
+        save_point_data_processors: (savePoint) => ({
+            ...savePoint,
+            currentTarget: this.currentChanges.currentTarget,
+            nextTarget: this.currentChanges.nextTarget,
+        }),
+        on_savepoint_restored_handlers: (savePoint) => {
+            // Note AGE: this is the `extraStepInfos` stuff.
+            if ("currentTarget" in savePoint) {
+                this.currentChanges.updateCurrentTarget(savePoint.currentTarget);
+            }
+            if ("nextTarget" in savePoint) {
+                this.currentChanges.updateNextTarget(savePoint.nextTarget);
+            }
         },
     };
 
@@ -275,7 +303,7 @@ export class BuilderOptionsPlugin extends Plugin {
                 "Should not have any mutations in the current commit when you update the container selection"
             );
         }
-        if (this.dependencies.domMutation.getIsPreviewing()) {
+        if (this.dependencies.history.getIsPreviewing()) {
             return;
         }
         if (target) {
@@ -483,24 +511,32 @@ export class BuilderOptionsPlugin extends Plugin {
      * @param {HTMLElement|Boolean} targetEl the element to activate or `false`
      */
     setNextTarget(targetEl) {
-        if (this.dependencies.domMutation.getIsPreviewing()) {
+        if (this.dependencies.history.getIsPreviewing()) {
             return;
         }
         // Store the next target to activate in the current commit.
-        this.dependencies.domMutation.updateExternal("nextTarget", targetEl);
+        this.currentChanges.updateNextTarget(targetEl);
     }
 
     onFlushedMutations(isRevision) {
         if (!isRevision) {
             // Store the current target in the current commit.
-            this.dependencies.domMutation.updateExternal("currentTarget", this.target);
+            this.currentChanges.updateCurrentTarget(this.target);
         }
     }
 
     onHistoryWritten(commit) {
+        if (commit.type === "undo") {
+            if ("currentTarget" in commit.data) {
+                this.currentChanges.updateCurrentTarget(commit.data.currentTarget);
+            }
+            if ("nextTarget" in commit.data) {
+                this.currentChanges.updateNextTarget(commit.data.nextTarget);
+            }
+        }
         // If a target is specified, activate its containers, otherwise simply
         // update them.
-        const nextTargetEl = commit.data.external.nextTarget;
+        const nextTargetEl = commit.data.nextTarget;
         if (nextTargetEl) {
             this.updateContainers(nextTargetEl, { forceUpdate: true });
         } else if (nextTargetEl === false) {
@@ -774,4 +810,37 @@ function getClosestElements(element, selector) {
 
 function withIds(arr) {
     return arr.map((el) => ({ ...el, id: uniqueId() }));
+}
+
+class CurrentChanges {
+    constructor() {
+        this._currentTarget;
+        this._nextTarget;
+    }
+
+    /**
+     * @return { HistoryCommitData }
+     */
+    get data() {
+        return {
+            currentTarget: this._currentTarget,
+            nextTarget: this._nextTarget,
+        };
+    }
+
+    get currentTarget() {
+        return this._currentTarget;
+    }
+
+    get nextTarget() {
+        return this._nextTarget;
+    }
+
+    updateCurrentTarget(currentTarget) {
+        this._currentTarget = currentTarget;
+    }
+
+    updateNextTarget(nextTarget) {
+        this._nextTarget = nextTarget;
+    }
 }

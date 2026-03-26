@@ -293,8 +293,9 @@ describe("selection", () => {
         await tick();
         await pointerUp(pElement);
         await tick();
+        const domReferencePlugin = plugins.get("domReference");
+        const nodeId = domReferencePlugin.getNodeId(pElement.firstChild);
         const domMutationPlugin = plugins.get("domMutation");
-        const nodeId = domMutationPlugin.getNodeId(pElement.firstChild);
         expect(domMutationPlugin.currentChanges.selection).toEqual({
             anchorNodeId: nodeId,
             anchorOffset: 0,
@@ -416,8 +417,8 @@ describe("makeSavePoint", () => {
         // If the selection of the editor would be programatically set upon start
         // (like an autofocus feature), it would be the role of the autofocus
         // feature to trigger the stageSelection.
-        editor.shared.domMutation.stageSelection();
-        const restore = editor.shared.domMutation.makeSavePoint();
+        editor.shared.selection.stageSelection();
+        const restore = editor.shared.history.makeSavePoint();
         execCommand(editor, "formatBold");
         restore();
         expect(getContent(el)).toBe(`<p>a[b<span style="color: tomato;">c</span>d]e</p>`);
@@ -429,7 +430,7 @@ describe("makeSavePoint", () => {
         // draft to save
         p.append(document.createTextNode("d"));
         expect(getContent(el)).toBe(`<p>[]cd</p>`);
-        const savepoint = editor.shared.domMutation.makeSavePoint();
+        const savepoint = editor.shared.history.makeSavePoint();
         // draft to discard
         p.append(document.createTextNode("e"));
         expect(getContent(el)).toBe(`<p>[]cde</p>`);
@@ -445,7 +446,7 @@ describe("makeSavePoint", () => {
         // draft to save
         p.append(document.createTextNode("d"));
         expect(getContent(el)).toBe(`<p>[]cd</p>`);
-        const savepoint = editor.shared.domMutation.makeSavePoint();
+        const savepoint = editor.shared.history.makeSavePoint();
         // commit to revert
         editor.shared.dom.insert("z");
         editor.shared.domMutation.commit();
@@ -490,8 +491,7 @@ describe("makeSavePoint", () => {
         font.appendChild(p.childNodes[0]);
         p.before(font);
         const numberOfCommits = history.commits.length;
-        const domMutation = plugins.get("domMutation");
-        const savePoint = domMutation.makeSavePoint();
+        const savePoint = history.makeSavePoint();
         savePoint();
         expect(getContent(el)).toBe("<font>this is another paragraph with color 2</font><p></p>");
         expect(history.commits.length).toBe(numberOfCommits);
@@ -504,7 +504,7 @@ describe("makeSavePoint", () => {
         undo(editor);
         expect(getContent(el)).toBe(`<p>a[]</p>`);
 
-        const restore = editor.shared.domMutation.makeSavePoint();
+        const restore = editor.shared.history.makeSavePoint();
         await insertText(editor, "c");
         expect(getContent(el)).toBe(`<p>ac[]</p>`);
 
@@ -523,7 +523,7 @@ describe("makePreviewableOperation", () => {
         const history = plugins.get("history");
         const domMutation = plugins.get("domMutation");
         const div = queryOne("#test");
-        const previewableAddParagraph = domMutation.makePreviewableOperation((elemId) => {
+        const previewableAddParagraph = history.makePreviewableOperation((elemId) => {
             const newElem = document.createElement("p");
             newElem.setAttribute("id", elemId);
             div.appendChild(newElem);
@@ -557,9 +557,8 @@ describe("makePreviewableOperation", () => {
         const { plugins } = await setupEditor(`<div id="test"></div>`);
 
         const history = plugins.get("history");
-        const domMutation = plugins.get("domMutation");
         const div = queryOne("#test");
-        const previewableAddParagraph = domMutation.makePreviewableOperation((elemId) => {
+        const previewableAddParagraph = history.makePreviewableOperation((elemId) => {
             const newElem = document.createElement("p");
             newElem.setAttribute("id", elemId);
             div.appendChild(newElem);
@@ -735,10 +734,10 @@ describe("destroy", () => {
 describe("custom mutation", () => {
     test("should apply/revert custom mutation", async () => {
         const { el, editor } = await setupEditor(`<p>[]c</p>`);
-        const restoreSavePoint = editor.shared.domMutation.makeSavePoint();
+        const restoreSavePoint = editor.shared.history.makeSavePoint();
         await insertText(editor, "a");
 
-        editor.shared.domMutation.applyCustomMutation({
+        editor.shared.history.applyCustomMutation({
             apply: () => {
                 expect.step("custom apply");
             },
@@ -776,7 +775,7 @@ describe("custom mutation", () => {
 
     test("should apply/revert custom mutation with dom mutation", async () => {
         const { el, editor } = await setupEditor(`<p>[]c</p>`);
-        const restoreSavePoint = editor.shared.domMutation.makeSavePoint();
+        const restoreSavePoint = editor.shared.history.makeSavePoint();
         await insertText(editor, "a");
         await ensureDistinctHistoryCommit();
 
@@ -1111,8 +1110,8 @@ describe("unobserved mutations", () => {
             const snapshotCommit = editor.shared.history.createSnapshotCommit();
             expect(snapshotCommit.data.mutations.length).toBe(1);
             const childNodeId = snapshotCommit.data.mutations[0].nodeId;
-            const domMutationPlugin = plugins.get("domMutation");
-            expect(domMutationPlugin.getNodeById(childNodeId)).toBe(p1);
+            const domReferencePlugin = plugins.get("domReference");
+            expect(domReferencePlugin.getNodeById(childNodeId)).toBe(p1);
         });
         test("unobserved nodes should be ignored in snapshot commit (2)", async () => {
             const { editor } = await setupEditor(`<p>test</p>`);
@@ -1152,7 +1151,8 @@ describe("serialization", () => {
 
         const domMutationPlugin = plugins.get("domMutation");
         const mutations = domMutationPlugin.currentChanges.mutations;
-        const idToNode = (id) => domMutationPlugin.getNodeById(id);
+        const domReferencePlugin = plugins.get("domReference");
+        const idToNode = (id) => domReferencePlugin.getNodeById(id);
 
         expect(mutations.length).toBe(3);
 
@@ -1229,13 +1229,13 @@ describe("serialization", () => {
 
     test("unserialization of text node should not duplicate an existing one", async () => {
         const { el, editor, plugins } = await setupEditor(`<p><br></p>`);
-        const domMutationPlugin = plugins.get("domMutation");
+        const domReferencePlugin = plugins.get("domReference");
         const p = el.querySelector("p");
         const textNode = editor.document.createTextNode("test");
         p.prepend(textNode);
         editor.shared.domMutation.commit();
-        const serializedNode = domMutationPlugin.serializeTree(nodeToTree(textNode));
-        const unserializedTextNode = domMutationPlugin.unserializeNode(serializedNode);
+        const serializedNode = domReferencePlugin.serializeTree(nodeToTree(textNode));
+        const unserializedTextNode = domReferencePlugin.unserializeNode(serializedNode);
         expect(unserializedTextNode).toBe(textNode);
     });
 });

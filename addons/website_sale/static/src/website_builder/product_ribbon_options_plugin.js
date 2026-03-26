@@ -7,7 +7,6 @@ import { registry } from "@web/core/registry";
 
 export class ProductsRibbonOptionPlugin extends Plugin {
     static id = 'productsRibbonOptionPlugin';
-    static dependencies = ['domMutation'];
     static shared = [
         'getRibbonsObject',
         'setRibbonObject',
@@ -356,7 +355,7 @@ export class CreateRibbonAction extends BuilderAction {
 }
 export class ModifyRibbonAction extends BuilderAction {
     static id = 'modifyRibbon';
-    static dependencies = ['productsRibbonOptionPlugin', 'domMutation'];
+    static dependencies = ['productsRibbonOptionPlugin', 'history'];
     setup() {
         this.ribbonOptions = this.dependencies.productsRibbonOptionPlugin
     }
@@ -380,7 +379,7 @@ export class ModifyRibbonAction extends BuilderAction {
         return this.ribbonOptions.getRibbonsObject()[ribbonId][params.mainParam] === value;
     }
     async apply({ editingElement, params, value }) {
-        const isPreviewMode = this.dependencies.domMutation.getIsPreviewing();
+        const isPreviewMode = this.dependencies.history.getIsPreviewing();
         const ribbonEl = editingElement.querySelector('.o_ribbons')
         const setting = params.mainParam;
         const ribbonId = parseInt(ribbonEl.dataset.ribbonId);

@@ -10,7 +10,7 @@ import { patch } from "@web/core/utils/patch";
 
 export class PopupVisibilityPlugin extends Plugin {
     static id = "popupVisibilityPlugin";
-    static dependencies = ["visibility", "domMutation"];
+    static dependencies = ["visibility", "domMutation", "domReference"];
     static shared = ["onTargetShow", "onTargetHide"];
 
     /** @type {import("plugins").WebsiteResources} */
@@ -30,7 +30,7 @@ export class PopupVisibilityPlugin extends Plugin {
             // property in the `style` attribute unchanged when the history
             // revert/re-apply a commit that modified it.
             if (attributeName === "style") {
-                const target = this.dependencies.domMutation.getNodeById(nodeId);
+                const target = this.dependencies.domReference.getNodeById(nodeId);
                 if (target.matches(".s_popup > .modal")) {
                     const re = /display: .*?;/;
                     const currentDisplay = target.attributes.style?.value.match(re)?.[0] ?? "";

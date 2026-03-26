@@ -38,7 +38,7 @@ import { BuilderAction } from "@html_builder/core/builder_action";
 
 export class GoogleMapsOptionPlugin extends Plugin {
     static id = "googleMapsOption";
-    static dependencies = ["domMutation", "edit_interaction"];
+    static dependencies = ["domMutation", "history", "edit_interaction"];
     static shared = [
         "configureGMapsAPI",
         "initializeGoogleMaps",
@@ -178,7 +178,7 @@ export class GoogleMapsOptionPlugin extends Plugin {
      * @returns {Promise<boolean>} true if a new API key was written to db.
      */
     async configureGMapsAPI(apiKey) {
-        this.undoInitialize = this.dependencies.domMutation.makeSavePoint();
+        this.undoInitialize = this.dependencies.history.makeSavePoint();
         /** @type {number} */
         const websiteId = this.websiteService.currentWebsite.id;
 

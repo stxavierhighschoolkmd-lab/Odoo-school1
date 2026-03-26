@@ -9,7 +9,7 @@ import { DIRECTIONS, nodeSize } from "@html_editor/utils/position";
 
 export class InlineCodePlugin extends Plugin {
     static id = "inlineCode";
-    static dependencies = ["selection", "domMutation", "input", "split", "feff"];
+    static dependencies = ["selection", "domMutation", "history", "input", "split", "feff"];
     /** @type {import("plugins").EditorResources} */
     resources = {
         on_input_handlers: this.onInput.bind(this),
@@ -43,7 +43,7 @@ export class InlineCodePlugin extends Plugin {
         const targetBlocks = this.dependencies.selection.getTargetedBlocks();
         const hasTextNode = this.dependencies.selection.getTargetedNodes().some(isTextNode);
         if (targetBlocks.size === 1 && hasTextNode) {
-            this.mutationSavePointRestore = this.dependencies.domMutation.makeSavePoint();
+            this.mutationSavePointRestore = this.dependencies.history.makeSavePoint();
         }
     }
 

@@ -11,7 +11,7 @@ import { closestElement } from "@html_editor/utils/dom_traversal";
 
 export class SearchPowerboxPlugin extends Plugin {
     static id = "searchPowerbox";
-    static dependencies = ["powerbox", "selection", "domMutation", "input"];
+    static dependencies = ["powerbox", "selection", "history", "input"];
     /** @type {import("plugins").EditorResources} */
     resources = {
         on_beforeinput_handlers: this.onBeforeInput.bind(this),
@@ -23,7 +23,7 @@ export class SearchPowerboxPlugin extends Plugin {
             id: "openSearchPowerbox",
             run: () => {
                 const selection = this.dependencies.selection.getEditableSelection();
-                this.historySavePointRestore = this.dependencies.domMutation.makeSavePoint();
+                this.historySavePointRestore = this.dependencies.history.makeSavePoint();
                 // Anchor element for powerbox opened via power buttons.
                 this.powerButtonAnchorEl = closestElement(selection.anchorNode);
                 this.openSearchPowerbox();
@@ -53,7 +53,7 @@ export class SearchPowerboxPlugin extends Plugin {
     }
     onBeforeInput(ev) {
         if (ev.data === "/") {
-            this.mutationSavePointRestore = this.dependencies.domMutation.makeSavePoint();
+            this.mutationSavePointRestore = this.dependencies.history.makeSavePoint();
         }
     }
     onInput(ev) {

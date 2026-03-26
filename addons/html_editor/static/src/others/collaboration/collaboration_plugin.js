@@ -31,6 +31,8 @@ export class CollaborationPlugin extends Plugin {
     static dependencies = ["history", "domMutation", "selection", "sanitize"];
     /** @type {import("plugins").EditorResources} */
     resources = {
+        history_data_keys: ["peerId"],
+
         /** Handlers */
         on_history_cleaned_handlers: this.onHistoryClean.bind(this),
         on_history_reset_handlers: this.onHistoryReset.bind(this),
@@ -39,7 +41,7 @@ export class CollaborationPlugin extends Plugin {
         /** Overrides */
         set_attribute_overrides: this.setAttribute.bind(this),
 
-        editor_commit_processors: this.processEditorCommit.bind(this),
+        pending_commit_data_processors: (data) => ({ ...data, peerId: this.peerId }),
         is_commit_reversible_predicates: (commit) => {
             if (commit.data.peerId !== this.peerId) {
                 return false;
@@ -206,7 +208,7 @@ export class CollaborationPlugin extends Plugin {
         index++;
         while (index < commits.length) {
             if (commits[index].data.previousCommitId === newCommit.data.previousCommitId) {
-                if (commits[index].authorTimestamp > newCommit.authorTimestamp) {
+                if (commits[index].data.authorTimestamp > newCommit.data.authorTimestamp) {
                     break;
                 } else {
                     concurentCommits = [commits[index].id];
@@ -304,12 +306,5 @@ export class CollaborationPlugin extends Plugin {
     onMutationsCommitted(commit) {
         commit.updateData("peerId", this.peerId);
         this.trigger("on_collaboration_commit_added_handlers", commit);
-    }
-    /**
-     * @param {EditorCommit} commit
-     */
-    processEditorCommit(commit) {
-        commit.updateData("peerId", this.peerId);
-        return commit;
     }
 }

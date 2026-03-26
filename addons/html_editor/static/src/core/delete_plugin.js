@@ -99,7 +99,14 @@ export const removableNodePredicates = [
 ];
 
 export class DeletePlugin extends Plugin {
-    static dependencies = ["baseContainer", "selection", "domMutation", "input", "userCommand"];
+    static dependencies = [
+        "baseContainer",
+        "selection",
+        "domMutation",
+        "history",
+        "input",
+        "userCommand",
+    ];
     static id = "delete";
     static shared = [
         "deleteBackward",
@@ -1343,7 +1350,7 @@ export class DeletePlugin extends Plugin {
      * @param {InputEvent} beforeInputEvent
      */
     preventDefaultDeleteAndroidChrome(beforeInputEvent) {
-        const restoreDOM = this.dependencies.domMutation.makeSavePoint();
+        const restoreDOM = this.dependencies.history.makeSavePoint();
         this.onAndroidChromeInput = (ev) => {
             if (ev.inputType !== beforeInputEvent.inputType) {
                 return;

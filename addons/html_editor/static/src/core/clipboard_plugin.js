@@ -148,7 +148,7 @@ export class ClipboardPlugin extends Plugin {
         const selection = this.dependencies.selection.getEditableSelection();
         this.trigger("on_will_cut_handlers", selection);
         this.onCopy(ev);
-        this.dependencies.domMutation.stageSelection();
+        this.dependencies.selection.stageSelection();
         this.dependencies.delete.deleteSelection();
         this.dependencies.domMutation.commit();
     }
@@ -204,7 +204,7 @@ export class ClipboardPlugin extends Plugin {
         }
         ev.preventDefault();
 
-        this.dependencies.domMutation.stageSelection();
+        this.dependencies.selection.stageSelection();
 
         this.trigger("on_will_paste_handlers", selection, ev);
         // refresh selection after potential changes from `before_paste` handlers

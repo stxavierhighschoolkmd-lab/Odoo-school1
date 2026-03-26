@@ -7,14 +7,14 @@ import { Plugin } from "../plugin";
 
 export class InputPlugin extends Plugin {
     static id = "input";
-    static dependencies = ["domMutation"];
+    static dependencies = ["domMutation", "selection"];
     setup() {
         this.addDomListener(this.editable, "beforeinput", this.onBeforeInput);
         this.addDomListener(this.editable, "input", this.onInput);
     }
 
     onBeforeInput(ev) {
-        this.dependencies.domMutation.stageSelection();
+        this.dependencies.selection.stageSelection();
         this.trigger("on_beforeinput_handlers", ev);
     }
 

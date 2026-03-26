@@ -12,7 +12,7 @@ import { Operation } from "./operation";
 
 export class OperationPlugin extends Plugin {
     static id = "operation";
-    static dependencies = ["domMutation"];
+    static dependencies = ["domMutation", "history"];
     static shared = ["next", "hasTimedOut"];
 
     setup() {
@@ -52,7 +52,7 @@ export class OperationPlugin extends Plugin {
         let rollback;
         const result = await this.operation.next(() => {
             if (params.canTimeout) {
-                rollback = this.dependencies.domMutation.makeSavePoint();
+                rollback = this.dependencies.history.makeSavePoint();
             }
             if (fn) {
                 return fn();

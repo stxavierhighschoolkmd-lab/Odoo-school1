@@ -195,7 +195,7 @@ describe("collaborative makeSavePoint", () => {
             peerIds: ["c1", "c2"],
             contentBefore: `<p>[c1}{c1]<br></p><p>[c2}{c2]<br></p>`,
         });
-        const savepoint = peerInfos.c1.editor.shared.domMutation.makeSavePoint();
+        const savepoint = peerInfos.c1.editor.shared.history.makeSavePoint();
         insert(peerInfos.c2.editor, "a");
         mergePeersCommits(peerInfos);
         insert(peerInfos.c1.editor, "z");
@@ -221,7 +221,7 @@ describe("collaborative makeSavePoint", () => {
         });
         const e1 = peerInfos.c1.editor;
         const e2 = peerInfos.c2.editor;
-        const savepoint = e2.shared.domMutation.makeSavePoint();
+        const savepoint = e2.shared.history.makeSavePoint();
         await manuallyDispatchProgrammaticEvent(e1.editable, "beforeinput", {
             inputType: "insertParagraph",
         });
@@ -1424,7 +1424,7 @@ describe("Collaboration with embedded components", () => {
             expect(getContent(e2.editable, { sortAttrs: true })).toBe(
                 `<p>a[]</p><div contenteditable="false" data-embedded="obj" data-embedded-props='{"obj":{"1":1,"2":2}}' data-embedded-state='{"stateChangeId":1,"previous":{"obj":{"1":1}},"next":{"obj":{"1":1,"2":2}}}' data-oe-protected="true"><div class="obj">1_1,2_2</div></div><p data-selection-placeholder=""><br></p>`
             );
-            const savepoint = e1.shared.domMutation.makeSavePoint();
+            const savepoint = e1.shared.history.makeSavePoint();
             delete obj2.embeddedState.obj["1"];
             await animationFrame();
             mergePeersCommits(peerInfos);
@@ -1711,7 +1711,7 @@ describe("Collaboration with embedded components", () => {
             const e2 = peerInfos.c2.editor;
             const obj1 = [...peerInfos.c1.plugins.get("embeddedComponents").components][0].root.node
                 .component;
-            const savepoint = e1.shared.domMutation.makeSavePoint();
+            const savepoint = e1.shared.history.makeSavePoint();
             obj1.embeddedState.obj["2"] = 2;
             await animationFrame();
             mergePeersCommits(peerInfos);

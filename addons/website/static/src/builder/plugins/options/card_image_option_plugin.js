@@ -33,7 +33,7 @@ const imageRelatedStyles = [
 
 export class CardImageOptionPlugin extends Plugin {
     static id = "cardImageOption";
-    static dependencies = ["remove", "domMutation", "builderOptions"];
+    static dependencies = ["remove", "history", "builderOptions"];
     static shared = ["adaptRatio", "getDelta"];
     /** @type {import("plugins").WebsiteResources} */
     resources = {
@@ -104,7 +104,7 @@ export class SetCoverImagePositionAction extends BuilderAction {
 }
 export class RemoveCoverImageAction extends BuilderAction {
     static id = "removeCoverImage";
-    static dependencies = ["domMutation", "builderOptions", "remove"];
+    static dependencies = ["builderOptions", "remove"];
     apply({ editingElement }) {
         const imageWrapperEl = editingElement.querySelector(".o_card_img_wrapper");
         imageWrapperEl.remove();
@@ -123,7 +123,7 @@ export class AddCoverImageAction extends BuilderAction {
 }
 export class CoverImagePositionOverlayAction extends BuilderAction {
     static id = "coverImagePositionOverlay";
-    static dependencies = ["overlayButtons", "domMutation", "cardImageOption"];
+    static dependencies = ["overlayButtons", "history", "cardImageOption"];
     setup() {
         this.withLoadingEffect = false;
     }
@@ -146,8 +146,8 @@ export class CoverImagePositionOverlayAction extends BuilderAction {
                     getDelta: () => this.dependencies.cardImageOption.getDelta(imageEl),
                     getPosition: () => getComputedStyle(imageEl).objectPosition,
                     editable: this.editable,
-                    domMutation: {
-                        makeSavePoint: this.dependencies.domMutation.makeSavePoint,
+                    history: {
+                        makeSavePoint: this.dependencies.history.makeSavePoint,
                     },
                 },
                 { onRemove: () => this.dependencies.overlayButtons.showOverlayButtonsUi() }
