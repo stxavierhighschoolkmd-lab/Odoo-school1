@@ -1,3 +1,5 @@
+import { expression } from "./condition_tree";
+
 export function disambiguate(value, displayNames) {
     if (!Array.isArray(value)) {
         return value === "";
@@ -42,6 +44,54 @@ export function getDefaultPath(fieldDefs) {
         return name;
     }
     throw new Error(`No field found`);
+}
+
+// --- Date range utils, used by ExpressionEditor --- //
+
+export function boundDate(delta) {
+    if (!delta) {
+        return expression(`context_today().strftime("%Y-%m-%d")`);
+    }
+    return expression(`(context_today() + relativedelta(${delta})).strftime('%Y-%m-%d')`);
+}
+
+export function boundDatetime(delta) {
+    if (!delta) {
+        return expression(
+            `datetime.datetime.combine(context_today(), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")`
+        );
+    }
+    return expression(
+        `datetime.datetime.combine(context_today() + relativedelta(${delta}), datetime.time(0, 0, 0)).to_utc().strftime("%Y-%m-%d %H:%M:%S")`
+    );
+}
+
+const BOUNDS_SMART_DATES = [
+    ["today", "today", "today +1d"],
+    ["last7Days", "today -7d", "today"],
+    ["last30Days", "today -30d", "today"],
+    ["monthToDate", "today =1d", "today +1d"],
+    ["lastMonth", "today =1d -1m", "today =1d"],
+    ["yearToDate", "today =1m =1d", "today +1d"],
+    ["last365Days", "today -365d", "today"],
+];
+const DELTAS = [
+    ["today", "", "days = 1"],
+    ["last7Days", "days = -7", ""],
+    ["last30Days", "days = -30", ""],
+    ["monthToDate", "day = 1", "days = 1"],
+    ["lastMonth", "day = 1, months = -1", "day = 1"],
+    ["yearToDate", "day = 1, month = 1", "days = 1"],
+    ["last365Days", "days = -365", ""],
+];
+const BOUNDS_DATE = DELTAS.map(([k, l, r]) => [k, boundDate(l), boundDate(r)]);
+const BOUNDS_DATETIME = DELTAS.map(([k, l, r]) => [k, boundDatetime(l), boundDatetime(r)]);
+
+export function getBounds(generateSmartDates, fieldType) {
+    if (generateSmartDates) {
+        return BOUNDS_SMART_DATES;
+    }
+    return fieldType === "date" ? BOUNDS_DATE : BOUNDS_DATETIME;
 }
 
 /**
