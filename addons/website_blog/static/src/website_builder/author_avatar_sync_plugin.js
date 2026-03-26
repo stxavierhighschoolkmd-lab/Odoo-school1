@@ -16,7 +16,7 @@ export class AuthorAvatarSyncPlugin extends Plugin {
                 .filter((r) => r.target.dataset.oeField === "author_id")
                 .forEach((r) => this.authorToUpdate.set(r.target.dataset.oeId, r.value));
         },
-        on_normalized_for_commit_handlers: (isRevision) => {
+        on_normalized_flushed_mutations_handlers: (isRevision) => {
             const toUpdate = this.authorToUpdate;
             this.authorToUpdate = new Map();
             if (isRevision) {
