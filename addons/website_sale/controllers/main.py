@@ -496,10 +496,30 @@ class WebsiteSale(payment_portal.PaymentPortal):
         ProductAttribute = request.env["product.attribute"]
         pavs_per_attribute = {}
         if products:
+<<<<<<< afd02ad3062dc1c7b31e87e0bd7f49b2a08bc48e
             grouped_pavs = request.env["product.attribute.value"]._read_group(
+||||||| 35139e63d0f6006bd53df31980fce974bc969d8c
+            # get all products without limit
+            attributes_grouped = request.env['product.template.attribute.line']._read_group(
+=======
+            # get all products without limit
+            search_term = fuzzy_search_term if fuzzy_search_term else search
+            product_query = request.env['product.template']._search(
+                self._get_shop_domain(search_term, category, attribute_value_dict)
+            )
+            attributes_grouped = request.env['product.template.attribute.line']._read_group(
+>>>>>>> 5f3abdd33ec857995f4fc85711ac1bf55a25c769
                 domain=[
+<<<<<<< afd02ad3062dc1c7b31e87e0bd7f49b2a08bc48e
                     ("pav_attribute_line_ids.product_tmpl_id", "in", search_product.ids),
                     ("attribute_id.visibility", "=", "visible"),
+||||||| 35139e63d0f6006bd53df31980fce974bc969d8c
+                    ('product_tmpl_id', 'in', search_product.ids),
+                    ('attribute_id.visibility', '=', 'visible'),
+=======
+                    ('product_tmpl_id', 'in', product_query),
+                    ('attribute_id.visibility', '=', 'visible'),
+>>>>>>> 5f3abdd33ec857995f4fc85711ac1bf55a25c769
                 ],
                 groupby=["attribute_id"],
                 order="attribute_id",
