@@ -130,7 +130,6 @@ import { withSequence } from "@html_editor/utils/resource";
  * @property { DomMutationPlugin['commit'] } commit
  * @property { DomMutationPlugin['discard'] } discard
  * @property { DomMutationPlugin['stage'] } stage
- * @property { DomMutationPlugin['unstage'] } unstage
  * @property { DomMutationPlugin['stash'] } stash
  * @property { DomMutationPlugin['unstash'] } unstash
  * @property { DomMutationPlugin['updateExternal'] } updateExternal
@@ -175,7 +174,6 @@ export class DomMutationPlugin extends Plugin {
         "commit",
         "discard",
         "stage",
-        "unstage",
         "stash",
         "unstash",
         "updateExternal",
@@ -443,10 +441,6 @@ export class DomMutationPlugin extends Plugin {
     stage(mutations) {
         mutations = Array.isArray(mutations) ? mutations : [mutations];
         this.currentChanges.addMutations(...mutations);
-    }
-
-    unstage(mutations) {
-        // TODO AGE
     }
 
     /**
