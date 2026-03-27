@@ -9,7 +9,14 @@ import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 export class TableOfContentPlugin extends Plugin {
     static id = "tableOfContent";
-    static dependencies = ["dom", "selection", "embeddedComponents", "link", "history"];
+    static dependencies = [
+        "dom",
+        "selection",
+        "embeddedComponents",
+        "link",
+        "history",
+        "domReference",
+    ];
     /** @type {import("plugins").EditorResources} */
     resources = {
         user_commands: [
@@ -32,11 +39,19 @@ export class TableOfContentPlugin extends Plugin {
         /** Handlers */
         on_savepoint_restored_handlers: () => this.delayedUpdateTableOfContents(this.editable),
         on_history_reset_handlers: () => this.delayedUpdateTableOfContents(this.editable),
-        on_history_reset_from_steps_handlers: () =>
+        on_history_reset_from_commits_handlers: () =>
             this.delayedUpdateTableOfContents(this.editable),
-        on_step_added_handlers: ({ stepCommonAncestor }) =>
-            this.delayedUpdateTableOfContents(stepCommonAncestor),
-        on_external_step_added_handlers: this.delayedUpdateTableOfContents.bind(
+        on_history_written_handlers: (commit) => {
+            let root;
+            this.getResource("commit_root_providers").find((p) => {
+                root = p(commit);
+                return root;
+            });
+            return this.delayedUpdateTableOfContents(
+                this.dependencies.domReference.getNodeById(root)
+            );
+        },
+        on_external_commit_added_handlers: this.delayedUpdateTableOfContents.bind(
             this,
             this.editable
         ),
@@ -57,7 +72,7 @@ export class TableOfContentPlugin extends Plugin {
     insertTableOfContent() {
         const tableOfContentBlueprint = renderToElement("html_editor.TableOfContentBlueprint");
         this.dependencies.dom.insert(tableOfContentBlueprint);
-        this.dependencies.history.addStep();
+        this.dependencies.history.write();
     }
 
     /**

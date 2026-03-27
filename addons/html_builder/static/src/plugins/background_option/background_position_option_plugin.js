@@ -116,7 +116,7 @@ export class SetBackgroundSizeAction extends BuilderAction {
 
 export class BackgroundPositionOverlayAction extends BuilderAction {
     static id = "backgroundPositionOverlay";
-    static dependencies = ["overlayButtons", "history", "backgroundPositionOption"];
+    static dependencies = ["overlayButtons", "domMutation", "backgroundPositionOption"];
     setup() {
         this.withLoadingEffect = false;
     }

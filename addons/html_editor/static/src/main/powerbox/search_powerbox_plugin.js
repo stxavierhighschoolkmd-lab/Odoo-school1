@@ -53,7 +53,7 @@ export class SearchPowerboxPlugin extends Plugin {
     }
     onBeforeInput(ev) {
         if (ev.data === "/") {
-            this.historySavePointRestore = this.dependencies.history.makeSavePoint();
+            this.mutationSavePointRestore = this.dependencies.history.makeSavePoint();
         }
     }
     onInput(ev) {
@@ -124,7 +124,7 @@ export class SearchPowerboxPlugin extends Plugin {
             categories: this.categories,
             onApplyCommand: (command, context) => {
                 context.searchTerm = this.searchTerm;
-                this.historySavePointRestore?.();
+                this.mutationSavePointRestore?.();
             },
             onClose: () => {
                 this.shouldUpdate = false;

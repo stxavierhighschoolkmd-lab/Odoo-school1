@@ -100,7 +100,7 @@ export class SeparatorPlugin extends Plugin {
                 this.dependencies.dom.insert(sep);
             }
         }
-        this.dependencies.history.addStep();
+        this.dependencies.history.write();
     }
 
     deselectHR(root = this.editable) {

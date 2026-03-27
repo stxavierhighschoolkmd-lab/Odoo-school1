@@ -31,7 +31,7 @@ import { _t } from "@web/core/l10n/translation";
 export class SavePlugin extends Plugin {
     static id = "savePlugin";
     static shared = ["save", "ignoreDirty", "groupElements"];
-    static dependencies = ["history"];
+    static dependencies = ["history", "domReference"];
 
     /** @type {import("plugins").BuilderResources} */
     resources = {
@@ -137,23 +137,28 @@ export class SavePlugin extends Plugin {
     /**
      * Handles the flag of the closest savable element to the mutation as dirty
      *
-     * @param {Object} records - The observed mutations
-     * @param {String} currentOperation - The name of the current operation
+     * @param {import("@html_editor/core/dom_mutation_plugin").SerializedMutation[]} records - The observed mutations
+     * @param {boolean} isRevision
      */
-    handleMutations(records, currentOperation) {
+    handleMutations(records, isRevision) {
         if (!this.canObserve) {
             return;
         }
-        if (currentOperation === "undo" || currentOperation === "redo") {
+        if (isRevision) {
             // Do nothing as `o_dirty` has already been handled by the history
             // plugin.
             return;
         }
+        // TODO: should do nothing if currently undo/redoing as `o_dirty` would
+        // then already have been handled by the history plugin.
         for (const record of records) {
-            if (record.attributeName === "contenteditable") {
+            if (record.type === "attributes" && record.attributeName === "contenteditable") {
                 continue;
             }
-            let targetEl = record.target;
+            let targetEl = this.dependencies.domReference.getNodeById(
+                ((record.type === "add" || record.type === "remove") && record.parentNodeId) ||
+                    record.nodeId
+            );
             if (!targetEl.isConnected) {
                 continue;
             }

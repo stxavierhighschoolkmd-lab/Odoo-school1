@@ -327,7 +327,7 @@ export class TablePlugin extends Plugin {
             if (shouldAddNewRow) {
                 this.addRow("after", findInSelection(selection, "tr"));
                 this.shiftCursorToTableCell(1);
-                this.dependencies.history.addStep();
+                this.dependencies.history.write();
             }
             return true;
         }
@@ -408,7 +408,7 @@ export class TablePlugin extends Plugin {
         this.dependencies.selection.setCursorStart(
             table.querySelector(baseContainerGlobalSelector)
         );
-        this.dependencies.history.addStep();
+        this.dependencies.history.write();
     }
     /**
      * @param {'before'|'after'} position

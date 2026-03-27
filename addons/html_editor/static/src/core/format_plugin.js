@@ -240,7 +240,7 @@ export class FormatPlugin extends Plugin {
         const targetedNodes = this.dependencies.selection.getTargetedNodes();
         this.removeFormats(Object.keys(formatsSpecs), targetedNodes);
         this.trigger("on_all_formats_removed_handlers");
-        this.dependencies.history.addStep();
+        this.dependencies.history.write();
     }
 
     removeFontSizeFormat(el) {
@@ -300,7 +300,7 @@ export class FormatPlugin extends Plugin {
     formatSelection(formatName, options) {
         this.trigger("on_will_format_selection_handlers", formatName, options);
         if (this._formatSelection(formatName, options) && !options?.removeFormat) {
-            this.dependencies.history.addStep();
+            this.dependencies.history.write();
         }
     }
 

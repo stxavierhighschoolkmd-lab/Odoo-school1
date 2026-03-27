@@ -3,18 +3,23 @@ import { Plugin } from "@html_editor/plugin";
 
 export class AuthorAvatarSyncPlugin extends Plugin {
     static id = "authorAvatarSync";
+    static dependencies = ["domReference"];
     /** @type {import("plugins").WebsiteResources} */
     resources = {
+        /**
+         * @param {import("@html_editor/core/dom_mutation_plugin").SerializedMutation[]} records
+         */
         on_new_records_handled_handlers: (records) => {
             records
                 .filter((r) => r.type === "attributes" && r.attributeName === "data-oe-many2one-id")
+                .map((r) => ({...r, target: this.dependencies.domReference.getNodeById(r.nodeId)}))
                 .filter((r) => r.target.dataset.oeField === "author_id")
                 .forEach((r) => this.authorToUpdate.set(r.target.dataset.oeId, r.value));
         },
-        normalize_processors: (root, stepState) => {
+        on_normalized_flushed_mutations_handlers: (isRevision) => {
             const toUpdate = this.authorToUpdate;
             this.authorToUpdate = new Map();
-            if (stepState !== "original") {
+            if (isRevision) {
                 return;
             }
             for (const [oeId, id] of toUpdate.entries()) {

@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from "@odoo/hoot";
 import { getContent, setSelection } from "./_helpers/selection";
 import { animationFrame, click, press, queryOne, waitFor } from "@odoo/hoot-dom";
-import { ensureDistinctHistoryStep, insertText, splitBlock } from "./_helpers/user_actions";
+import { ensureDistinctHistoryCommit, insertText, splitBlock } from "./_helpers/user_actions";
 import {
     compareHighlightedContent,
     highlightedPre,
@@ -20,7 +20,7 @@ import { parseHTML } from "@html_editor/utils/html";
 const pressAndWait = async (...args) => {
     await press(...args);
     await animationFrame(); // wait for effect
-    await ensureDistinctHistoryStep();
+    await ensureDistinctHistoryCommit();
 };
 
 const insertPre = async (editor) => {
@@ -515,7 +515,7 @@ test("can switch between code blocks without issues", async () => {
     editor.shared.selection.setCursorEnd(p1);
     // Action 3: insert "c" in first paragraph.
     await insertText(editor, "c");
-    await ensureDistinctHistoryStep();
+    await ensureDistinctHistoryCommit();
     await compareHighlightedContent(
         getContent(editor.editable),
         unformat(
@@ -588,7 +588,7 @@ test("can switch between code blocks without issues", async () => {
             <p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>`
         ),
         // TODO: is it correct to not move the focus?
-        `Undo 6 changed back the language of the second textarea to "plaintext" (without losing the current focus, editor).`,
+        `Undo 6 changed back the language of the second textarea to "plaintext" (without losing the current focus).`,
         editor
     );
     // UNDO action 5: change the language of first textarea.
@@ -603,7 +603,7 @@ test("can switch between code blocks without issues", async () => {
             <p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>`
         ),
         // TODO: is it correct to move the focus?
-        `Undo 5 changed back the language of the first textarea to "plaintext" (and move the focus to the last focused textarea, editor).`,
+        `Undo 5 changed back the language of the first textarea to "plaintext" (and move the focus to the last focused textarea).`,
         editor
     );
     // UNDO action 4: insert "i" in second paragraph.
@@ -801,9 +801,9 @@ test("multiple ctrl+z in a highlighted code block undo changes in the block and 
     // Write in the P.
     actions.push("type: insert 'o' into the paragraph", "type: insert '!' into the paragraph");
     await insertText(editor, "o"); // <wrapper><pre>some code</pre></wrapper><p>hello[]</p>
-    await ensureDistinctHistoryStep();
+    await ensureDistinctHistoryCommit();
     await insertText(editor, "!"); // <wrapper><pre>some code</pre></wrapper><p>hello![]</p>
-    await ensureDistinctHistoryStep();
+    await ensureDistinctHistoryCommit();
     await compareHighlightedContent(
         getContent(editor.editable),
         unformat(`
@@ -871,9 +871,9 @@ test("multiple ctrl+z in a highlighted code block undo changes in the block and 
     await click(p);
     editor.shared.selection.setCursorEnd(p);
     await insertText(editor, "o"); // <wrapper><highlight><pre>some codeyes</pre></highlight></wrapper><p>hello!o[]</p>
-    await ensureDistinctHistoryStep();
+    await ensureDistinctHistoryCommit();
     await insertText(editor, "k"); // <wrapper><highlight><pre>some codeyes</pre></highlight></wrapper><p>hello!ok[]</p>
-    await ensureDistinctHistoryStep();
+    await ensureDistinctHistoryCommit();
     await compareHighlightedContent(
         getContent(editor.editable),
         unformat(`
@@ -1123,7 +1123,7 @@ test("can copy/paste a highlighted code block", async () => {
                 `<p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p>`
             );
             editor.shared.dom.insert(parseHTML(editor.document, copiedValue));
-            editor.shared.history.addStep();
+            editor.shared.history.write();
             await animationFrame();
         },
         contentAfterEdit: unformat(

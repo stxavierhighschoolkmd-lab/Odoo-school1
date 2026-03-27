@@ -488,7 +488,7 @@ export class SplitPlugin extends Plugin {
         if (e.inputType === "insertParagraph") {
             e.preventDefault();
             this.splitBlock();
-            this.dependencies.history.addStep();
+            this.dependencies.history.write();
         }
     }
 }

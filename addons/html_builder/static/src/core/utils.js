@@ -769,7 +769,7 @@ export function useOperationWithReload(callApply, reload) {
         env.services.ui.block();
         const applyResults = await callApply(...args);
         if (!applyResults.includes(BuilderAction.cancelReload)) {
-            env.editor.shared.history.addStep();
+            env.editor.shared.history.write();
             await env.editor.shared.savePlugin.save();
             const target = env.editor.shared.builderOptions.getReloadSelector(editingElement);
             const url = reload.getReloadUrl?.();
@@ -1083,7 +1083,7 @@ export function useInputDebouncedCommit(ref) {
     }, 550);
     // ↑ 500 is the delay when holding keydown between the 1st and 2nd event
     // fired. Some additional delay by the browser may add another ~5-10ms.
-    // We debounce above that threshold to keep a single history step when
+    // We debounce above that threshold to keep a single history commit when
     // holding up/down on a number or range input.
 }
 

@@ -180,7 +180,7 @@ export class ListPlugin extends Plugin {
         hints: [{ selector: `LI, LI > ${baseContainerGlobalSelector}`, text: _t("List") }],
 
         /** Handlers */
-        on_step_added_handlers: this.updateToolbarButtons.bind(this),
+        on_history_written_handlers: this.updateToolbarButtons.bind(this),
         on_deleted_handlers: this.adjustListPaddingOnDelete.bind(this),
         on_will_insert_separator_handlers: this.exitList.bind(this),
         on_will_format_selection_handlers: this.applyFormatToListItem.bind(this),
@@ -231,7 +231,7 @@ export class ListPlugin extends Plugin {
 
     toggleListCommand({ mode, listStyle } = {}) {
         this.toggleList(mode, listStyle);
-        this.dependencies.history.addStep();
+        this.dependencies.history.write();
     }
 
     getBlocksToToggleList() {
@@ -890,7 +890,7 @@ export class ListPlugin extends Plugin {
                 this.adjustListPadding(list);
             }
             // Do nothing to nav-items.
-            this.dependencies.history.addStep();
+            this.dependencies.history.write();
             return true;
         }
     }
@@ -914,7 +914,7 @@ export class ListPlugin extends Plugin {
             this.outdentListNodes(listItems);
             this.dependencies.tabulation.outdentBlocks(nonListItems);
             // Do nothing to nav-items.
-            this.dependencies.history.addStep();
+            this.dependencies.history.write();
             return true;
         }
     }
@@ -1083,7 +1083,7 @@ export class ListPlugin extends Plugin {
                 this.dependencies.selection.setSelection({ anchorNode: node, anchorOffset: 0 });
             }
             ev.preventDefault();
-            this.dependencies.history.addStep();
+            this.dependencies.history.write();
         }
     }
 

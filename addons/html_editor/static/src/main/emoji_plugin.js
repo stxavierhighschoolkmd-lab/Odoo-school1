@@ -109,7 +109,7 @@ export class EmojiPlugin extends Plugin {
             });
             this.emojiListOverlay.close();
             this.dependencies.dom.insert(emoji.codepoints);
-            this.dependencies.history.addStep();
+            this.dependencies.history.write();
             this.match = match;
             return;
         }
@@ -142,7 +142,7 @@ export class EmojiPlugin extends Plugin {
      * @param {Object} options
      * @param {HTMLElement} options.target - The target element to position the overlay.
      * @param {Function} [options.onSelect] - The callback function to handle the selection of an emoji.
-     * If not provided, the emoji will be inserted into the editor and a step will be trigerred.
+     * If not provided, the emoji will be inserted into the editor and a commit will be triggered.
      */
     showEmojiPicker({ target, onSelect } = {}) {
         this.overlay.open({
@@ -157,7 +157,7 @@ export class EmojiPlugin extends Plugin {
                         return;
                     }
                     this.dependencies.dom.insert(str);
-                    this.dependencies.history.addStep();
+                    this.dependencies.history.write();
                 },
             },
             target,
@@ -188,7 +188,7 @@ export class EmojiPlugin extends Plugin {
                         selection.extend(this.searchNode, this.offset);
                         this.dependencies.delete.deleteSelection();
                         this.dependencies.dom.insert(value);
-                        this.dependencies.history.addStep();
+                        this.dependencies.history.write();
                         this.emojiListOverlay.close();
                     },
                     overlay: this.emojiListOverlay,

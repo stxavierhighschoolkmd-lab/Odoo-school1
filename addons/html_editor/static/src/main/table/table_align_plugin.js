@@ -111,7 +111,7 @@ export class TableAlignPlugin extends Plugin {
         }
 
         if (isAlignmentUpdated) {
-            this.dependencies.history.addStep();
+            this.dependencies.history.write();
         }
         this.updateVerticalAlignParams();
     }

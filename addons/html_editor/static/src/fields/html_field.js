@@ -30,7 +30,7 @@ import { withSequence } from "@html_editor/utils/resource";
 import { fixInvalidHTML, instanceofMarkup } from "@html_editor/utils/sanitize";
 import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
-const HTML_FIELD_METADATA_ATTRIBUTES = ["data-last-history-steps"];
+const HTML_FIELD_METADATA_ATTRIBUTES = ["data-last-history-commits"];
 
 /**
  * Check whether the current value contains nodes that would break
@@ -247,7 +247,7 @@ export class HtmlField extends Component {
         this.state.showCodeView = !this.state.showCodeView;
         if (!this.state.showCodeView && this.editor) {
             this.editor.editable.innerHTML = this.value;
-            this.editor.shared.history.addStep();
+            this.editor.shared.history.write();
         }
     }
 

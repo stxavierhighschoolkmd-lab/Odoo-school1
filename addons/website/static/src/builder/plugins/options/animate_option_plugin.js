@@ -143,7 +143,7 @@ export class AnimateOptionPlugin extends Plugin {
             const cursors = this.dependencies.selection.preserveSelection();
             el.replaceWith(...el.childNodes);
             cursors.restore();
-            this.dependencies.history.addStep();
+            this.dependencies.history.write();
         };
 
         const existingAnimatedTextEl = this.getAnimatedText();
@@ -286,7 +286,7 @@ export class AnimateOptionPlugin extends Plugin {
                       focusOffset: 0,
                   }
         );
-        this.dependencies.history.addStep();
+        this.dependencies.history.write();
 
         return { element: span, didRemoveOtherTextAnimation };
     }

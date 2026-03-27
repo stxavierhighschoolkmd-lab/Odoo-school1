@@ -7,19 +7,19 @@ import { Plugin } from "../plugin";
 
 export class InputPlugin extends Plugin {
     static id = "input";
-    static dependencies = ["history"];
+    static dependencies = ["history", "selection"];
     setup() {
         this.addDomListener(this.editable, "beforeinput", this.onBeforeInput);
         this.addDomListener(this.editable, "input", this.onInput);
     }
 
     onBeforeInput(ev) {
-        this.dependencies.history.stageSelection();
+        this.dependencies.selection.stageSelection();
         this.trigger("on_beforeinput_handlers", ev);
     }
 
     onInput(ev) {
-        this.dependencies.history.addStep({ batchable: ev.inputType === "insertText" });
+        this.dependencies.history.write({ batchable: ev.inputType === "insertText" });
         this.trigger("on_input_handlers", ev);
     }
 }

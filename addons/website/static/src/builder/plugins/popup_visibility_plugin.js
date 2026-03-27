@@ -10,7 +10,7 @@ import { patch } from "@web/core/utils/patch";
 
 export class PopupVisibilityPlugin extends Plugin {
     static id = "popupVisibilityPlugin";
-    static dependencies = ["visibility", "history"];
+    static dependencies = ["visibility", "domMutation", "domReference"];
     static shared = ["onTargetShow", "onTargetHide"];
 
     /** @type {import("plugins").WebsiteResources} */
@@ -21,20 +21,23 @@ export class PopupVisibilityPlugin extends Plugin {
         on_will_restore_containers_handlers: this.hidePopupsWithoutTarget.bind(this),
         on_target_revealed_handlers: this.hidePopupsWithoutTarget.bind(this),
         attribute_change_processors: (attributeChange) => {
-            const { target, attributeName, value } = attributeChange;
+            const { nodeId, attributeName, value } = attributeChange;
             // On hide/show of the popup, the `style` attribute of the modal in
             // the popup is changed. This also happens with the option
-            // "Backdrop" on the popup. When reverting/re-applying steps that
+            // "Backdrop" on the popup. When reverting/re-applying commits that
             // are supposed to change the option, we do not want to also change
             // whether the popup is hidden of not. Here, we keep the `display`
             // property in the `style` attribute unchanged when the history
-            // revert/re-apply a step that modified it.
-            if (attributeName === "style" && target.matches(".s_popup > .modal")) {
-                const re = /display: .*?;/;
-                const currentDisplay = target.attributes.style?.value.match(re)?.[0] ?? "";
-                attributeChange.value = re.test(value)
-                    ? value.replace(re, currentDisplay)
-                    : value + currentDisplay;
+            // revert/re-apply a commit that modified it.
+            if (attributeName === "style") {
+                const target = this.dependencies.domReference.getNodeById(nodeId);
+                if (target.matches(".s_popup > .modal")) {
+                    const re = /display: .*?;/;
+                    const currentDisplay = target.attributes.style?.value.match(re)?.[0] ?? "";
+                    attributeChange.value = re.test(value)
+                        ? value.replace(re, currentDisplay)
+                        : value + currentDisplay;
+                }
             }
             return attributeChange;
         },
@@ -50,17 +53,17 @@ export class PopupVisibilityPlugin extends Plugin {
                 this.dependencies.visibility.hideElement(popupEl);
             }
         });
-        const history = this.dependencies.history;
+        const domMutation = this.dependencies.domMutation;
         this.unpatchModal = this.window.Modal // null in tests without loadAssetsFrontendJS
             ? patch(this.window.Modal.prototype, {
                   _hideModal() {
-                      return history.ignoreDOMMutations(() => super._hideModal());
+                      return domMutation.ignoreDOMMutations(() => super._hideModal());
                   },
                   show() {
-                      return history.ignoreDOMMutations(() => super.show());
+                      return domMutation.ignoreDOMMutations(() => super.show());
                   },
                   hide() {
-                      return history.ignoreDOMMutations(() => super.hide());
+                      return domMutation.ignoreDOMMutations(() => super.hide());
                   },
               })
             : () => {};

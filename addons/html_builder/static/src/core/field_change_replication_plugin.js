@@ -8,12 +8,15 @@ import { withSequence } from "@html_editor/utils/resource";
 
 export class FieldChangeReplicationPlugin extends Plugin {
     static id = "fieldChangeReplication";
-    static dependencies = ["dom"];
+    static dependencies = ["dom", "domMutation", "domReference"];
 
     /** @type {import("plugins").BuilderResources} */
     resources = {
         on_new_records_handled_handlers: this.handleMutations.bind(this),
-        normalize_processors: withSequence(9000, this.normalizeProcessor.bind(this)),
+        on_normalized_flushed_mutations_handlers: withSequence(
+            9000,
+            this.onNormalizedFlushedMutations.bind(this)
+        ),
     };
 
     setup() {
@@ -21,13 +24,16 @@ export class FieldChangeReplicationPlugin extends Plugin {
     }
 
     /**
-     * @param { import("@html_editor/core/history_plugin").HistoryMutationRecord[] } records
+     * @param { import("@html_editor/core/dom_mutation_plugin").SerializedMutation[] } records
      */
     handleMutations(records) {
         records
             .filter((r) => !(r.type === "attributes" && r.attributeName.startsWith("data-oe-t")))
             .map((r) =>
-                closestElement(r.target, "[data-oe-model], [data-oe-translation-source-sha]")
+                closestElement(
+                    this.dependencies.domMutation.domReference(r.nodeId),
+                    "[data-oe-model], [data-oe-translation-source-sha]"
+                )
             )
             .filter(Boolean)
             // Do not forward "unstyled" copies to other nodes.
@@ -36,13 +42,12 @@ export class FieldChangeReplicationPlugin extends Plugin {
     }
 
     /**
-     * @param { Node } commonAncestor
-     * @param { "original"|"undo"|"redo"|"restore" } stepState
+     * @param { boolean } isRevision
      */
-    normalizeProcessor(commonAncestor, stepState) {
+    onNormalizedFlushedMutations(isRevision) {
         const fields = this.fieldsToReplicate;
         this.fieldsToReplicate = new Set();
-        if (stepState !== "original") {
+        if (isRevision) {
             return;
         }
         const touchedEls = new Set();

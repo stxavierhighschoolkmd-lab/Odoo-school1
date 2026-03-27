@@ -9,7 +9,7 @@ import {
     unfoldAllOptionsGroups,
     waitForEndOfOperation,
 } from "@html_builder/../tests/helpers";
-import { ensureDistinctHistoryStep } from "@html_editor/../tests/_helpers/user_actions";
+import { ensureDistinctHistoryCommit } from "@html_editor/../tests/_helpers/user_actions";
 import { click, queryOne, animationFrame, edit, waitFor } from "@odoo/hoot-dom";
 
 defineWebsiteModels();
@@ -17,7 +17,7 @@ defineWebsiteModels();
 async function setupEmptySocialMedia(options) {
     const builder = await setupWebsiteBuilderWithSnippet("s_social_media", options);
     queryAll(":iframe div.s_social_media a").forEach((el) => el.remove());
-    builder.getEditor().shared.history.addStep();
+    builder.getEditor().shared.history.write();
     return builder;
 }
 async function setDropdownOption(
@@ -221,7 +221,7 @@ test("reorder social medias", async () => {
 
     await contains("tr:nth-child(3) input[type=checkbox]").click();
     await contains("tr:nth-child(3) button.o_drag_handle").dragAndDrop("tr:nth-child(1)");
-    await ensureDistinctHistoryStep();
+    await ensureDistinctHistoryCommit();
     await contains("tr:nth-child(3) button.o_drag_handle").dragAndDrop("tr:nth-child(1)");
 
     expect("tr:nth-child(1) input[type=text]").toHaveValue("https://www.example.com/first");
