@@ -6,7 +6,7 @@ import { url } from "@web/core/utils/urls";
 
 export class MailFullComposerSuggestionPlugin extends Plugin {
     static id = "mail_full_composer_suggestion";
-    static dependencies = ["overlay", "dom", "domMutation", "history", "input", "selection"];
+    static dependencies = ["overlay", "dom", "history", "input", "selection"];
 
     resources = {
         on_beforeinput_handlers: this.onBeforeInput.bind(this),
@@ -36,7 +36,7 @@ export class MailFullComposerSuggestionPlugin extends Plugin {
         mentionBlock.appendChild(nameNode);
         this.mutationSavePointRestore();
         this.dependencies.dom.insert(mentionBlock);
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 
     onBeforeInput(ev) {

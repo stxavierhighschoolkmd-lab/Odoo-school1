@@ -14,7 +14,7 @@ import { getRowIndex } from "@html_editor/utils/table";
  */
 export class TableUIPlugin extends Plugin {
     static id = "tableUi";
-    static dependencies = ["domMutation", "overlay", "table"];
+    static dependencies = ["history", "overlay", "table"];
     /** @type {import("plugins").EditorResources} */
     resources = {
         user_commands: [
@@ -162,7 +162,7 @@ export class TableUIPlugin extends Plugin {
             (fn) =>
             (...args) => {
                 fn(...args);
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
             };
         const tableMethods = {
             moveColumn: withCommit(this.dependencies.table.moveColumn),

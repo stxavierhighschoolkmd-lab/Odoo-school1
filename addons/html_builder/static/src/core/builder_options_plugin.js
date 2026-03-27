@@ -487,7 +487,7 @@ export class BuilderOptionsPlugin extends Plugin {
                 button.handler = (...args) => {
                     this.dependencies.operation.next(async () => {
                         await handler(...args);
-                        this.dependencies.domMutation.commit();
+                        this.dependencies.history.write();
                     });
                 };
             }

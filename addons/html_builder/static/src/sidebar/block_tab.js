@@ -526,7 +526,7 @@ export class BlockTab extends Component {
         }
         this.env.editor.config.updateInvisibleElementsPanel();
         this.shared.disableSnippets.disableUndroppableSnippets();
-        this.shared.domMutation.commit();
+        this.shared.history.write();
     }
 
     /**

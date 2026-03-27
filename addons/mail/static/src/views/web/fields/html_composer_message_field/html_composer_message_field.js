@@ -33,7 +33,7 @@ export class HtmlComposerMessageField extends HtmlMailField {
                     element.remove();
                     fillEmpty(parent);
                 });
-                this.editor.shared.domMutation.commit();
+                this.editor.shared.history.write();
             });
         }
     }

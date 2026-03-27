@@ -61,14 +61,7 @@ const [getPreviousLeavesInBlock, getNextLeavesInBlock] = [DIRECTIONS.LEFT, DIREC
  */
 
 export class SplitPlugin extends Plugin {
-    static dependencies = [
-        "baseContainer",
-        "selection",
-        "domMutation",
-        "input",
-        "delete",
-        "lineBreak",
-    ];
+    static dependencies = ["baseContainer", "selection", "history", "input", "delete", "lineBreak"];
     static id = "split";
     static shared = [
         "splitBlock",
@@ -495,7 +488,7 @@ export class SplitPlugin extends Plugin {
         if (e.inputType === "insertParagraph") {
             e.preventDefault();
             this.splitBlock();
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
         }
     }
 }

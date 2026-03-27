@@ -80,7 +80,7 @@ import { selectElements } from "@html_editor/utils/dom_traversal";
 
 export class DragAndDropPlugin extends Plugin {
     static id = "dragAndDrop";
-    static dependencies = ["dropzone", "domMutation", "history", "operation", "builderOptions"];
+    static dependencies = ["dropzone", "history", "operation", "builderOptions"];
     /** @type {import("plugins").BuilderResources} */
     resources = {
         has_overlay_options: { hasOption: (el) => this.isDraggable(el) },
@@ -445,7 +445,7 @@ export class DragAndDropPlugin extends Plugin {
                         startParentEl === parentEl;
                 }
                 if (!hasSamePositionAsStart) {
-                    this.dependencies.domMutation.commit();
+                    this.dependencies.history.write();
                 } else {
                     this.cancelDragAndDrop();
                     return;

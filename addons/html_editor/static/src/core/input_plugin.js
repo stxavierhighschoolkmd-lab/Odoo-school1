@@ -7,7 +7,7 @@ import { Plugin } from "../plugin";
 
 export class InputPlugin extends Plugin {
     static id = "input";
-    static dependencies = ["domMutation", "selection"];
+    static dependencies = ["history", "selection"];
     setup() {
         this.addDomListener(this.editable, "beforeinput", this.onBeforeInput);
         this.addDomListener(this.editable, "input", this.onInput);
@@ -19,7 +19,7 @@ export class InputPlugin extends Plugin {
     }
 
     onInput(ev) {
-        this.dependencies.domMutation.commit({ batchable: ev.inputType === "insertText" });
+        this.dependencies.history.write({ batchable: ev.inputType === "insertText" });
         this.trigger("on_input_handlers", ev);
     }
 }

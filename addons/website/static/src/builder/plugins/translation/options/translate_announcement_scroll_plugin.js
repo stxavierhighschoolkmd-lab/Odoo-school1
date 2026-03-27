@@ -5,7 +5,7 @@ import { registry } from "@web/core/registry";
 
 export class TranslateAnnouncementScrollPlugin extends Plugin {
     static id = "translateAnnouncementScroll";
-    static dependencies = ["domMutation", "history"];
+    static dependencies = ["history"];
 
     /** @type {import("plugins").WebsiteResources} */
     resources = {
@@ -53,7 +53,7 @@ export class TranslateAnnouncementScrollPlugin extends Plugin {
         if (inputValue !== translatableEl.textContent) {
             translatableEl.textContent = inputValue;
             translatableEl.dataset.oeTranslationState = "translated";
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
         }
     }
 }

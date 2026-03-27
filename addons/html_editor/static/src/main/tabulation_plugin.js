@@ -47,7 +47,7 @@ function isIndentationTab(tab) {
 
 export class TabulationPlugin extends Plugin {
     static id = "tabulation";
-    static dependencies = ["dom", "selection", "domMutation", "delete", "split"];
+    static dependencies = ["dom", "selection", "history", "delete", "split"];
     static shared = ["indentBlocks", "outdentBlocks"];
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -97,7 +97,7 @@ export class TabulationPlugin extends Plugin {
             const targetedBlocks = this.dependencies.selection.getTargetedBlocks();
             this.indentBlocks(targetedBlocks);
         }
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 
     handleShiftTab() {
@@ -106,7 +106,7 @@ export class TabulationPlugin extends Plugin {
         }
         const targetedBlocks = this.dependencies.selection.getTargetedBlocks();
         this.outdentBlocks(targetedBlocks);
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 
     insertTab() {

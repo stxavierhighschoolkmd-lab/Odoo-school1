@@ -16,7 +16,7 @@ export class SyntaxHighlightingPlugin extends Plugin {
     static dependencies = [
         "baseContainer",
         "overlay",
-        "domMutation",
+        "history",
         "selection",
         "protectedNode",
         "embeddedComponents",
@@ -126,7 +126,7 @@ export class SyntaxHighlightingPlugin extends Plugin {
                     component.replaceWith(baseContainer);
                     newlinesToLineBreaks(baseContainer);
                     this.dependencies.selection.setCursorStart(baseContainer);
-                    this.dependencies.domMutation.commit();
+                    this.dependencies.history.write();
                 },
             });
             props.host.removeAttribute("data-syntax-highlighting-autofocus");

@@ -14,7 +14,7 @@ export class TableOfContentPlugin extends Plugin {
         "selection",
         "embeddedComponents",
         "link",
-        "domMutation",
+        "history",
         "domReference",
     ];
     /** @type {import("plugins").EditorResources} */
@@ -72,7 +72,7 @@ export class TableOfContentPlugin extends Plugin {
     insertTableOfContent() {
         const tableOfContentBlueprint = renderToElement("html_editor.TableOfContentBlueprint");
         this.dependencies.dom.insert(tableOfContentBlueprint);
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 
     /**

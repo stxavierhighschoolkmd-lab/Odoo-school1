@@ -21,7 +21,7 @@ const verticalAlignmentItems = [
 
 export class TableAlignPlugin extends Plugin {
     static id = "tableAlign";
-    static dependencies = ["domMutation", "selection"];
+    static dependencies = ["history", "selection"];
 
     /** @type {import("plugins").EditorResources} */
     resources = {
@@ -111,7 +111,7 @@ export class TableAlignPlugin extends Plugin {
         }
 
         if (isAlignmentUpdated) {
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
         }
         this.updateVerticalAlignParams();
     }

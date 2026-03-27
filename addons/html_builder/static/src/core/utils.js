@@ -769,7 +769,7 @@ export function useOperationWithReload(callApply, reload) {
         env.services.ui.block();
         const applyResults = await callApply(...args);
         if (!applyResults.includes(BuilderAction.cancelReload)) {
-            env.editor.shared.domMutation.commit();
+            env.editor.shared.history.write();
             await env.editor.shared.savePlugin.save();
             const target = env.editor.shared.builderOptions.getReloadSelector(editingElement);
             const url = reload.getReloadUrl?.();

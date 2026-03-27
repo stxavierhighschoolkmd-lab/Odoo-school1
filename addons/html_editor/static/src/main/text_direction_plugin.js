@@ -7,7 +7,7 @@ import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 export class TextDirectionPlugin extends Plugin {
     static id = "textDirection";
-    static dependencies = ["selection", "domMutation", "split", "format"];
+    static dependencies = ["selection", "history", "split", "format"];
     /** @type {import("plugins").EditorResources} */
     resources = {
         user_commands: [
@@ -73,6 +73,6 @@ export class TextDirectionPlugin extends Plugin {
                 element.style.setProperty("text-align", "right");
             }
         }
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 }

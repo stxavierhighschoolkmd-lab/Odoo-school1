@@ -107,7 +107,6 @@ import { withSequence } from "@html_editor/utils/resource";
 
 /**
  * @typedef { Object } DomMutationShared
- * @property { DomMutationPlugin['commit'] } commit
  * @property { DomMutationPlugin['discard'] } discard
  * @property { DomMutationPlugin['stage'] } stage
  * @property { DomMutationPlugin['stash'] } stash
@@ -139,7 +138,6 @@ export class DomMutationPlugin extends Plugin {
     static dependencies = ["domReference", "history", "sanitize"];
     static shared = [
         // Main public API
-        "commit",
         "discard",
         "stage",
         "stash",
@@ -237,7 +235,10 @@ export class DomMutationPlugin extends Plugin {
         on_current_history_data_reset_handlers: () => {
             this.mutations = [];
         },
-        pending_commit_data_processors: (data) => ({ ...data, mutations: [...this.mutations] }),
+        pending_commit_data_processors: (data) => {
+            this.flush();
+            return { ...data, mutations: [...this.mutations] };
+        },
         save_point_data_processors: (savePoint) => {
             this.processAndStageMutations();
             return { ...savePoint, mutations: [...this.mutations] };
@@ -277,22 +278,6 @@ export class DomMutationPlugin extends Plugin {
     // ===============
     // Main public API
     // ===============
-
-    /**
-     * Stage the observer's current mutations, bundle them into a commit object,
-     * and write that commit to history @see historyPlugin.
-     *
-     * @param { { batchable: boolean } } params
-     * @returns { EditorCommit<DomMutationCommitData> | false }
-     */
-    commit({ batchable = false } = {}) {
-        this.flush();
-        if (this.mutations.length === 0) {
-            return false;
-        }
-        const data = { mutations: [...this.mutations], batchable };
-        return this.dependencies.history.write(data);
-    }
 
     discard() {
         const mutations = [...this.mutations];

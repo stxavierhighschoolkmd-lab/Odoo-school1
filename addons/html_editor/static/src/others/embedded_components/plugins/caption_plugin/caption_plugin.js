@@ -19,7 +19,6 @@ export class CaptionPlugin extends Plugin {
         "image",
         "split",
         "history",
-        "domMutation",
         "embeddedComponents",
         "selection",
         "baseContainer",
@@ -188,7 +187,7 @@ export class CaptionPlugin extends Plugin {
             }),
         });
         figure.append(caption);
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
         this.captionsBeingAdded.delete(captionId);
     }
 
@@ -218,7 +217,7 @@ export class CaptionPlugin extends Plugin {
                 focusOffset,
             });
             this.dependencies.selection.focusEditable();
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
         }
     }
 
@@ -243,7 +242,7 @@ export class CaptionPlugin extends Plugin {
                         // If the caption is being added, we update without
                         // adding a history commit because it will be added at the
                         // end of adding the caption, by `addImageCaption`.
-                        this.dependencies.domMutation.commit();
+                        this.dependencies.history.write();
                     }
                 },
                 onEditorHistoryApply: (redo = false) => {
@@ -322,7 +321,7 @@ export class CaptionPlugin extends Plugin {
                 anchorNode: sibling,
                 anchorOffset: 0,
             });
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
             return true;
         }
     }

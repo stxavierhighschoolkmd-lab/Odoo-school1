@@ -89,7 +89,7 @@ export function useOperation() {
     return (apply, ...args) => {
         comp.env.editor.shared.operation.next(async (...args) => {
             await apply(...args);
-            comp.env.editor.shared.domMutation.commit();
+            comp.env.editor.shared.history.write();
         }, ...args);
     };
 }

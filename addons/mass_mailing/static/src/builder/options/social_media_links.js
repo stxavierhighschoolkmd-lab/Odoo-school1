@@ -10,7 +10,7 @@ import { registry } from "@web/core/registry";
 export class SocialMediaLinks extends BaseOptionComponent {
     static id = "social_media_links";
     static template = "mass_mailing.SocialMediaLinks";
-    static dependencies = ["builderActions", "domMutation", "massMailingSocialMediaOptionPlugin"];
+    static dependencies = ["builderActions", "history", "massMailingSocialMediaOptionPlugin"];
 
     /** @override */
     setup() {
@@ -183,7 +183,7 @@ export class SocialMediaLinks extends BaseOptionComponent {
                         }
                     }
                     this.domState.medias = Object.entries(medias);
-                    this.dependencies.domMutation.commit();
+                    this.dependencies.history.write();
                 },
             },
             {

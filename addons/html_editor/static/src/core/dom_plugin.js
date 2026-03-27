@@ -88,14 +88,7 @@ function getConnectedParents(nodes) {
 
 export class DomPlugin extends Plugin {
     static id = "dom";
-    static dependencies = [
-        "baseContainer",
-        "selection",
-        "domMutation",
-        "split",
-        "delete",
-        "lineBreak",
-    ];
+    static dependencies = ["baseContainer", "selection", "history", "split", "delete", "lineBreak"];
     static shared = [
         "insert",
         "copyAttributes",
@@ -682,7 +675,7 @@ export class DomPlugin extends Plugin {
         const fontAwesomeNode = document.createElement("i");
         fontAwesomeNode.className = faClass;
         this.insert(fontAwesomeNode);
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
         const [anchorNode, anchorOffset] = rightPos(fontAwesomeNode);
         this.dependencies.selection.setSelection({ anchorNode, anchorOffset });
     }
@@ -785,7 +778,7 @@ export class DomPlugin extends Plugin {
             }
         }
         cursors.restore();
-        this.dependencies.domMutation.commit();
+        this.dependencies.history.write();
     }
 
     removeEmptyClassAndStyleAttributes(root) {

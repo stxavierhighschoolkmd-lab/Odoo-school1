@@ -9,7 +9,7 @@ import { DIRECTIONS, nodeSize } from "@html_editor/utils/position";
 
 export class InlineCodePlugin extends Plugin {
     static id = "inlineCode";
-    static dependencies = ["selection", "domMutation", "history", "input", "split", "feff"];
+    static dependencies = ["selection", "history", "input", "split", "feff"];
     /** @type {import("plugins").EditorResources} */
     resources = {
         on_input_handlers: this.onInput.bind(this),
@@ -108,7 +108,7 @@ export class InlineCodePlugin extends Plugin {
                 anchorNode: codeElement,
                 anchorOffset: nodeSize(codeElement),
             });
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
             delete this.mutationSavePointRestore;
             return;
         }
@@ -143,7 +143,7 @@ export class InlineCodePlugin extends Plugin {
                 anchorNode: textNode,
                 anchorOffset: offset,
             });
-            this.dependencies.domMutation.commit();
+            this.dependencies.history.write();
             const insertedBacktickIndex = offset - 1;
             const textBeforeInsertedBacktick = textNode.textContent.substring(
                 0,
@@ -180,20 +180,20 @@ export class InlineCodePlugin extends Plugin {
             textNode.before(codeElement);
             codeElement.append(textNode);
             if (!codeElement.textContent.length) {
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
                 this.dependencies.selection.setSelection({
                     anchorNode: codeElement.firstChild,
                     anchorOffset: 1,
                 });
             } else if (isClosingForward) {
                 // Move selection out of code element.
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
                 this.dependencies.selection.setSelection({
                     anchorNode: codeElement.nextSibling,
                     anchorOffset: 1,
                 });
             } else {
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
                 this.dependencies.selection.setSelection({
                     anchorNode: codeElement.firstChild,
                     anchorOffset: 0,

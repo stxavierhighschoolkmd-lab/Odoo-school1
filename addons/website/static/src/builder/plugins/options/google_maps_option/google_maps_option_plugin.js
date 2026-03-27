@@ -38,7 +38,7 @@ import { BuilderAction } from "@html_builder/core/builder_action";
 
 export class GoogleMapsOptionPlugin extends Plugin {
     static id = "googleMapsOption";
-    static dependencies = ["domMutation", "history", "edit_interaction"];
+    static dependencies = ["history", "edit_interaction"];
     static shared = [
         "configureGMapsAPI",
         "initializeGoogleMaps",
@@ -163,7 +163,7 @@ export class GoogleMapsOptionPlugin extends Plugin {
                 editingElement.dataset.pinAddress = place.formatted_address;
                 // Restart interactions to re-render the map.
                 this.trigger("on_content_manually_updated_handlers", editingElement);
-                this.dependencies.domMutation.commit();
+                this.dependencies.history.write();
             }
         }
     }

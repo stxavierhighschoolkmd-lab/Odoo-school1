@@ -99,14 +99,7 @@ export const removableNodePredicates = [
 ];
 
 export class DeletePlugin extends Plugin {
-    static dependencies = [
-        "baseContainer",
-        "selection",
-        "domMutation",
-        "history",
-        "input",
-        "userCommand",
-    ];
+    static dependencies = ["baseContainer", "selection", "history", "input", "userCommand"];
     static id = "delete";
     static shared = [
         "deleteBackward",
@@ -270,7 +263,7 @@ export class DeletePlugin extends Plugin {
             throw new Error("Invalid direction");
         }
         this.trigger("on_deleted_handlers");
-        this.dependencies.domMutation.commit({ batchable: true });
+        this.dependencies.history.write({ batchable: true });
     }
 
     // --------------------------------------------------------------------------

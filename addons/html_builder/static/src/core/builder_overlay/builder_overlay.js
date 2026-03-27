@@ -28,7 +28,6 @@ export class BuilderOverlay {
         {
             iframe,
             overlayContainer,
-            domMutation,
             history,
             hasOverlayOptions,
             next,
@@ -38,7 +37,6 @@ export class BuilderOverlay {
             isHoverOverlay = false,
         }
     ) {
-        this.domMutation = domMutation;
         this.history = history;
         this.next = next;
         this.hasOverlayOptions = hasOverlayOptions;
@@ -640,7 +638,7 @@ export class BuilderOverlay {
             // mutations).
             const wasResized = !directions.every((dir) => dir.initialIndex === dir.currentIndex);
             if (wasResized) {
-                this.domMutation.commit();
+                this.history.write();
             } else {
                 cancelSizing();
             }
