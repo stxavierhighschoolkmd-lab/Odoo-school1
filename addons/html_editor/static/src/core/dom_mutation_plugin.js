@@ -200,14 +200,14 @@ export class DomMutationPlugin extends Plugin {
         on_will_redo_handlers: this.discard.bind(this),
         revision_commit_data_processors: (data) => {
             this.flush(true);
-            if (this.currentChanges.mutations.length !== 0) {
-                return { ...data, ...this.currentChanges.data };
+            if (this.mutations.length !== 0) {
+                return { ...data, mutations: [...this.mutations] };
             }
         },
         restoration_commit_data_processors: (data) => {
             this.flush(true);
-            if (this.currentChanges.mutations.length !== 0) {
-                return { ...data, ...this.currentChanges.data };
+            if (this.mutations.length !== 0) {
+                return { ...data, mutations: [...this.mutations] };
             }
         },
         on_commit_restored_handlers: () => {
@@ -235,18 +235,18 @@ export class DomMutationPlugin extends Plugin {
             return data;
         },
         on_current_history_data_reset_handlers: () => {
-            this.currentChanges = new CurrentChanges();
+            this.mutations = [];
         },
+        pending_commit_data_processors: (data) => ({ ...data, mutations: [...this.mutations] }),
         save_point_data_processors: (savePoint) => {
             this.processAndStageMutations();
-            return { ...savePoint, mutations: [...this.currentChanges.mutations] };
+            return { ...savePoint, mutations: [...this.mutations] };
         },
         on_will_restore_save_point_handlers: withSequence(0, () => {
             this.discard();
         }),
         on_savepoint_restored_handlers: withSequence(0, (savePoint) => {
-            // Apply draft mutations to recover the same currentChanges state
-            // as before.
+            // Apply draft mutations to recover the same mutations state as before.
             this.applyMutations(savePoint.mutations, { ensureNewMutations: true });
             this.processAndStageMutations();
             this.dispatchContentUpdated();
@@ -254,6 +254,8 @@ export class DomMutationPlugin extends Plugin {
     };
 
     setup() {
+        /** @type { SerializedMutation[] } */
+        this.mutations = [];
         this.mutationFilteredClasses = new Set(this.getResource("system_classes"));
         this.mutationFilteredAttributes = new Set(this.getResource("system_attributes"));
         this.observer = new MutationObserver((records) =>
@@ -285,21 +287,21 @@ export class DomMutationPlugin extends Plugin {
      */
     commit({ batchable = false } = {}) {
         this.flush();
-        if (this.currentChanges.mutations.length === 0) {
+        if (this.mutations.length === 0) {
             return false;
         }
-        const data = { ...this.currentChanges.data, batchable };
+        const data = { mutations: [...this.mutations], batchable };
         return this.dependencies.history.write(data);
     }
 
     discard() {
-        const changes = this.currentChanges.data;
+        const mutations = [...this.mutations];
         // Discard current draft.
         this.processAndStageMutations();
-        this.revertMutations(this.currentChanges.mutations);
+        this.revertMutations([...this.mutations]);
         this.observer.takeRecords();
-        this.currentChanges.resetMutations();
-        return changes;
+        this.mutations = [];
+        return mutations;
     }
 
     stash() {
@@ -324,14 +326,14 @@ export class DomMutationPlugin extends Plugin {
     }
 
     /**
-     * Add the given serialized mutation(s) to `this.currentChanges`, which will
+     * Add the given serialized mutation(s) to `this.mutations`, which will
      * be used in the next commit.
      *
      * @param { SerializedMutation | SerializedMutation[] } mutations
      */
     stage(mutations) {
         mutations = Array.isArray(mutations) ? mutations : [mutations];
-        this.currentChanges.addMutations(...mutations);
+        this.mutations.push(...mutations);
     }
 
     // ===============
@@ -424,7 +426,7 @@ export class DomMutationPlugin extends Plugin {
     // =======
 
     /**
-     * Update `this.currentChanges` to set the correct data on the next commit,
+     * Update `this.mutations` to set the correct mutations on the next commit,
      * by processing and staging all new mutations, normalizing the mutated
      * nodes, and updating any other data that needs updating, including by
      * letting other plugins respond.
@@ -434,17 +436,17 @@ export class DomMutationPlugin extends Plugin {
     flush(isRevision = false) {
         // Stage the observer's current changes.
         this.processAndStageMutations({ dispatch: true, isRevision });
-        const currentMutationsCount = this.currentChanges.mutations.length;
+        const currentMutationsCount = this.mutations.length;
         if (currentMutationsCount === 0) {
             return;
         }
 
         // Normalize the mutated nodes. Note: this can cause other commits to be written.
-        const commitRoot = this.getMutationsRoot(this.currentChanges.mutations) || this.editable;
+        const commitRoot = this.getMutationsRoot(this.mutations) || this.editable;
         this.processThrough("normalize_processors", commitRoot);
         this.trigger("on_normalized_flushed_mutations_handlers", isRevision);
         this.processAndStageMutations({ dispatch: false, isRevision });
-        if (currentMutationsCount === this.currentChanges.mutations.length) {
+        if (currentMutationsCount === this.mutations.length) {
             // If there was no registered mutation during the normalization
             // commit, force the dispatch of a content_updated to allow i.e. the
             // hint plugin to react to non-observed changes (i.e. a div becoming
@@ -542,9 +544,7 @@ export class DomMutationPlugin extends Plugin {
         if (this.ignoreHasStagedMutations) {
             return false;
         }
-        return !!this.currentChanges.mutations.find((m) =>
-            ["characterData", "remove", "add"].includes(m.type)
-        );
+        return !!this.mutations.find((m) => ["characterData", "remove", "add"].includes(m.type));
     }
 
     // ===================
@@ -1268,45 +1268,14 @@ export class DomMutationPlugin extends Plugin {
     }
 
     dispatchContentUpdated() {
-        if (this.currentChanges.mutations.length) {
+        if (this.mutations.length) {
             // @todo @phoenix remove this?
             // @todo @phoenix this includes previous mutations that were already
             // stored in the current commit. Ideally, it should only include the new ones.
-            const root = this.getMutationsRoot(this.currentChanges.mutations);
+            const root = this.getMutationsRoot(this.mutations);
             if (root) {
                 this.trigger("on_content_updated_handlers", root);
             }
         }
-    }
-}
-
-class CurrentChanges {
-    constructor() {
-        /** @type { SerializedMutation[] } */
-        this._mutations = [];
-    }
-
-    /**
-     * @return { DomMutationCommitData }
-     */
-    get data() {
-        return {
-            mutations: [...this._mutations],
-        };
-    }
-
-    get mutations() {
-        return [...this._mutations];
-    }
-
-    /**
-     * @param  { ...SerializedMutation } mutations
-     */
-    addMutations(...mutations) {
-        this._mutations.push(...mutations);
-    }
-
-    resetMutations() {
-        this._mutations = [];
     }
 }

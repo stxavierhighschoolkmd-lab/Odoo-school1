@@ -1155,7 +1155,7 @@ describe("editable descendants", () => {
         undo(editor);
         await animationFrame();
         expect(getContent(el)).toBe(`<p>[]after</p>`);
-        expect(plugins.get("domMutation").currentChanges.mutations.length).toBe(0);
+        expect(plugins.get("domMutation").mutations.length).toBe(0);
     });
 
     test("editable descendants are extracted and put back in place when a patch is changing the template shape", async () => {
@@ -1218,7 +1218,7 @@ describe("editable descendants", () => {
         const historyCommits = editor.shared.history.getHistoryCommits();
         expect(historyCommits.length).toBe(1);
         const domMutationPlugin = plugins.get("domMutation");
-        expect(domMutationPlugin.currentChanges.mutations).toEqual([]);
+        expect(domMutationPlugin.mutations).toEqual([]);
     });
 
     test("editable descendants are extracted and put back in place during cleanforsave", async () => {

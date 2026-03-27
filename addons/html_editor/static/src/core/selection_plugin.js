@@ -229,10 +229,10 @@ export class SelectionPlugin extends Plugin {
         history_data_keys: ["activeElementId", "selection", "selectionAfter"],
 
         on_current_history_data_reset_handlers: () => {
-            this.currentChanges = new CurrentChanges();
+            this.resetCurrentData();
         },
         on_flushed_mutations_handlers: () => {
-            this.currentChanges.updateSelectionAfter(this.serializeEditableSelection());
+            this.currentData.selectionAfter = this.serializeEditableSelection();
         },
         on_history_written_handlers: () => {
             this.stageSelection();
@@ -252,7 +252,7 @@ export class SelectionPlugin extends Plugin {
                 this.setSerializedSelection(commit.data.selection);
             }
             if ("selectionAfter" in commit.data) {
-                this.currentChanges.updateSelection(commit.data.selectionAfter);
+                this.currentData.selection = commit.data.selectionAfter;
             }
         },
         on_savepoint_restored_handlers: (savePoint, lastRevertedChanges) => {
@@ -296,10 +296,14 @@ export class SelectionPlugin extends Plugin {
             },
             selectionAfter: null,
         }),
-        pending_commit_data_processors: (data) => ({ ...data, ...this.currentChanges.data }),
+        pending_commit_data_processors: (data) => ({
+            ...data,
+            ...this.currentData,
+        }),
     };
 
     setup() {
+        this.resetCurrentData();
         this.resetSelection();
         this.addGlobalDomListener("selectionchange", () => {
             this.updateActiveSelection();
@@ -362,6 +366,17 @@ export class SelectionPlugin extends Plugin {
         }
         this.preservedCursors = [];
     }
+    resetCurrentData() {
+        this.currentData = {
+            /** @type { NodeId | null } */
+            activeElementId: null,
+            /** @type { SerializedSelection | {} } */
+            selection: {},
+            /** @type { SerializedSelection | null } */
+            selectionAfter: null,
+        };
+    }
+
     editableDocumentHasFocus() {
         return this.focusEditableDocument;
     }
@@ -1297,9 +1312,9 @@ export class SelectionPlugin extends Plugin {
     // =======
 
     /**
-     * Set the serialized selection of the currentChanges.
+     * Set the serialized selection of the currentData.
      *
-     * This method is used to save a serialized selection in the currentChanges.
+     * This method is used to save a serialized selection in the currentData.
      * It will be necessary if the commit is reverted at some point because we
      * need to set the selection to where it was before any mutation was made.
      *
@@ -1317,11 +1332,11 @@ export class SelectionPlugin extends Plugin {
         //     );
         //     return;
         // }
-        this.currentChanges.updateSelection(this.serializeEditableSelection());
+        this.currentData.selection = this.serializeEditableSelection();
     }
 
     /**
-     * Set the serialized focus of the currentChanges.
+     * Set the serialized focus of the currentData.
      */
     stageFocus() {
         let activeElement = this.document.activeElement;
@@ -1329,9 +1344,8 @@ export class SelectionPlugin extends Plugin {
             activeElement = this.editable;
         }
         if (this.editable.contains(activeElement)) {
-            this.currentChanges.updateActiveElement(
-                this.dependencies.domReference.setNodeId(activeElement)
-            );
+            this.currentData.activeElementId =
+                this.dependencies.domReference.setNodeId(activeElement);
         }
     }
 
@@ -1387,60 +1401,5 @@ export class SelectionPlugin extends Plugin {
         if (elementToFocus?.isConnected && elementToFocus !== this.document.activeElement) {
             elementToFocus.focus();
         }
-    }
-}
-
-class CurrentChanges {
-    constructor() {
-        /** @type { NodeId | null } */
-        this._activeElementId = null;
-        /** @type { SerializedSelection | {} } */
-        this._selection = {};
-        /** @type { SerializedSelection | null } */
-        this._selectionAfter = null;
-    }
-
-    /**
-     * @return { HistoryCommitData }
-     */
-    get data() {
-        return {
-            activeElementId: this._activeElementId,
-            selection: { ...this._selection },
-            selectionAfter: { ...(this._selectionAfter || {}) },
-        };
-    }
-
-    get activeElementId() {
-        return this._activeElementId;
-    }
-
-    get selection() {
-        return this._selection;
-    }
-
-    get selectionAfter() {
-        return this._selectionAfter;
-    }
-
-    /**
-     * @param { NodeId } nodeId
-     */
-    updateActiveElement(nodeId) {
-        this._activeElementId = nodeId;
-    }
-
-    /**
-     * @param { SerializedSelection } serializedSelection
-     */
-    updateSelection(serializedSelection) {
-        this._selection = serializedSelection;
-    }
-
-    /**
-     * @param { SerializedSelection } serializedSelection
-     */
-    updateSelectionAfter(serializedSelection) {
-        this._selectionAfter = serializedSelection;
     }
 }

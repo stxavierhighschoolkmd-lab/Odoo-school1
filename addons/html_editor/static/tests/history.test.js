@@ -36,7 +36,7 @@ describe("reset", () => {
         expect(el.firstChild.getAttribute("data-test-normalize")).toBe("1");
         expect(historyPlugin.commits.length).toBe(1);
         const domMutationPlugin = plugins.get("domMutation");
-        expect(domMutationPlugin.currentChanges.mutations.length).toBe(0);
+        expect(domMutationPlugin.mutations.length).toBe(0);
     });
 
     test.tags("desktop");
@@ -51,12 +51,12 @@ describe("reset", () => {
             `<p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]</p>`
         );
         const domMutationPlugin = plugins.get("domMutation");
-        expect(domMutationPlugin.currentChanges.mutations.length).toBe(0);
+        expect(domMutationPlugin.mutations.length).toBe(0);
 
         await click(".odoo-editor-editable p");
         await animationFrame();
         await expectElementCount(".o-we-tablepicker", 0);
-        expect(domMutationPlugin.currentChanges.mutations.length).toBe(0);
+        expect(domMutationPlugin.mutations.length).toBe(0);
     });
 });
 
@@ -295,8 +295,8 @@ describe("selection", () => {
         await tick();
         const domReferencePlugin = plugins.get("domReference");
         const nodeId = domReferencePlugin.getNodeId(pElement.firstChild);
-        const domMutationPlugin = plugins.get("domMutation");
-        expect(domMutationPlugin.currentChanges.selection).toEqual({
+        const selectionPlugin = plugins.get("selection");
+        expect(selectionPlugin.currentData.selection).toEqual({
             anchorNodeId: nodeId,
             anchorOffset: 0,
             focusNodeId: nodeId,
@@ -392,7 +392,7 @@ describe("system classes and attributes", () => {
         p.className = "";
         p.className = "y";
         domMutationPlugin.processAndStageMutations();
-        domMutationPlugin.revertMutations(domMutationPlugin.currentChanges.mutations);
+        domMutationPlugin.revertMutations(domMutationPlugin.mutations);
 
         expect(getContent(el)).toBe(`<p class="y">a</p>`);
     });
@@ -529,7 +529,7 @@ describe("makePreviewableOperation", () => {
             div.appendChild(newElem);
         });
         let numberOfCommits = history.commits.length;
-        const numberOfCurrentMutations = domMutation.currentChanges.mutations.length;
+        const numberOfCurrentMutations = domMutation.mutations.length;
         previewableAddParagraph.preview("first");
         // commit added by the preview
         numberOfCommits += 1;
@@ -550,7 +550,7 @@ describe("makePreviewableOperation", () => {
         expect("#first").toHaveCount(0);
         expect("#second").toHaveCount(0);
         expect(history.commits.length).toBe(numberOfCommits);
-        expect(domMutation.currentChanges.mutations.length).toBe(numberOfCurrentMutations);
+        expect(domMutation.mutations.length).toBe(numberOfCurrentMutations);
     });
 
     test("makePreviewableOperation correctly commit operation", async () => {
@@ -1150,7 +1150,7 @@ describe("serialization", () => {
         await microTick();
 
         const domMutationPlugin = plugins.get("domMutation");
-        const mutations = domMutationPlugin.currentChanges.mutations;
+        const mutations = domMutationPlugin.mutations;
         const domReferencePlugin = plugins.get("domReference");
         const idToNode = (id) => domReferencePlugin.getNodeById(id);
 
@@ -1193,7 +1193,7 @@ describe("serialization", () => {
         await microTick();
 
         const domMutationPlugin = plugins.get("domMutation");
-        const mutations = domMutationPlugin.currentChanges.mutations;
+        const mutations = domMutationPlugin.mutations;
         const idToNode = (id) => domMutationPlugin.nodeMap.getNode(id);
 
         expect(mutations.length).toBe(5);

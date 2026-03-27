@@ -14,6 +14,9 @@ import { EditorCommit } from "../utils/commit";
  *
  * @typedef { Object } HistoryCommitData
  * @property { number } authorTimestamp
+ * @property { number } [commitTimestamp]
+ * @property { EditorCommitId } [previousCommitId]
+ * @property { boolean } [batchable]
  */
 /**
  * @typedef { Object } HistoryShared
@@ -135,6 +138,8 @@ export class HistoryPlugin extends Plugin {
     };
 
     setup() {
+        /** @type { HistoryCommitData } */
+        this.authorTimestamp = Date.now();
         this._onKeyupResetContenteditableNodes = [];
         this.addDomListener(this.document, "beforeinput", this.onDocumentBeforeInput.bind(this));
         this.addDomListener(this.document, "input", this.onDocumentInput.bind(this));
@@ -153,7 +158,7 @@ export class HistoryPlugin extends Plugin {
     }
 
     resetCurrentData() {
-        this.currentChanges = new CurrentChanges();
+        this.authorTimestamp = Date.now();
         this.trigger("on_current_history_data_reset_handlers");
     }
 
@@ -309,7 +314,7 @@ export class HistoryPlugin extends Plugin {
         this.commits.push(commit);
         // @todo @phoenix add this in the linkzws plugin.
         // this._setLinkZws();
-        this.currentChanges.setAuthorTimestamp();
+        this.authorTimestamp = Date.now();
         return commit;
     }
 
@@ -319,8 +324,7 @@ export class HistoryPlugin extends Plugin {
      */
     createSnapshotCommit(type = "original") {
         const data = this.processThrough("snapshot_commit_data_processors", {
-            ...this.currentChanges.data,
-            authorTimestamp: this.currentChanges.authorTimestamp || Date.now(), // TODO AGE: I don't think the || is needed.
+            authorTimestamp: this.authorTimestamp || Date.now(), // TODO AGE: I don't think the || is needed.
         });
         return new EditorCommit({
             id: this.commits.at(-1)?.id,
@@ -540,8 +544,9 @@ export class HistoryPlugin extends Plugin {
         if (commit === this.commits.at(-1)) {
             return;
         }
-        // TODO AGE: I'm guessing this needs to be processed through plugins?
-        let lastRevertedChanges = { ...this.currentChanges.data };
+        let lastRevertedChanges = this.processThrough("pending_commit_data_processors", {
+            authorTimestamp: this.authorTimestamp,
+        });
         const commitsToRestore = this.getCommitsUntil(commit.id);
         const irreversibleCommits = [];
         for (const commitToRestore of commitsToRestore) {
@@ -731,50 +736,5 @@ export class HistoryPlugin extends Plugin {
             }
             this._onKeyupResetContenteditableNodes = [];
         }
-    }
-}
-
-class CurrentChanges {
-    constructor() {
-        this._authorTimestamp = Date.now();
-        this._batchable = false;
-        this._commitTimestamp = null;
-    }
-
-    /**
-     * @return { HistoryCommitData }
-     */
-    get data() {
-        return {
-            authorTimestamp: this._authorTimestamp,
-            batchable: this._batchable,
-            commitTimestamp: this._commitTimestamp,
-        };
-    }
-
-    get authorTimestamp() {
-        return this._authorTimestamp;
-    }
-
-    get commitTimestamp() {
-        return this._commitTimestamp;
-    }
-
-    get batchable() {
-        return this._batchable;
-    }
-
-    /**
-     * Set the date at which the commit was authored.
-     */
-    setAuthorTimestamp() {
-        this._authorTimestamp = Date.now();
-    }
-
-    /**
-     * Set the date at which the commit was written (unless written before).
-     */
-    setCommitTimestamp() {
-        this._commitTimestamp ??= Date.now();
     }
 }

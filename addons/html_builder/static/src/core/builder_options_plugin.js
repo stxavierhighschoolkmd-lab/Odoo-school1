@@ -150,7 +150,7 @@ export class BuilderOptionsPlugin extends Plugin {
     resources = {
         history_data_keys: ["currentTarget", "nextTarget"],
         on_current_history_data_reset_handlers: () => {
-            this.currentChanges = new CurrentChanges();
+            this.targetState = {};
         },
         on_flushed_mutations_handlers: this.onFlushedMutations.bind(this),
         on_history_written_handlers: this.onHistoryWritten.bind(this),
@@ -179,28 +179,24 @@ export class BuilderOptionsPlugin extends Plugin {
             currentTarget: revertedCommit.currentTarget,
             nextTarget: revertedCommit.nextTarget,
         }),
-        standard_commit_data_processors: (commit) => ({
-            ...commit,
-            currentTarget: this.currentChanges.currentTarget,
-            nextTarget: this.currentChanges.nextTarget,
-        }),
+        pending_commit_data_processors: this.processCommitData.bind(this),
         save_point_data_processors: (savePoint) => ({
             ...savePoint,
-            currentTarget: this.currentChanges.currentTarget,
-            nextTarget: this.currentChanges.nextTarget,
+            targetState: { ...this.targetState },
+            currentTarget: this.targetState.current,
+            nextTarget: this.targetState.next,
         }),
         on_savepoint_restored_handlers: (savePoint) => {
             // Note AGE: this is the `extraStepInfos` stuff.
-            if ("currentTarget" in savePoint) {
-                this.currentChanges.updateCurrentTarget(savePoint.currentTarget);
-            }
-            if ("nextTarget" in savePoint) {
-                this.currentChanges.updateNextTarget(savePoint.nextTarget);
+            if ("targetState" in savePoint) {
+                this.targetState = { ...savePoint.targetState };
             }
         },
     };
 
     setup() {
+        /** @type { current?: Node, next?: Node } */
+        this.targetState = {};
         this.builderOptions = this.computeBuilderOptionsFromTemplate();
         this.builderOptionsContext = new Map();
         this.builderOptionsDependencies = new Map();
@@ -350,6 +346,14 @@ export class BuilderOptionsPlugin extends Plugin {
 
     getTarget() {
         return this.target;
+    }
+
+    processCommitData(data) {
+        return {
+            ...data,
+            currentTarget: this.targetState.current,
+            nextTarget: this.targetState.next,
+        };
     }
 
     deactivateContainers() {
@@ -515,23 +519,23 @@ export class BuilderOptionsPlugin extends Plugin {
             return;
         }
         // Store the next target to activate in the current commit.
-        this.currentChanges.updateNextTarget(targetEl);
+        this.targetState.next = targetEl;
     }
 
     onFlushedMutations(isRevision) {
         if (!isRevision) {
             // Store the current target in the current commit.
-            this.currentChanges.updateCurrentTarget(this.target);
+            this.targetState.current = this.target;
         }
     }
 
     onHistoryWritten(commit) {
         if (commit.type === "undo") {
             if ("currentTarget" in commit.data) {
-                this.currentChanges.updateCurrentTarget(commit.data.currentTarget);
+                this.targetState.current = commit.data.currentTarget;
             }
             if ("nextTarget" in commit.data) {
-                this.currentChanges.updateNextTarget(commit.data.nextTarget);
+                this.targetState.next = commit.data.nextTarget;
             }
         }
         // If a target is specified, activate its containers, otherwise simply
@@ -810,37 +814,4 @@ function getClosestElements(element, selector) {
 
 function withIds(arr) {
     return arr.map((el) => ({ ...el, id: uniqueId() }));
-}
-
-class CurrentChanges {
-    constructor() {
-        this._currentTarget;
-        this._nextTarget;
-    }
-
-    /**
-     * @return { HistoryCommitData }
-     */
-    get data() {
-        return {
-            currentTarget: this._currentTarget,
-            nextTarget: this._nextTarget,
-        };
-    }
-
-    get currentTarget() {
-        return this._currentTarget;
-    }
-
-    get nextTarget() {
-        return this._nextTarget;
-    }
-
-    updateCurrentTarget(currentTarget) {
-        this._currentTarget = currentTarget;
-    }
-
-    updateNextTarget(nextTarget) {
-        this._nextTarget = nextTarget;
-    }
 }
