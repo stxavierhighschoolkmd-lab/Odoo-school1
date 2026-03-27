@@ -382,7 +382,6 @@ class TestAutomaticLeaveDates(TestHrHolidaysCommon):
         calendar = self.env['resource.calendar'].create({
             'name': 'auto next day',
             'schedule_type': 'variable',
-            # TODO ZIRAH: Make a recurrency
             'attendance_ids': [(5, 0, 0),
                                (0, 0, {'date': datetime(2019, 9, 9), 'hour_from': 8, 'hour_to': 12})],
         })

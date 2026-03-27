@@ -30,7 +30,7 @@ class TestVariableResourceCalendar(TransactionCase):
                     'hour_to': hour + 4,
                     'recurrency': True,
                     'recurrency_type': 'weeks',
-                    'interval': 2,
+                    'recurrency_interval': 2,
                 })
             for day in range(5)
             for week in range(2)

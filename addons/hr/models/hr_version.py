@@ -643,10 +643,10 @@ class HrVersion(models.Model):
     def _get_hours_per_day(self):
         self.ensure_one()
         if self.resource_calendar_id:
-            return self.resource_calendar_id._get_hours_per_day()
+            return self.resource_calendar_id.hours_per_day
         if self.is_flexible:
             return self.hours_per_day
-        return self.company_id.resource_calendar_id._get_hours_per_day()
+        return self.company_id.resource_calendar_id.hours_per_day
 
     def action_open_version(self):
         self.ensure_one()

@@ -21,7 +21,7 @@ class TestVariableResourceCalendarPerformance(TransactionCase):
                     'hour_to': h[1],
                     'recurrency': True,
                     'recurrency_type': 'weeks',
-                    'interval': 2,
+                    'recurrency_interval': 2,
                     })
                 for d in range(5) for w in range(2) for h in [(8, 12), (13, 17)]
             ]

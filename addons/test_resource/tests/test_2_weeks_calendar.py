@@ -25,7 +25,7 @@ class Test2WeeksCalendar(TransactionCase):
                         "date": datetime(1, 1, att[2] + (7 * att[3]) + 1),
                         "recurrency": True,
                         "recurrency_type": 'weeks',
-                        "interval": 2,
+                        "recurrency_interval": 2,
                     },
                 ) for att in [
                     (8, 16, 0, 0),
@@ -49,7 +49,7 @@ class Test2WeeksCalendar(TransactionCase):
                         "date": datetime(1, 1, att[1] + (7 * int(att[2]) + 1)),
                         "recurrency": True,
                         "recurrency_type": 'weeks',
-                        "interval": 2,
+                        "recurrency_interval": 2,
                     },
                 ) for att in [
                     (8, 0, 0),
