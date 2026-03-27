@@ -358,6 +358,9 @@ class TestWebsiteAllPerformance(TestWebsitePerformanceCommon, TestWebsitePriceLi
         # To increase the query count you must ask the permission to al
         query_count, queries = self._get_queries_shop()
 
+        query_count += 1
+        queries['product_product'] += 1
+
         if self._has_demo_data():
             query_count += 4
             queries['account_tax'] += 1

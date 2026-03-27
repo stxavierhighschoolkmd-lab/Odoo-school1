@@ -311,7 +311,7 @@
         order: var(--o-wsale-card-price-order, 6);
         flex-wrap: wrap;
 
-        .product_price_unit {
+        .o_product_price_unit {
             font-size: var(--o-wsale-card-info-description-font-size, CLAMP(12px, 0.86em, 0.86rem));
         }
     }
