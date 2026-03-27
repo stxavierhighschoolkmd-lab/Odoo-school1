@@ -281,6 +281,7 @@ export class SelectionPlugin extends Plugin {
 
             // TODO ABD TODO @phoenix: evaluate if the selection is not restorable at the desired position
             savePoint.selection.restore();
+            this.stageSelection();
         },
         save_point_data_processors: (savePoint) =>
             // TODO ABD TODO @phoenix: selection may become obsolete, it should evolve with mutations.
