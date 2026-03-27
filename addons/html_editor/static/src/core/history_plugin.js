@@ -187,13 +187,6 @@ export class HistoryPlugin extends Plugin {
             }),
         });
         this.writeCommit(commit);
-        this.resetCurrentData();
-        // Note AGE: will not trigger for a reset commit (it calls writeCommit
-        // directly). That's like it used to be before my changes: reset caused
-        // a step without calling addStep but by using steps.push directly.
-        this.trigger("on_history_written_handlers", commit);
-        // Notify of changes.
-        this.config.onChange?.({ isPreviewing: this.isPreviewing });
         return commit;
     }
 
@@ -290,7 +283,14 @@ export class HistoryPlugin extends Plugin {
      */
     reset(content) {
         this.clean();
-        this.writeCommit(this.createSnapshotCommit());
+        // Commit without passing through `writeCommit` so as to avoid
+        // triggering `on_history_written_handlers`.
+        // TODO AGE: see if we can improve that.
+        const snapshot = this.createSnapshotCommit();
+        snapshot.commitTimestamp = Date.now();
+        this.commits.push(snapshot);
+        this.resetCurrentData();
+        this.config.onChange?.({ isPreviewing: this.isPreviewing });
         this.trigger("on_history_reset_handlers", content);
     }
 
@@ -317,7 +317,10 @@ export class HistoryPlugin extends Plugin {
         this.commits.push(commit);
         // @todo @phoenix add this in the linkzws plugin.
         // this._setLinkZws();
-        this.authorTimestamp = Date.now();
+        this.resetCurrentData();
+        this.trigger("on_history_written_handlers", commit);
+        // Notify of changes.
+        this.config.onChange?.({ isPreviewing: this.isPreviewing });
         return commit;
     }
 
