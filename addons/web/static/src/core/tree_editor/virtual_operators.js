@@ -12,6 +12,17 @@ import {
 } from "./condition_tree";
 import { boundDate, boundDatetime, getBounds, parseRelativeValue } from "./utils";
 
+/** @typedef {import("./condition_tree").AST} AST */
+/** @typedef {import("./condition_tree").Value} Value */
+/** @typedef {import("./condition_tree").Condition} Condition */
+/** @typedef {import("./condition_tree").Connector} Connector */
+/** @typedef {import("./condition_tree").Tree} Tree */
+/** @typedef {import("./condition_tree").Options} Options */
+
+/**
+ * @param {Condition} c
+ * @returns {{ initialPath: string, lastPart: string }}
+ */
 function splitPath(c) {
     if (typeof c.path !== "string" || c.path === "") {
         return { initialPath: "", lastPart: "" };
@@ -30,10 +41,20 @@ function splitPath(c) {
     return { initialPath, lastPart };
 }
 
+/**
+ * @param {Condition} c
+ * @returns {boolean}
+ */
 function isSimplePath(c) {
     return typeof c.path === "string" && !splitPath(c).initialPath;
 }
 
+/**
+ * @param {Tree} tree
+ * @param {string} initialPath
+ * @param {boolean} [negate]
+ * @returns {Tree}
+ */
 function wrapInAny(tree, initialPath, negate) {
     if (initialPath) {
         return condition(initialPath, "any", cloneTree(tree), negate);
@@ -41,6 +62,11 @@ function wrapInAny(tree, initialPath, negate) {
     return { ...cloneTree(tree), negate };
 }
 
+/**
+ * @param {Tree} tree
+ * @param {TreeOperatorOptions} options
+ * @returns {Tree}
+ */
 function introduceSetOperators(tree, options = {}) {
     function _introduceSetOperator(c, options = {}) {
         const fieldType = options.getFieldDef?.(c.path)?.type;
@@ -56,6 +82,10 @@ function introduceSetOperators(tree, options = {}) {
     return operate(_introduceSetOperator, tree, options);
 }
 
+/**
+ * @param {Tree} tree
+ * @returns {Tree}
+ */
 function eliminateSetOperators(tree) {
     function _removeSetOperator(c) {
         if (["set", "not set"].includes(c.operator)) {
@@ -66,6 +96,11 @@ function eliminateSetOperators(tree) {
     return operate(_removeSetOperator, tree);
 }
 
+/**
+ * @param {Tree} tree
+ * @param {TreeOperatorOptions} options
+ * @returns {Tree}
+ */
 function introduceStartsWithOperators(tree, options) {
     function _introduceStartsWithOperator(c, options) {
         const fieldType = options.getFieldDef?.(c.path)?.type;
@@ -82,6 +117,10 @@ function introduceStartsWithOperators(tree, options) {
     return operate(_introduceStartsWithOperator, tree, options);
 }
 
+/**
+ * @param {Tree} tree
+ * @returns {Tree}
+ */
 function eliminateStartsWithOperators(tree) {
     function _eliminateStartsWithOperator(c) {
         if (c.operator === "starts with") {
@@ -91,6 +130,10 @@ function eliminateStartsWithOperators(tree) {
     return operate(_eliminateStartsWithOperator, tree);
 }
 
+/**
+ * @param {Condition} c
+ * @returns {boolean}
+ */
 function isSimpleAnd(c) {
     if (
         c.type === "connector" &&
@@ -104,6 +147,10 @@ function isSimpleAnd(c) {
     return false;
 }
 
+/**
+ * @param {Condition} c
+ * @returns {boolean}
+ */
 function isBetween(c) {
     const [{ path: p1, operator: op1, value: value1 }, { path: p2, operator: op2, value: value2 }] =
         c.children;
@@ -120,6 +167,10 @@ function makeBetween(path, value1, value2, isProperty) {
     ]);
 }
 
+/**
+ * @param {Condition} c
+ * @returns {boolean}
+ */
 function isStrictBetween(c) {
     const [{ path: p1, operator: op1, value: value1 }, { path: p2, operator: op2, value: value2 }] =
         c.children;
@@ -186,6 +237,11 @@ function makeRelativeBetween(path, value1, value2, isProperty, smartDates, field
     ]);
 }
 
+/**
+ * @param {Tree} tree
+ * @param {TreeOperatorOptions} options
+ * @returns {boolean}
+ */
 function introduceInRangeOperators(tree, options = {}) {
     function _introduceInRangeOperator(c, options) {
         const path = c.children[0].path;
@@ -232,6 +288,11 @@ function introduceInRangeOperators(tree, options = {}) {
     );
 }
 
+/**
+ * @param {Tree} tree
+ * @param {TreeOperatorOptions} options
+ * @returns {boolean}
+ */
 function eliminateInRangeOperators(tree, options = {}) {
     function _eliminateInRangeOperator(c, options) {
         if (c.operator !== "in range") {
@@ -255,6 +316,11 @@ function eliminateInRangeOperators(tree, options = {}) {
     return operate(_eliminateInRangeOperator, tree, options);
 }
 
+/**
+ * @param {Tree} tree
+ * @param {TreeOperatorOptions} options
+ * @returns {boolean}
+ */
 function introduceBetweenOperators(tree, options = {}) {
     function _introduceBetweenOperator(c, options) {
         const res = isBetween(c);
@@ -276,6 +342,10 @@ function introduceBetweenOperators(tree, options = {}) {
     );
 }
 
+/**
+ * @param {Tree} tree
+ * @returns {Tree}
+ */
 function eliminateBetweenOperators(tree) {
     function _eliminateBetweenOperator(c) {
         if (c.operator !== "between") {
@@ -291,6 +361,10 @@ function eliminateBetweenOperators(tree) {
     return operate(_eliminateBetweenOperator, tree);
 }
 
+/**
+ * @param {Tree} tree
+ * @returns {Tree}
+ */
 function eliminateAnyOperators(tree) {
     function _eliminateAnyOperator(c) {
         if (
@@ -309,6 +383,10 @@ function eliminateAnyOperators(tree) {
     return operate(_eliminateAnyOperator, tree);
 }
 
+/**
+ * @param {Tree} tree
+ * @returns {Tree}
+ */
 function removeFalseTrueLeaves(tree) {
     function _removeFalseTrueLeave(c) {
         if (c.operator !== "=" || c.value !== 1) {
@@ -324,6 +402,11 @@ function removeFalseTrueLeaves(tree) {
     return operate(_removeFalseTrueLeave, tree);
 }
 
+/**
+ * @param {Tree} tree
+ * @param {TreeOperatorOptions} options
+ * @returns {boolean}
+ */
 export function introduceVirtualOperators(tree, options = {}) {
     return applyTransformations(
         [
@@ -338,6 +421,11 @@ export function introduceVirtualOperators(tree, options = {}) {
     );
 }
 
+/**
+ * @param {Tree} tree
+ * @param {TreeOperatorOptions} options
+ * @returns {boolean}
+ */
 export function eliminateVirtualOperators(tree, options = {}) {
     return applyTransformations(
         [
@@ -351,6 +439,11 @@ export function eliminateVirtualOperators(tree, options = {}) {
     );
 }
 
+/**
+ * @param {Tree} tree
+ * @param {Tree} otherTree
+ * @returns {boolean}
+ */
 export function areEquivalentTrees(tree, otherTree) {
     const simplifiedTree = removeFalseTrueLeaves(eliminateVirtualOperators(tree));
     const otherSimplifiedTree = removeFalseTrueLeaves(eliminateVirtualOperators(otherTree));
