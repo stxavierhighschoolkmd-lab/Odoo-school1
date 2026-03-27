@@ -1,6 +1,6 @@
 /**
  * @typedef { string } EditorCommitId
- * @typedef { "original" | "undo" | "redo" | "restore" | "reset" } EditorCommitType
+ * @typedef { "standard" | "undo" | "redo" | "restore" } EditorCommitType
  * @typedef { { [key: string]: any } } EditorCommitData
  */
 
@@ -11,10 +11,10 @@ export class EditorCommit {
     /**
      * @param { Object } [param0 = {}]
      * @param { EditorCommitId } [param0.id = this.generateId()]
-     * @param { EditorCommitType } [param0.type = "original"]
+     * @param { EditorCommitType } [param0.type = "standard"]
      * @param { T } [param0.data = {}]
      */
-    constructor({ id = this.generateId(), type = "original", data = {} } = {}) {
+    constructor({ id = this.generateId(), type = "standard", data = {} } = {}) {
         /** @type { EditorCommitId } */
         this.id = id;
         /** @type { EditorCommitType } */

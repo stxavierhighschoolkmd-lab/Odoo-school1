@@ -287,7 +287,7 @@ export class HistoryPlugin extends Plugin {
      */
     reset(content) {
         this.clean();
-        this.writeCommit(this.createSnapshotCommit("reset"));
+        this.writeCommit(this.createSnapshotCommit());
         this.trigger("on_history_reset_handlers", content);
     }
 
@@ -319,18 +319,13 @@ export class HistoryPlugin extends Plugin {
     }
 
     /**
-     * @param { CommitType } [type = "original"]
      * @returns { EditorCommit }
      */
-    createSnapshotCommit(type = "original") {
+    createSnapshotCommit() {
         const data = this.processThrough("snapshot_commit_data_processors", {
             authorTimestamp: this.authorTimestamp || Date.now(), // TODO AGE: I don't think the || is needed.
         });
-        return new EditorCommit({
-            id: this.commits.at(-1)?.id,
-            type,
-            data,
-        });
+        return new EditorCommit({ id: this.commits.at(-1)?.id, data });
     }
 
     // ===========================
@@ -372,17 +367,16 @@ export class HistoryPlugin extends Plugin {
      * @returns { number }
      */
     getNextRevisionIndex(type, fromIndex = this.commits.length) {
-        const regularTypes = ["original", "reset"];
         // Do not undo/redo the initial commit.
         for (let index = fromIndex - 1; index > 0; index--) {
             const commit = this.commits[index];
             if (this.isReversibleCommit(commit) && !this.discardedCommits.has(commit.id)) {
-                if (type === "redo" && regularTypes.includes(commit.type)) {
+                if (type === "redo" && commit.type === "standard") {
                     return -1;
                 } else if (
                     !this.revertedCommits.has(commit.id) &&
                     // Go back to first commit that can be undone.
-                    ((type === "undo" && [...regularTypes, "redo"].includes(commit.type)) ||
+                    ((type === "undo" && ["standard", "redo"].includes(commit.type)) ||
                         // Look for an "undo" commit that has not yet been redone.
                         (type === "redo" && commit.type === "undo"))
                 ) {
