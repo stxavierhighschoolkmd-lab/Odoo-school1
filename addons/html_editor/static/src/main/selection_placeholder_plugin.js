@@ -5,6 +5,7 @@ import {
     allowsParagraphRelatedElements,
     isEmpty,
     isNotEditableNode,
+    isPhrasingContent,
 } from "@html_editor/utils/dom_info";
 import {
     closestElement,
@@ -37,6 +38,7 @@ export class SelectionPlaceholderPlugin extends Plugin {
                 return true;
             }
         },
+<<<<<<< b1cd6d141710dbf23e52224d4de3fbb043796574
         is_selection_blocker_predicates: (blocker) => {
             if (
                 (blocker.nodeType === Node.ELEMENT_NODE &&
@@ -46,12 +48,41 @@ export class SelectionPlaceholderPlugin extends Plugin {
                 return false;
             } else if (isNotEditableNode(blocker)) {
                 return true;
+||||||| cf388042ba25f059785b77dc3b883893b43c71b3
+        selection_blocker_predicates: (blocker) => {
+            if (
+                (blocker.nodeType === Node.ELEMENT_NODE &&
+                    blocker.hasAttribute(PLACEHOLDER_ATTRIBUTE)) ||
+                !isBlock(blocker)
+            ) {
+                return false;
+            } else if (isNotEditableNode(blocker)) {
+                return true;
+=======
+        selection_blocker_predicates: (blocker) => {
+            if (isNotEditableNode(blocker)) {
+                return isBlock(blocker);
+>>>>>>> 5d1e36c15314f27fce9256239cb961a877dc9d0e
             }
         },
+<<<<<<< b1cd6d141710dbf23e52224d4de3fbb043796574
         can_contain_selection_placeholder_predicates: (container) => {
             if (!container.isContentEditable || !allowsParagraphRelatedElements(container)) {
                 return false;
             } else if (container.getAttribute("contenteditable") === "true") {
+||||||| cf388042ba25f059785b77dc3b883893b43c71b3
+        selection_placeholder_container_predicates: (container) => {
+            if (!container.isContentEditable || !allowsParagraphRelatedElements(container)) {
+                return false;
+            } else if (container.getAttribute("contenteditable") === "true") {
+=======
+        selection_placeholder_container_predicates: (container) => {
+            if (
+                container.getAttribute("contenteditable") === "true" &&
+                !isPhrasingContent(container) &&
+                allowsParagraphRelatedElements(container)
+            ) {
+>>>>>>> 5d1e36c15314f27fce9256239cb961a877dc9d0e
                 return true;
             }
         },
@@ -90,6 +121,7 @@ export class SelectionPlaceholderPlugin extends Plugin {
                 false
         );
 
+        const marginUpdates = [];
         // 1. Update current placeholders.
         for (const placeholder of this.editable.querySelectorAll(PLACEHOLDER_SELECTOR)) {
             const siblings = ["before", "after"].map((side) =>
@@ -106,7 +138,10 @@ export class SelectionPlaceholderPlugin extends Plugin {
                 placeholder.remove();
             } else {
                 // Update the margins.
-                this.applyMargin(placeholder, ...siblings);
+                const update = this.prepareMarginUpdate(placeholder, ...siblings);
+                if (update) {
+                    marginUpdates.push(update);
+                }
             }
         }
 
@@ -116,6 +151,7 @@ export class SelectionPlaceholderPlugin extends Plugin {
         ].filter((element) => isSelectionBlocker(element));
 
         // 2. Add placeholders before and after every blocker where necessary.
+        const pendingMarginUpdates = [];
         for (const blocker of blockers) {
             for (const side of ["before", "after"]) {
                 // Get the first non-whitespace sibling.
@@ -129,12 +165,29 @@ export class SelectionPlaceholderPlugin extends Plugin {
                     placeholder.setAttribute(PLACEHOLDER_ATTRIBUTE, "");
                     // Position the placeholder.
                     const siblings = side === "before" ? [sibling, blocker] : [blocker, sibling];
-                    this.applyMargin(placeholder, ...siblings);
                     // Insert the placeholder.
                     blocker[side](placeholder);
+                    pendingMarginUpdates.push({
+                        placeholder,
+                        siblings,
+                    });
                 }
             }
         }
+
+        // READ phase
+        for (const { placeholder, siblings } of pendingMarginUpdates) {
+            const update = this.prepareMarginUpdate(placeholder, ...siblings);
+            if (update) {
+                marginUpdates.push(update);
+            }
+        }
+
+        // WRITE phase
+        for (const update of marginUpdates) {
+            update();
+        }
+
         // 3. Reset blinker classes.
         this.resetBlinkerClasses();
     }
@@ -146,7 +199,7 @@ export class SelectionPlaceholderPlugin extends Plugin {
      * @param {Element} previous
      * @param {Element} next
      */
-    applyMargin(placeholder, previous, next) {
+    prepareMarginUpdate(placeholder, previous, next) {
         const marginBefore = previous ? getMargin(previous, "bottom") : 0;
         const marginAfter = next ? getMargin(next, "top") : 0;
         const middleMargin = Math.abs(marginBefore - marginAfter) / 2;
@@ -157,7 +210,7 @@ export class SelectionPlaceholderPlugin extends Plugin {
             const negativeMargin = -1 - middleMargin;
             const marginTop = marginAfter >= marginBefore ? positiveMargin : negativeMargin;
             const marginBottom = marginAfter >= marginBefore ? negativeMargin : positiveMargin;
-            placeholder.style.margin = `${marginTop}px 0 ${marginBottom}px`;
+            return () => (placeholder.style.margin = `${marginTop}px 0 ${marginBottom}px`);
         }
     }
 
