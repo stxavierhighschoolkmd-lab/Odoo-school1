@@ -48,8 +48,8 @@ class SaleOrderLine(models.Model):
 
         Given a section line of a sale order, this method collects the section
         itself and all its related lines, and stores them as an inactive
-        ``sale.order.template`` with source_order_id. If a template with
-        the same name and source sale order already exists, its lines are replaced;
+        ``sale.order.template`` with is_section_template True. If a template with
+        the same name and user already exists, its lines are replaced;
         otherwise, a new template is created.
 
         :return: created/updated section template values
@@ -65,10 +65,9 @@ class SaleOrderLine(models.Model):
 
         domain = (
             Domain("name", "=", self.name)
-            & Domain("create_uid", "=", self.env.user.id)
             & Domain("company_id", "=", self.order_id.company_id.id)
-            & Domain("source_order_id", "=", self.order_id.id)
             & Domain("is_section_template", "=", True)
+            & Domain("create_uid", "=", self.env.user.id)
         )
 
         existing_template = (
@@ -83,17 +82,17 @@ class SaleOrderLine(models.Model):
         if existing_template:
             template_lines_data = [Command.clear(), *template_lines]
             existing_template.sale_order_template_line_ids = template_lines_data
-            return existing_template.read(["id", "name", "source_order_id"])[0]
+            return existing_template.read(["id", "name", "create_uid"])[0]
 
         new_template = self.env["sale.order.template"].create({
             "name": self.name,
-            "source_order_id": self.order_id.id,
             "is_section_template": True,
             "active": False,
             "sale_order_template_line_ids": template_lines,
             "company_id": self.order_id.company_id.id,
+            "share_template": False,
         })
-        return new_template.read(["id", "name", "source_order_id"])[0]
+        return new_template.read(["id", "name", "create_uid"])[0]
 
     # === TOOLING ===#
 

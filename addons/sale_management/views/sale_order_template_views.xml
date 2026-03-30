@@ -20,6 +20,7 @@
         <field name="arch" type="xml">
             <form string="Quotation Template">
                 <sheet>
+                    <field name="active" invisible="1"/>
                     <div name="button_box" class="oe_button_box"/>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <div class="oe_title" name="sale_order_template_title">
@@ -28,23 +29,20 @@
                             <field name="name" placeholder="e.g. Standard Consultancy Package" class="d-block"/>
                         </h1>
                     </div>
-                    <group>
-                        <group name="sale_info">
-                            <field name="active" invisible="1"/>
-                            <label for="number_of_days" string="Quotation Validity"/>
-                            <div class="o_input_box" id="number_of_days">
-                                <field name="number_of_days"/>
-                                <div class="o_input_box_overlay_end">days</div>
-                            </div>
-                            <field name="mail_template_id" context="{'default_model': 'sale.order'}"/>
-                            <field name="company_id" options="{'no_create': True}" groups="base.group_multi_company" placeholder="Visible to all"/>
-                            <field name="journal_id"/>
-                        </group>
-                        <group name="so_confirmation">
-                            <field name="require_signature"/>
-                            <field name="require_payment" widget="boolean_toggle"/>
-                            <field name="prepayment_percent" invisible="not require_payment" widget="percentage"/>
-                        </group>
+                    <group name="sale_info" class="w-50">
+                        <field name="share_template"/>
+                        <field
+                            name="team_ids"
+                            invisible="not share_template"
+                            widget="many2many_tags"
+                            placeholder="Visible to all"
+                        />
+                        <field
+                            name="company_id"
+                            options="{'no_create': True}"
+                            groups="base.group_multi_company"
+                            placeholder="Visible to all"
+                        />
                     </group>
                     <notebook name="main_book">
                         <page string="Lines" name="order_lines">
@@ -111,6 +109,42 @@
                                 name="note"
                                 nolabel="1"
                                 placeholder="The Administrator can set default Terms &amp; Conditions in Sales Settings. Terms set here will show up instead if you select this quotation template."/>
+                        </page>
+                        <page string="Settings" name="settings">
+                            <group name="settings">
+                                <group string="Confirmation" name="confirmation">
+                                    <label for="number_of_days" string="Quotation Validity"/>
+                                    <div class="o_input_box w-25" id="number_of_days">
+                                        <field name="number_of_days"/>
+                                        <div class="o_input_box_overlay_end">days</div>
+                                    </div>
+                                    <field name="require_signature" widget="boolean_toggle"/>
+                                    <label for="require_payment"/>
+                                    <div>
+                                        <field
+                                            name="require_payment"
+                                            class="oe_inline"
+                                            widget="boolean_toggle"
+                                        />
+                                        <span invisible="not require_payment">
+                                            of
+                                            <field
+                                                name="prepayment_percent"
+                                                class="mx-2 w-25"
+                                                widget="percentage"
+                                            />
+                                        </span>
+                                    </div>
+                                    <field
+                                        name="mail_template_id"
+                                        class="w-50"
+                                        context="{'default_model': 'sale.order'}"
+                                    />
+                                </group>
+                                <group string="Invoicing" name="invoicing">
+                                    <field name="journal_id"/>
+                                </group>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>

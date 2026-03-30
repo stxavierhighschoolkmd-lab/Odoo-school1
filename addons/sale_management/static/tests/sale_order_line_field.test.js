@@ -1,6 +1,6 @@
 import { expect, test } from '@odoo/hoot';
 import { queryAllTexts } from '@odoo/hoot-dom';
-import { saleManagementModels } from '@sale_management/../tests/sale_management_test_helpers';
+import { saleManagementModels } from "@sale_management/../tests/sale_management_test_helpers";
 import {
     clickSave,
     contains,

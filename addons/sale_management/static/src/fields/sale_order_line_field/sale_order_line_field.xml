@@ -69,19 +69,15 @@
                         <DropdownItem
                             onSelected="() => this.env.onAddSectionTemplate(sectionTemplate.id)"
                         >
-                            <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex align-items-center gap-4">
                                 <span
                                     class="flex-grow-1 text-truncate"
                                     t-att-title="sectionTemplate.name"
-                                >
-                                    <t t-out="sectionTemplate.name"/>
-                                </span>
-
-                                <span class="text-muted text-nowrap text-end">
-                                    <t t-out="sectionTemplate.source_order_id[1]"/>
-                                </span>
+                                    t-out="sectionTemplate.name"
+                                />
 
                                 <a
+                                    t-if="sectionTemplate.create_uid[0] === this.user.userId"
                                     href="#"
                                     role="button"
                                     class="text-muted p-0"
