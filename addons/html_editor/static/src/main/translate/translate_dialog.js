@@ -7,7 +7,7 @@ import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { GoogleTranslator, ChatGPTTranslator } from "./translator";
 
-const POSTPROCESS_GENERATED_CONTENT = (content, baseContainer) => {
+const POSTPROCESS_GENERATED_CONTENT = (content, baseContainer, document) => {
     let lines = content.split("\n");
     if (baseContainer.toUpperCase() === "P") {
         // P has a margin bottom which is used as an interline, no need to
@@ -64,9 +64,11 @@ export class TranslateDialog extends Component {
         baseContainer: { type: String, optional: true },
         originalText: String,
         targetLang: { type: Object, shape: { languageCode: String, languageName: String } },
+        document: { validate: (p) => p.nodeType === Node.DOCUMENT_NODE, optional: true },
     };
     static defaultProps = {
         baseContainer: "DIV",
+        document: window.document,
     };
 
     setup() {
@@ -97,7 +99,11 @@ export class TranslateDialog extends Component {
     }
 
     formatContent(content) {
-        const fragment = POSTPROCESS_GENERATED_CONTENT(content, this.props.baseContainer);
+        const fragment = POSTPROCESS_GENERATED_CONTENT(
+            content,
+            this.props.baseContainer,
+            this.props.document
+        );
         let result = "";
         for (const child of fragment.children) {
             this.props.sanitize(child, { IN_PLACE: true });
@@ -165,7 +171,8 @@ export class TranslateDialog extends Component {
             });
             const fragment = POSTPROCESS_GENERATED_CONTENT(
                 translatedText || "",
-                this.props.baseContainer
+                this.props.baseContainer,
+                this.props.document
             );
             this.props.sanitize(fragment, { IN_PLACE: true });
             this.props.insert(fragment);

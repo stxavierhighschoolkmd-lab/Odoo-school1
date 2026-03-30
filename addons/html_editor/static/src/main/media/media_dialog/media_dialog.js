@@ -16,6 +16,7 @@ export class MediaDialog extends Component {
     static defaultProps = {
         useMediaLibrary: true,
         extraTabs: [],
+        document: window.document,
     };
     static components = {
         Dialog,
@@ -25,6 +26,7 @@ export class MediaDialog extends Component {
         extraTabs: { type: Array, optional: true, element: Object },
         visibleTabs: { type: Array, optional: true, element: String },
         activeTab: { type: String, optional: true },
+        document: { validate: (p) => p.nodeType === Node.DOCUMENT_NODE, optional: true },
         "*": true,
     };
 
@@ -214,6 +216,7 @@ export class MediaDialog extends Component {
                 extraClassesToRemove: this.initialIconClasses,
                 multiImages: this.props.multiImages,
                 saveFunction: this.props.save,
+                document: this.props.document,
             });
         }
         this.close({ closeReason: "save" });

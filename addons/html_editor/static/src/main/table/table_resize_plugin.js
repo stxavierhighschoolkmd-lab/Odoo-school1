@@ -99,11 +99,11 @@ export class TableResizePlugin extends Plugin {
 
             if (!colgroup) {
                 const cells = tableGrid[0];
-                colgroup = document.createElement("colgroup");
+                colgroup = this.document.createElement("colgroup");
                 for (const cell of cells) {
                     const rect = cell.getBoundingClientRect();
                     const width = rect.width / (cell.colSpan || 1);
-                    const col = document.createElement("col");
+                    const col = this.document.createElement("col");
                     col.style.width = `${width}px`;
                     colgroup.appendChild(col);
                 }

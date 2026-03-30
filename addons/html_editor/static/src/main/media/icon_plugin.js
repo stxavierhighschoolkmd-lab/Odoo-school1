@@ -203,6 +203,7 @@ export class IconPlugin extends Plugin {
             visibleTabs: ["ICONS"],
             media: selectedIcon,
             save: (el) => this.onSaveIcon(el, selectedIcon),
+            document: this.document,
         });
     }
 
