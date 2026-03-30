@@ -4,12 +4,13 @@ import {
     setupHTMLBuilder,
 } from "@html_builder/../tests/helpers";
 import { BuilderAction } from "@html_builder/core/builder_action";
+import { ColorPlugin } from "@html_builder/core/color_plugin";
 import { BaseOptionComponent } from "@html_builder/core/utils";
 import { undo } from "@html_editor/../tests/_helpers/user_actions";
 import { expect, test, describe } from "@odoo/hoot";
 import { animationFrame, click, Deferred, hover, press, tick } from "@odoo/hoot-dom";
 import { xml } from "@odoo/owl";
-import { contains } from "@web/../tests/web_test_helpers";
+import { contains, patchWithCleanup } from "@web/../tests/web_test_helpers";
 
 describe.current.tags("desktop");
 
@@ -259,4 +260,33 @@ test("should open the last used tab", async () => {
     await animationFrame();
     await contains(".we-bg-options-container .o_we_color_preview").click();
     expect(".theme-tab.active").toHaveCount(1);
+});
+
+test("preview should show color combination using CSS variables", async () => {
+    patchWithCleanup(ColorPlugin.prototype, {
+        getColorCombination() {
+            return "o_cc1";
+        },
+    });
+    addBuilderAction({
+        customAction: class extends BuilderAction {
+            static id = "customAction";
+            getValue() {
+                return "";
+            }
+        },
+    });
+    addBuilderOption(
+        class extends BaseOptionComponent {
+            static selector = ".test-options-target";
+            static template = xml`<BuilderColorPicker action="'customAction'" defaultColor="''"/>`;
+        }
+    );
+    await setupHTMLBuilder(`<div class="test-options-target">b</div>`);
+
+    await contains(":iframe .test-options-target").click();
+    expect(".we-bg-options-container .o_we_color_preview").toHaveAttribute(
+        "style",
+        "background-color: var(--hb-cp-o-cc1-bg); background-image: var(--hb-cp-o-cc1-bg-gradient);"
+    );
 });
