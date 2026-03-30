@@ -344,3 +344,57 @@ test("applying option container button should wait for actions in progress", asy
     undo(editor);
     expect(editable).toHaveInnerHTML(`<div class="test-options-target o-paragraph">plop</div>`);
 });
+
+test("Custom snippet is available as both block and inner content after saving", async () => {
+    const mapStructure = {
+        name: "Map",
+        groupName: "geo",
+        content: `
+                <section data-snippet="s_map" data-name="Map">
+                    <div class="o_map">Map</div>
+                </section>
+            `,
+    };
+    const mapInnerContentDesc = {
+        name: "Map",
+        content: `<div data-snippet="s_map" class="o_snippet_drop_in_only">Map</div>`,
+    };
+
+    const snippets = {
+        snippet_groups: [
+            "<div name='Custom' data-o-snippet-group='custom'><section data-snippet='s_snippet_group'></section></div>",
+            "<div name='Geo' data-o-snippet-group='geo'><section data-snippet='s_snippet_group'></section></div>",
+        ],
+        snippet_structure: [getSnippetStructure(mapStructure)],
+        snippet_content: [getInnerContent(mapInnerContentDesc)],
+        snippet_custom: [],
+    };
+
+    const snippetWithMap = `
+        <section data-snippet="s_map" data-name="Map">
+            <div class="o_map">Map content</div>
+        </section>
+    `;
+
+    await setupWebsiteBuilder(snippetWithMap, { snippets });
+
+    onRpc("ir.ui.view", "save_snippet", ({ kwargs }) => {
+        const { name, arch } = kwargs;
+        const customSnippet = `<div name="${name}">${arch}</div>`;
+        snippets.snippet_custom.push(customSnippet);
+        return name;
+    });
+    onRpc("ir.ui.view", "render_public_asset", () => getSnippetView(snippets));
+
+    await contains(":iframe section[data-snippet='s_map']").click();
+    await contains(".oe_snippet_save").click();
+    await contains(".o_dialog .btn:contains('Save')").click();
+
+    await contains(".o-website-builder_sidebar .o-snippets-tabs button:contains(Add)").click();
+    expect(
+        ".o-snippets-menu div:contains('Custom Inner Content') div[name='Custom Map']"
+    ).toHaveCount(1);
+    expect(".o-snippets-menu #snippet_groups .o_snippet[data-snippet-group='custom']").toHaveCount(
+        1
+    );
+});
