@@ -80,7 +80,7 @@ export class CollaborationPlugin extends Plugin {
         this.branchCommitIds = [];
     }
     onHistoryReset() {
-        const firstCommit = this.dependencies.history.getHistoryCommits()[0];
+        const firstCommit = this.dependencies.history.getCommits()[0];
         this.snapshots = [{ commit: firstCommit }];
     }
     /**
@@ -99,7 +99,7 @@ export class CollaborationPlugin extends Plugin {
      * Get all the history ids for the current history branch.
      */
     getBranchIds() {
-        const commits = this.dependencies.history.getHistoryCommits();
+        const commits = this.dependencies.history.getCommits();
         return (this.initialBranchCommitId || "")
             .split(",")
             .concat(this.branchCommitIds)
@@ -135,7 +135,7 @@ export class CollaborationPlugin extends Plugin {
             // `addExternalCommit` will impact the array of written commits.
             // Get a new copy at every step of the loop to make sure to have an
             // updated version.
-            const commits = this.dependencies.history.getHistoryCommits();
+            const commits = this.dependencies.history.getCommits();
             // todo: add a test that no 2 on_history_missing_parent_commit_handlers
             // are called in same stack.
             const insertIndex = this.getInsertCommitIndex(commits, newCommit);
@@ -231,7 +231,7 @@ export class CollaborationPlugin extends Plugin {
      * @param {string} [params.toCommitId]
      */
     historyGetMissingCommits({ fromCommitId, toCommitId }) {
-        const commits = this.dependencies.history.getHistoryCommits();
+        const commits = this.dependencies.history.getCommits();
         const fromIndex = commits.findIndex((x) => x.id === fromCommitId);
         const toIndex = toCommitId ? commits.findIndex((x) => x.id === toCommitId) : commits.length;
         if (fromIndex === -1 || toIndex === -1) {
@@ -241,7 +241,7 @@ export class CollaborationPlugin extends Plugin {
     }
 
     getSnapshotCommits() {
-        const historyCommits = this.dependencies.history.getHistoryCommits();
+        const historyCommits = this.dependencies.history.getCommits();
         // If the current snapshot has no time, it means that there is the no
         // other snapshot that have been made (either it is the one created upon
         // initialization or reseted by history's resetFromCommits).
@@ -285,7 +285,7 @@ export class CollaborationPlugin extends Plugin {
     }
 
     makeSnapshot() {
-        const historyLength = this.dependencies.history.getHistoryCommits().length;
+        const historyLength = this.dependencies.history.getCommits().length;
         if (!this.lastSnapshotLength || this.lastSnapshotLength < historyLength) {
             this.lastSnapshotLength = historyLength;
             const commit = this.dependencies.history.createSnapshotCommit();

@@ -425,7 +425,7 @@ describe("makeSavePoint", () => {
     });
     test("makeSavePoint keeps old draft mutations, discards new ones, and does not add an unnecessary commit", async () => {
         const { el, editor } = await setupEditor(`<p>[]c</p>`);
-        expect(editor.shared.history.getHistoryCommits().length).toBe(1);
+        expect(editor.shared.history.getCommits().length).toBe(1);
         const p = el.querySelector("p");
         // draft to save
         p.append(document.createTextNode("d"));
@@ -436,12 +436,12 @@ describe("makeSavePoint", () => {
         expect(getContent(el)).toBe(`<p>[]cde</p>`);
         savepoint();
         expect(getContent(el)).toBe(`<p>[]cd</p>`);
-        expect(editor.shared.history.getHistoryCommits().length).toBe(1);
+        expect(editor.shared.history.getCommits().length).toBe(1);
     });
     test("applying a makeSavePoint reverses ulterior reversible commits and adds a new restore commit, while handling draft mutations", async () => {
         const { el, editor, plugins } = await setupEditor(`<p>[]c</p>`);
         const historyPlugin = plugins.get("history");
-        expect(editor.shared.history.getHistoryCommits().length).toBe(1);
+        expect(editor.shared.history.getCommits().length).toBe(1);
         const p = el.querySelector("p");
         // draft to save
         p.append(document.createTextNode("d"));
@@ -450,7 +450,7 @@ describe("makeSavePoint", () => {
         // commit to revert
         editor.shared.dom.insert("z");
         editor.shared.history.commit();
-        let commits = editor.shared.history.getHistoryCommits();
+        let commits = editor.shared.history.getCommits();
         expect(commits.length).toBe(2);
         const zCommit = commits.at(-1);
         // draft to discard
@@ -458,7 +458,7 @@ describe("makeSavePoint", () => {
         expect(getContent(el)).toBe(`<p>z[]cde</p>`);
         savepoint();
         expect(getContent(el)).toBe(`<p>[]cd</p>`);
-        commits = editor.shared.history.getHistoryCommits();
+        commits = editor.shared.history.getCommits();
         expect(commits.length).toBe(3);
         expect(commits.at(-2)).toBe(zCommit);
         expect(historyPlugin.discardedCommits.has(zCommit.id)).toBe(true);
@@ -1096,7 +1096,7 @@ describe("unobserved mutations", () => {
             editor.shared.domMutation.ignoreDOMMutations(() => p.append(nodeA));
             const nodeC = editor.document.createElement("span");
             withCommit(editor, () => nodeB.append(nodeC)); // should be an empty commit
-            expect(editor.shared.history.getHistoryCommits().length).toBe(1);
+            expect(editor.shared.history.getCommits().length).toBe(1);
         });
     });
 

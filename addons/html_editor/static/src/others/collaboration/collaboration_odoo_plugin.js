@@ -323,7 +323,7 @@ export class CollaborationOdooPlugin extends Plugin {
                             // ensure they are in sync.
                             this.ptp.notifyAllPeers(
                                 "oe_history_commit",
-                                this.dependencies.history.getHistoryCommits().at(-1),
+                                this.dependencies.history.getCommits().at(-1),
                                 { transport: "rtc" }
                             );
                             this.resetCollaborativeSelection(fromPeerId);

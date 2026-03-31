@@ -1215,7 +1215,7 @@ describe("editable descendants", () => {
         );
         // No mutation should be added to the next commit
         editor.shared.history.commit();
-        const historyCommits = editor.shared.history.getHistoryCommits();
+        const historyCommits = editor.shared.history.getCommits();
         expect(historyCommits.length).toBe(1);
         const domMutationPlugin = plugins.get("domMutation");
         expect(domMutationPlugin.mutations).toEqual([]);

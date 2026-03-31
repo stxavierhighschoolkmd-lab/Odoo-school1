@@ -76,7 +76,7 @@ test("should make qweb tag bold and create a commit even with partial selection 
             '<p data-selection-placeholder=""><br></p>'
     );
     expect(queryOne(`p[contenteditable="false"]`).childNodes.length).toBe(1);
-    const historyCommits = editor.shared.history.getHistoryCommits();
+    const historyCommits = editor.shared.history.getCommits();
     expect(historyCommits.length).toBe(2);
     const lastCommit = historyCommits.at(-1);
     expect(lastCommit.data.mutations.length).toBe(1);

@@ -28,7 +28,7 @@ import { EditorCommit } from "../utils/commit";
  * @property { HistoryPlugin['redo'] } redo
  * @property { HistoryPlugin['canUndo'] } canUndo
  * @property { HistoryPlugin['canRedo'] } canRedo
- * @property { HistoryPlugin['getHistoryCommits'] } getHistoryCommits
+ * @property { HistoryPlugin['getCommits'] } getCommits
  * @property { HistoryPlugin['reset'] } reset
  * @property { HistoryPlugin['addExternalCommit'] } addExternalCommit
  * @property { HistoryPlugin['resetFromCommits'] } resetFromCommits
@@ -81,7 +81,7 @@ export class HistoryPlugin extends Plugin {
         "redo",
         "canUndo",
         "canRedo",
-        "getHistoryCommits",
+        "getCommits",
         "reset",
 
         // Commit creation
@@ -297,7 +297,7 @@ export class HistoryPlugin extends Plugin {
      *
      * @returns { EditorCommit[] }
      */
-    getHistoryCommits() {
+    getCommits() {
         return [...this.commits];
     }
 
