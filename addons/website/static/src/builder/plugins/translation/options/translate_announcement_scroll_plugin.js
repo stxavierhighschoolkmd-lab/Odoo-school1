@@ -53,7 +53,7 @@ export class TranslateAnnouncementScrollPlugin extends Plugin {
         if (inputValue !== translatableEl.textContent) {
             translatableEl.textContent = inputValue;
             translatableEl.dataset.oeTranslationState = "translated";
-            this.dependencies.history.write();
+            this.dependencies.history.commit();
         }
     }
 }

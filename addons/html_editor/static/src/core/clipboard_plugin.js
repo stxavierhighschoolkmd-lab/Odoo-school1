@@ -150,7 +150,7 @@ export class ClipboardPlugin extends Plugin {
         this.onCopy(ev);
         this.dependencies.selection.stageSelection();
         this.dependencies.delete.deleteSelection();
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     /**
@@ -216,7 +216,7 @@ export class ClipboardPlugin extends Plugin {
             this.handlePasteText(selection, ev.clipboardData);
 
         this.trigger("on_pasted_handlers", selection);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
     /**
      * @param {EditorSelection} selection
@@ -287,7 +287,7 @@ export class ClipboardPlugin extends Plugin {
                 // @phoenix @todo: should it be handled in image plugin?
                 return this.addImagesFiles(files).then((html) => {
                     this.dependencies.dom.insert(html);
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 });
             } else if (clipboardElem.hasChildNodes()) {
                 if (closestElement(selection.anchorNode, "a")) {
@@ -709,16 +709,16 @@ export class ClipboardPlugin extends Plugin {
             this.dependencies.sanitize.sanitize(fragment);
             if (fragment.hasChildNodes()) {
                 this.dependencies.dom.insert(fragment);
-                this.dependencies.history.write();
+                this.dependencies.history.commit();
             }
         } else if (fileTransferItems.length) {
             const html = await this.addImagesFiles(fileTransferItems);
             this.dependencies.dom.insert(html);
-            this.dependencies.history.write();
+            this.dependencies.history.commit();
         } else if (htmlTransferItem) {
             htmlTransferItem.getAsString((pastedText) => {
                 this.dependencies.dom.insert(this.prepareClipboardData(pastedText));
-                this.dependencies.history.write();
+                this.dependencies.history.commit();
             });
         }
     }

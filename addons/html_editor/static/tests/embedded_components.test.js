@@ -76,7 +76,7 @@ describe("Mount and Destroy embedded components", () => {
         editor.shared.dom.insert(
             parseHTML(editor.document, `<span data-embedded="counter"></span>`)
         );
-        editor.shared.history.write();
+        editor.shared.history.commit();
         expect(getContent(el)).toBe(
             `<p>a<span data-embedded="counter" data-oe-protected="true" contenteditable="false"></span>[]b</p>`
         );
@@ -168,7 +168,7 @@ describe("Mount and Destroy embedded components", () => {
         editor.shared.dom.insert(
             parseHTML(editor.document, `<span data-embedded="counter"></span>`)
         );
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         expect.verifySteps(["mounted"]);
         expect(getContent(el)).toBe(
@@ -267,7 +267,7 @@ describe("Mount and Destroy embedded components", () => {
         editor.shared.dom.insert(
             parseHTML(editor.document, `<span data-embedded="counter"></span>`)
         );
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         expect.verifySteps(["mounted"]);
         expect(getContent(el)).toBe(
@@ -382,7 +382,7 @@ describe("Mount and Destroy embedded components", () => {
             embeddedComponentPlugin.mountComponent(...orderedMountInfos[index]);
         }
         // Validate the commit, but the mounting process already started.
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         expect.verifySteps(["mount 1", "mount 2", "mount 3"]);
         expect(getContent(el)).toBe(
@@ -477,7 +477,7 @@ describe("Mount and Destroy embedded components", () => {
         );
         const host = el.querySelector("[data-embedded='counter']");
         host.remove();
-        editor.shared.history.write();
+        editor.shared.history.commit();
         expect.verifySteps(["destroyed counter"]);
         // Verify that there is no potential host outside of the editable,
         // because removed hosts are put back in the DOM and destroyed next to
@@ -508,7 +508,7 @@ describe("Mount and Destroy embedded components", () => {
         );
         const parent = el.querySelector(".parent");
         parent.remove();
-        editor.shared.history.write();
+        editor.shared.history.commit();
         expect.verifySteps(["destroyed counter"]);
         // Verify that there is no potential host outside of the editable,
         // because removed hosts are put back in the DOM and destroyed next to
@@ -532,7 +532,7 @@ describe("Selection after embedded component insertion", () => {
         editor.shared.dom.insert(
             parseHTML(editor.document, `<span data-embedded="counter">a</span>`)
         );
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         expect(getContent(el)).toBe(
             `<p><span data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></span>[]</p>`
@@ -545,7 +545,7 @@ describe("Selection after embedded component insertion", () => {
         editor.shared.dom.insert(
             parseHTML(editor.document, `<span data-embedded="counter"></span>`)
         );
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         expect(getContent(el)).toBe(
             `<p>a<span data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></span>[]</p>`
@@ -558,7 +558,7 @@ describe("Selection after embedded component insertion", () => {
         editor.shared.dom.insert(
             parseHTML(editor.document, `<span data-embedded="counter"></span>`)
         );
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         expect(getContent(el)).toBe(
             `<p><span data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></span>[]a</p>`
@@ -571,7 +571,7 @@ describe("Selection after embedded component insertion", () => {
         editor.shared.dom.insert(
             parseHTML(editor.document, `<span data-embedded="counter"></span>`)
         );
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         expect(getContent(el)).toBe(
             `<p>a<span data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></span>[]b</p>`
@@ -582,7 +582,7 @@ describe("Selection after embedded component insertion", () => {
             config: getConfig([embedding("counter", Counter)]),
         });
         editor.shared.dom.insert(parseHTML(editor.document, `<div data-embedded="counter"></div>`));
-        editor.shared.history.write();
+        editor.shared.history.commit();
         // Insertion triggers `selectionchange` and `commit` creates a selection
         // placeholder. `fixSelectionInsideEditableRoot` moves the selection
         // into it and triggers another `selectionchange` that removes the
@@ -601,7 +601,7 @@ describe("Selection after embedded component insertion", () => {
             config: getConfig([embedding("counter", Counter)]),
         });
         editor.shared.dom.insert(parseHTML(editor.document, `<div data-embedded="counter"></div>`));
-        editor.shared.history.write();
+        editor.shared.history.commit();
         // Insertion triggers `selectionchange` and `commit` creates a selection
         // placeholder. `fixSelectionInsideEditableRoot` moves the selection
         // into it and triggers another `selectionchange` that removes the
@@ -620,7 +620,7 @@ describe("Selection after embedded component insertion", () => {
             config: getConfig([embedding("counter", Counter)]),
         });
         editor.shared.dom.insert(parseHTML(editor.document, `<div data-embedded="counter"></div>`));
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         cleanHints(editor);
         expect(getContent(el)).toBe(
@@ -635,7 +635,7 @@ describe("Selection after embedded component insertion", () => {
             config: getConfig([embedding("counter", Counter)]),
         });
         editor.shared.dom.insert(parseHTML(editor.document, `<div data-embedded="counter"></div>`));
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         cleanHints(editor);
         expect(getContent(el)).toBe(
@@ -880,7 +880,7 @@ describe("Mount processing", () => {
             insertElement(element) {
                 const html = parseHTML(this.document, element);
                 this.dependencies.dom.insert(html);
-                this.dependencies.history.write();
+                this.dependencies.history.commit();
             }
         }
 
@@ -1214,7 +1214,7 @@ describe("editable descendants", () => {
             `)
         );
         // No mutation should be added to the next commit
-        editor.shared.history.write();
+        editor.shared.history.commit();
         const historyCommits = editor.shared.history.getHistoryCommits();
         expect(historyCommits.length).toBe(1);
         const domMutationPlugin = plugins.get("domMutation");
@@ -1558,7 +1558,7 @@ describe("Embedded state", () => {
                 baseValue: 5,
             },
         });
-        editor.shared.history.write();
+        editor.shared.history.commit();
         await animationFrame();
         expect(getContent(el)).toBe(
             `<p><span data-embedded="counter" data-embedded-props='{"baseValue":4}' data-oe-protected="true" contenteditable="false" data-embedded-state='{"stateChangeId":-1,"previous":{"baseValue":1},"next":{"baseValue":5}}'><span class="counter">Counter:4</span></span></p>`

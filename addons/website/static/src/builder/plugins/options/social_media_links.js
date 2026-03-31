@@ -72,7 +72,7 @@ export class SocialMediaLinks extends BaseOptionComponent {
                         element: this.idsElMap.get(elId),
                         elementAfter: this.idsElMap.get(newNext),
                     });
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 }
 
                 // hack to trigger the rebuild

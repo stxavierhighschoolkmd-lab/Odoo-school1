@@ -149,7 +149,7 @@ export class AlignPlugin extends Plugin {
             }
         }
         if (mode && isAlignmentUpdated) {
-            this.dependencies.history.write();
+            this.dependencies.history.commit();
         }
         this.updateAlignmentParams();
     }

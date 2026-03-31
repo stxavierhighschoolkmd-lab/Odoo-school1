@@ -622,7 +622,7 @@ test("selection placeholder margins remain correct when an element gets added", 
                 `<table style="margin: 100px"><tbody><tr><td>[]a</td></tr></tbody></table>`
             ).firstChild;
             editor.editable.append(table);
-            editor.shared.history.write();
+            editor.shared.history.commit();
             await animationFrame();
         },
         contentAfterEdit: unformat(

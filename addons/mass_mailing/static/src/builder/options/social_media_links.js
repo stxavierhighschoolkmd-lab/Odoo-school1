@@ -183,7 +183,7 @@ export class SocialMediaLinks extends BaseOptionComponent {
                         }
                     }
                     this.domState.medias = Object.entries(medias);
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 },
             },
             {

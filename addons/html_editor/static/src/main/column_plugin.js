@@ -138,7 +138,7 @@ export class ColumnPlugin extends Plugin {
         }
 
         this.dependencies.selection.setSelection(selectionToRestore);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     createColumnsFromList(anchor, li, numberOfColumns) {
@@ -170,7 +170,7 @@ export class ColumnPlugin extends Plugin {
             anchorNode: columns[0].firstElementChild,
             anchorOffset: 0,
         });
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     removeColumns(anchor) {

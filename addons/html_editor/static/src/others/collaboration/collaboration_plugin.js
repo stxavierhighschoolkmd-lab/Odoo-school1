@@ -36,7 +36,7 @@ export class CollaborationPlugin extends Plugin {
         /** Handlers */
         on_history_cleaned_handlers: this.onHistoryClean.bind(this),
         on_history_reset_handlers: this.onHistoryReset.bind(this),
-        on_history_written_handlers: (commit) => this.onMutationsCommitted(commit),
+        on_history_committed_handlers: (commit) => this.onHistoryCommitted(commit),
 
         /** Overrides */
         set_attribute_overrides: this.setAttribute.bind(this),
@@ -303,7 +303,7 @@ export class CollaborationPlugin extends Plugin {
     /**
      * @param {EditorCommit} commit
      */
-    onMutationsCommitted(commit) {
+    onHistoryCommitted(commit) {
         commit.updateData("peerId", this.peerId);
         this.trigger("on_collaboration_commit_added_handlers", commit);
     }

@@ -162,7 +162,7 @@ export class TableUIPlugin extends Plugin {
             (fn) =>
             (...args) => {
                 fn(...args);
-                this.dependencies.history.write();
+                this.dependencies.history.commit();
             };
         const tableMethods = {
             moveColumn: withCommit(this.dependencies.table.moveColumn),

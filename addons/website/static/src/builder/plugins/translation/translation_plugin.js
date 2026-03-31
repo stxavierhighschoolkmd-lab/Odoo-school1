@@ -300,7 +300,7 @@ export class TranslationPlugin extends Plugin {
                 this.dialogService.add(AttributeTranslateDialog, {
                     node: translateEl,
                     elToTranslationInfoMap: elToTranslationInfoMap,
-                    commit: this.dependencies.history.write,
+                    commit: this.dependencies.history.commit,
                     applyCustomMutation: this.dependencies.domMutation.applyCustomMutation,
                 });
             });

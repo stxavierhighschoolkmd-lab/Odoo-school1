@@ -41,7 +41,7 @@ export class TableOfContentPlugin extends Plugin {
         on_history_reset_handlers: () => this.delayedUpdateTableOfContents(this.editable),
         on_history_reset_from_commits_handlers: () =>
             this.delayedUpdateTableOfContents(this.editable),
-        on_history_written_handlers: (commit) => {
+        on_history_committed_handlers: (commit) => {
             let root;
             this.getResource("commit_root_providers").find((p) => {
                 root = p(commit);
@@ -72,7 +72,7 @@ export class TableOfContentPlugin extends Plugin {
     insertTableOfContent() {
         const tableOfContentBlueprint = renderToElement("html_editor.TableOfContentBlueprint");
         this.dependencies.dom.insert(tableOfContentBlueprint);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     /**

@@ -126,7 +126,7 @@ export class SyntaxHighlightingPlugin extends Plugin {
                     component.replaceWith(baseContainer);
                     newlinesToLineBreaks(baseContainer);
                     this.dependencies.selection.setCursorStart(baseContainer);
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 },
             });
             props.host.removeAttribute("data-syntax-highlighting-autofocus");

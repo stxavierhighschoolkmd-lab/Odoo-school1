@@ -235,7 +235,7 @@ export class SelectionPlugin extends Plugin {
         on_flushed_mutations_handlers: () => {
             this.currentData.selectionAfter = this.serializeEditableSelection();
         },
-        on_history_written_handlers: () => {
+        on_history_committed_handlers: () => {
             this.stageSelection();
         },
         on_history_reset_handlers: () => {

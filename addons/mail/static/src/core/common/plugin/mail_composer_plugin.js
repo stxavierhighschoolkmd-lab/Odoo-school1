@@ -108,7 +108,7 @@ export class MailComposerPlugin extends Plugin {
         };
         [...sanitizedFragment.childNodes].forEach(removeStyle);
         this.dependencies.dom.insert(sanitizedFragment);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
         return true;
     }
 }

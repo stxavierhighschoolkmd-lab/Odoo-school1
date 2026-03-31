@@ -109,7 +109,7 @@ export class EmojiPlugin extends Plugin {
             });
             this.emojiListOverlay.close();
             this.dependencies.dom.insert(emoji.codepoints);
-            this.dependencies.history.write();
+            this.dependencies.history.commit();
             this.match = match;
             return;
         }
@@ -157,7 +157,7 @@ export class EmojiPlugin extends Plugin {
                         return;
                     }
                     this.dependencies.dom.insert(str);
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 },
             },
             target,
@@ -188,7 +188,7 @@ export class EmojiPlugin extends Plugin {
                         selection.extend(this.searchNode, this.offset);
                         this.dependencies.delete.deleteSelection();
                         this.dependencies.dom.insert(value);
-                        this.dependencies.history.write();
+                        this.dependencies.history.commit();
                         this.emojiListOverlay.close();
                     },
                     overlay: this.emojiListOverlay,

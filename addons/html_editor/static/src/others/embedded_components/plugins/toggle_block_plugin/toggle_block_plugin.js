@@ -421,7 +421,7 @@ export class ToggleBlockPlugin extends Plugin {
                 containerContent.append(...siblings);
                 closestToggleAncestor.after(toggle);
                 this.forceToggle(toggle, { showContent: true, restoreSelection: cursors.restore });
-                this.dependencies.history.write();
+                this.dependencies.history.commit();
             }
             return true;
         }
@@ -519,7 +519,7 @@ export class ToggleBlockPlugin extends Plugin {
                     showContent: true,
                     restoreSelection: cursors.restore,
                 });
-                this.dependencies.history.write();
+                this.dependencies.history.commit();
             }
             return true;
         }
@@ -538,7 +538,7 @@ export class ToggleBlockPlugin extends Plugin {
         const target = block.querySelector(`${titleSelector} > ${baseContainerGlobalSelector}`);
         this.dependencies.dom.insert(block);
         this.dependencies.selection.setCursorStart(target);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     manageToggleFromTitle() {

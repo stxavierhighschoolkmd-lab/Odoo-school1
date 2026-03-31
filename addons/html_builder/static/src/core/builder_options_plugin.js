@@ -153,7 +153,7 @@ export class BuilderOptionsPlugin extends Plugin {
             this.targetState = {};
         },
         on_flushed_mutations_handlers: this.onFlushedMutations.bind(this),
-        on_history_written_handlers: this.onHistoryWritten.bind(this),
+        on_history_committed_handlers: this.onHistoryCommitted.bind(this),
         on_undone_handlers: (revertedCommit) => this.restoreContainers(revertedCommit, "undo"),
         on_redone_handlers: (revertedCommit) => this.restoreContainers(revertedCommit, "redo"),
         clean_for_save_processors: this.cleanForSave.bind(this),
@@ -480,7 +480,7 @@ export class BuilderOptionsPlugin extends Plugin {
                 button.handler = (...args) => {
                     this.dependencies.operation.next(async () => {
                         await handler(...args);
-                        this.dependencies.history.write();
+                        this.dependencies.history.commit();
                     });
                 };
             }
@@ -522,7 +522,7 @@ export class BuilderOptionsPlugin extends Plugin {
         }
     }
 
-    onHistoryWritten(commit) {
+    onHistoryCommitted(commit) {
         if (commit.type === "undo") {
             if ("currentTarget" in commit.data) {
                 this.targetState.current = commit.data.currentTarget;

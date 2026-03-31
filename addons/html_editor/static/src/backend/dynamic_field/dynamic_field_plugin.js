@@ -186,7 +186,7 @@ export class DynamicFieldPlugin extends Plugin {
                     }
 
                     if (path !== initialPath || label !== initialLabel) {
-                        this.dependencies.history.write();
+                        this.dependencies.history.commit();
                     }
                 },
             },
@@ -229,7 +229,7 @@ export class DynamicFieldPlugin extends Plugin {
 
                     selection.restore();
                     this.dependencies.dom.insert(el);
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 },
             },
         });

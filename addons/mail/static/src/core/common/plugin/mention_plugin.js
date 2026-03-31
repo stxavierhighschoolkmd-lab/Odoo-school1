@@ -56,7 +56,7 @@ export class MentionPlugin extends Plugin {
                 checker: (el) => this.isValidChannelMentionElement(el),
                 validMentionsHandler: (channelLinks) => {
                     this.store.handleValidChannelMention(channelLinks);
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 },
             },
             {
@@ -98,7 +98,7 @@ export class MentionPlugin extends Plugin {
                 const baseContainer = this.dependencies.baseContainer.createBaseContainer();
                 baseContainer.appendChild(el.cloneNode(true));
                 this.editable.replaceChild(baseContainer, el);
-                this.dependencies.history.write();
+                this.dependencies.history.commit();
             }
         }
     }

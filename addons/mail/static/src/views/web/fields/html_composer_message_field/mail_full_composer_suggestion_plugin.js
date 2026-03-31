@@ -36,7 +36,7 @@ export class MailFullComposerSuggestionPlugin extends Plugin {
         mentionBlock.appendChild(nameNode);
         this.mutationSavePointRestore();
         this.dependencies.dom.insert(mentionBlock);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     onBeforeInput(ev) {

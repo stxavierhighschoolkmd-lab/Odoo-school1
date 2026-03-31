@@ -20,7 +20,7 @@ import { EditorCommit } from "../utils/commit";
  */
 /**
  * @typedef { Object } HistoryShared
- * @property { HistoryPlugin['write'] } write
+ * @property { HistoryPlugin['commit'] } commit
  * @property { HistoryPlugin['undo'] } undo
  * @property { HistoryPlugin['redo'] } redo
  * @property { HistoryPlugin['canUndo'] } canUndo
@@ -40,7 +40,7 @@ import { EditorCommit } from "../utils/commit";
  * @typedef {(() => void)[]} on_history_cleaned_handlers
  * @typedef {(() => void)[]} on_history_reset_handlers
  * @typedef {(() => void)[]} on_history_reset_from_commits_handlers
- * @typedef {((commit: EditorCommit) => void)[]} on_history_written_handlers
+ * @typedef {((commit: EditorCommit) => void)[]} on_history_committed_handlers
  * @typedef {((commit: EditorCommit, options?: { ensureNewMutations?: boolean }) => void)[]} on_apply_commit_handlers
  * @typedef {((commit: EditorCommit, options?: { ensureNewMutations?: boolean, restoreFocus?: boolean }) => void)[]} on_revert_commit_handlers
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_undone_handlers
@@ -69,7 +69,7 @@ export class HistoryPlugin extends Plugin {
     static dependencies = ["domReference", "selection"];
     static shared = [
         // Main public API
-        "write",
+        "commit",
         "undo",
         "redo",
         "canUndo",
@@ -174,7 +174,7 @@ export class HistoryPlugin extends Plugin {
      * @param { boolean } [params.batchable = false]
      * @returns { EditorCommit<T> }
      */
-    write({ batchable = false } = {}) {
+    commit({ batchable = false } = {}) {
         // Set the type of the commit here. That way, the state of undo and redo
         // is truly accessible when executing the `onChange` callback. It is
         // useful for external components if they execute `can(Undo|Redo)`.
@@ -313,7 +313,7 @@ export class HistoryPlugin extends Plugin {
             this.resetCurrentData();
             if (!silent) {
                 // Notify of changes.
-                this.trigger("on_history_written_handlers", commit);
+                this.trigger("on_history_committed_handlers", commit);
                 this.config.onChange?.({ isPreviewing: this.isPreviewing });
             }
             return commit;
@@ -610,13 +610,13 @@ export class HistoryPlugin extends Plugin {
                 // The operation should be similar to the 'commit' (normalize
                 // etc...) hence the call to 'commit' (but we need to remove it
                 // for the collaboration).
-                this.write();
+                this.commit();
             },
             commit: (...args) => {
                 revertOperation();
                 this.isPreviewing = false;
                 operation(...args);
-                this.write();
+                this.commit();
             },
             revert: () => {
                 revertOperation();
@@ -662,7 +662,7 @@ export class HistoryPlugin extends Plugin {
                 // The operation should be similar to the 'commit' (normalize
                 // etc...) hence the call to 'commit' (but we need to remove it
                 // for the collaboration).
-                this.write();
+                this.commit();
             },
             commit: async (...args) => {
                 await revertOperation();
@@ -677,7 +677,7 @@ export class HistoryPlugin extends Plugin {
                 if (this.isDestroyed) {
                     return;
                 }
-                this.write();
+                this.commit();
             },
             revert: async () => {
                 await revertOperation();

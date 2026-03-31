@@ -445,7 +445,7 @@ export class DragAndDropPlugin extends Plugin {
                         startParentEl === parentEl;
                 }
                 if (!hasSamePositionAsStart) {
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 } else {
                     this.cancelDragAndDrop();
                     return;

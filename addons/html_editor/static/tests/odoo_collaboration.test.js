@@ -307,7 +307,7 @@ async function createPeers(peerIds, content = initialValue) {
 
 async function insertEditorText(editor, text) {
     await insertText(editor, text);
-    editor.shared.history.write();
+    editor.shared.history.commit();
 }
 
 beforeEach(() => {
@@ -1010,7 +1010,7 @@ describe("Disconnect & reconnect", () => {
             const p = document.createElement("p");
             p.textContent = content;
             peer.editor.editable.append(p);
-            peer.editor.shared.history.write();
+            peer.editor.shared.history.commit();
         };
 
         setSelection(peers.p1);
@@ -1136,12 +1136,12 @@ describe("History commits Ids", () => {
         const editor = peers.p1.editor;
         await peers.p1.focus();
         editor.shared.split.splitBlock();
-        editor.shared.history.write();
+        editor.shared.history.commit();
         expect(getContent(editor.editable)).toBe(
             `<p>a</p><p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p>`
         );
         editor.shared.split.splitBlock();
-        editor.shared.history.write();
+        editor.shared.history.commit();
         expect(getContent(editor.editable)).toBe(
             `<p>a</p><p><br></p><p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p>`
         );

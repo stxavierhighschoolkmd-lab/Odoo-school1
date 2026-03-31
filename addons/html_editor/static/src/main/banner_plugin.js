@@ -186,7 +186,7 @@ export class BannerPlugin extends Plugin {
             } else {
                 icon.remove();
             }
-            this.dependencies.history.write();
+            this.dependencies.history.commit();
             return;
         }
         const blockEl = closestBlock(selection.anchorNode);
@@ -216,7 +216,7 @@ export class BannerPlugin extends Plugin {
         this.dependencies.selection.setCursorEnd(
             bannerElement.querySelector(`.o_editor_banner_content > ${baseContainer.tagName}`)
         );
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     onBannerEmojiChange(iconElement) {
@@ -224,7 +224,7 @@ export class BannerPlugin extends Plugin {
             target: iconElement,
             onSelect: (emoji) => {
                 iconElement.textContent = emoji;
-                this.dependencies.history.write();
+                this.dependencies.history.commit();
             },
         });
     }

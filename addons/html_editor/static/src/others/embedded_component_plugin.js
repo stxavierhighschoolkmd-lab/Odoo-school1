@@ -30,7 +30,7 @@ export class EmbeddedComponentPlugin extends Plugin {
         on_savepoint_restored_handlers: () => this.handleComponents(this.editable),
         on_history_reset_handlers: () => this.handleComponents(this.editable),
         on_history_reset_from_commits_handlers: () => this.handleComponents(this.editable),
-        on_history_written_handlers: (commit) => {
+        on_history_committed_handlers: (commit) => {
             let root;
             this.getResource("commit_root_providers").find((p) => {
                 root = p(commit);
@@ -180,7 +180,7 @@ export class EmbeddedComponentPlugin extends Plugin {
         if (!this.hostToStateChangeManagerMap.has(host)) {
             const config = {
                 host,
-                commitStateChanges: () => this.dependencies.history.write(),
+                commitStateChanges: () => this.dependencies.history.commit(),
             };
             const stateChangeManager = embedding.getStateChangeManager(config);
             stateChangeManager.setup();

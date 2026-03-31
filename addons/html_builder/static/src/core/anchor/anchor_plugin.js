@@ -74,7 +74,7 @@ export class AnchorPlugin extends Plugin {
         } else {
             this.deleteAnchor(element);
         }
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     createAnchor(element) {
@@ -138,7 +138,7 @@ export class AnchorPlugin extends Plugin {
                             },
                             deleteAnchor: () => {
                                 this.deleteAnchor(element);
-                                this.dependencies.history.write();
+                                this.dependencies.history.commit();
                             },
                             formatAnchor: this.formatAnchor,
                         });

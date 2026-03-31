@@ -675,7 +675,7 @@ export class DomPlugin extends Plugin {
         const fontAwesomeNode = document.createElement("i");
         fontAwesomeNode.className = faClass;
         this.insert(fontAwesomeNode);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
         const [anchorNode, anchorOffset] = rightPos(fontAwesomeNode);
         this.dependencies.selection.setSelection({ anchorNode, anchorOffset });
     }
@@ -778,7 +778,7 @@ export class DomPlugin extends Plugin {
             }
         }
         cursors.restore();
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     removeEmptyClassAndStyleAttributes(root) {

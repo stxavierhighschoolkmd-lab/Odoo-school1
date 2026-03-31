@@ -268,7 +268,7 @@ export class ImagePlugin extends Plugin {
             }
         }
         targetedImg.classList.add(`p-${size}`);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
     resizeImage({ size } = {}) {
         const targetedImg = this.getTargetedImage();
@@ -276,7 +276,7 @@ export class ImagePlugin extends Plugin {
             return;
         }
         targetedImg.style.width = size || "";
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     setImageShape(className, { excludeClasses = [] } = {}) {
@@ -290,7 +290,7 @@ export class ImagePlugin extends Plugin {
             }
         }
         targetedImg.classList.toggle(className);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     previewImage() {
@@ -327,7 +327,7 @@ export class ImagePlugin extends Plugin {
             targetedImg.remove();
             cursors.restore();
             fillEmpty(parentEl);
-            this.dependencies.history.write();
+            this.dependencies.history.commit();
         }
     }
 
@@ -371,7 +371,7 @@ export class ImagePlugin extends Plugin {
                     const img = this.document.createElement("IMG");
                     img.setAttribute("src", url);
                     this.dependencies.dom.insert(img);
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 },
             };
         }
@@ -384,7 +384,7 @@ export class ImagePlugin extends Plugin {
         }
         targetedImg.setAttribute("alt", description);
         targetedImg.setAttribute("title", tooltip);
-        this.dependencies.history.write();
+        this.dependencies.history.commit();
     }
 
     resetImageTransformation(image, { commit = true } = {}) {
@@ -400,7 +400,7 @@ export class ImagePlugin extends Plugin {
             image.style.removeProperty(styleProperty);
         }
         if (commit) {
-            this.dependencies.history.write();
+            this.dependencies.history.commit();
         }
     }
 
@@ -411,7 +411,7 @@ export class ImagePlugin extends Plugin {
             title: _t("Transform the picture (click twice to reset transformation)"),
             getTargetedImage: this.getTargetedImage.bind(this),
             resetImageTransformation: this.resetImageTransformation.bind(this),
-            commit: this.dependencies.history.write.bind(this),
+            commit: this.dependencies.history.commit.bind(this),
             document: this.document,
             editable: this.editable,
             activeTitle: _t("Click again to reset transformation"),

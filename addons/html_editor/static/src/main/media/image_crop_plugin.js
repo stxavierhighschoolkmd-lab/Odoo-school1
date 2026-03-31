@@ -55,7 +55,7 @@ export class ImageCropPlugin extends Plugin {
                             newDataset,
                         });
                     updateImageAttributes();
-                    this.dependencies.history.write();
+                    this.dependencies.history.commit();
                 },
                 document: this.document,
                 ...imageCropProps,
