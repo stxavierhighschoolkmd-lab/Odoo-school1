@@ -13,7 +13,7 @@ class TestTaxesDownPaymentPOS(TestTaxCommonPOS, TestTaxCommonSale, TestTaxesDown
         super().setUpClass()
         cls.pos_user.write({
             'group_ids': [
-                (4, cls.env.ref('stock.group_stock_user').id),
+                (4, cls.env.ref('sales_team.group_sale_manager').id),
             ]
         })
         cls.main_pos_config.down_payment_product_id = cls.env['product.product'].create({

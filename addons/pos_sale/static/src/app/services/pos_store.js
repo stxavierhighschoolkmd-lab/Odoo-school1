@@ -14,6 +14,12 @@ patch(PosStore.prototype, {
         const sale_order = await this._getSaleOrder(clickedOrderId);
         await this._processSaleOrder(sale_order);
     },
+    shouldAddNewOrder(linkedSO, sale_order) {
+        return (
+            linkedSO.partner_id?.id !== sale_order.partner_id?.id ||
+            linkedSO.partner_invoice_id?.id !== sale_order.partner_invoice_id?.id
+        );
+    },
     async _processSaleOrder(sale_order) {
         const currentSaleOrigin = this.getOrder()
             .getOrderlines()
@@ -157,6 +163,7 @@ patch(PosStore.prototype, {
             previousProductLine = newLine;
 
             if (
+                this.checkLot() &&
                 ["lot", "serial"].includes(newLine.getProduct().tracking) &&
                 (this.pickingType.use_create_lots || this.pickingType.use_existing_lots) &&
                 converted_line.lot_names.length > 0
@@ -196,7 +203,7 @@ patch(PosStore.prototype, {
                     splitted_line.setUnitPrice(priceUnit);
                     splitted_line.setDiscount(line.discount);
                     remaining_quantity -= splitted_line.qty;
-                    if (splitted_line.product_id.tracking == "lot") {
+                    if (this.checkLot() && splitted_line.product_id.tracking == "lot") {
                         lot_splitted_lines.push(splitted_line);
                     }
                 }
@@ -204,6 +211,7 @@ patch(PosStore.prototype, {
 
             // Order line can only hold one lot, so we need to split the line if there are multiple lots
             if (
+                this.checkLot() &&
                 line.product_id.tracking == "lot" &&
                 converted_line.lot_names.length > 0 &&
                 useLoadedLots
@@ -256,6 +264,9 @@ patch(PosStore.prototype, {
             }
             this.addDownPaymentProductOrderlineToOrder(sale_order, -paidDiff, false);
         }
+    },
+    checkLot() {
+        return false;
     },
 
     prepareSoBaseLineForTaxesComputationExtraValues(so, soLine) {
