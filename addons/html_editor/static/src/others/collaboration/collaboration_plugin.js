@@ -142,8 +142,7 @@ export class CollaborationPlugin extends Plugin {
             if (typeof insertIndex === "undefined") {
                 continue;
             }
-            // TODO AGE: should `ignoreDomMutations` be done manually in
-            // `on_will_add_external_commit_handlers` and `on_external_commit_added_handlers`?
+            // TODO AGE: can we let dom mutation do this? via history?
             this.dependencies.domMutation.ignoreDOMMutations(() => {
                 this.dependencies.history.addExternalCommit(newCommit, insertIndex);
             });

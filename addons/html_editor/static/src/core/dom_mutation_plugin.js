@@ -107,10 +107,7 @@ import { withSequence } from "@html_editor/utils/resource";
 
 /**
  * @typedef { Object } DomMutationShared
- * @property { DomMutationPlugin['discard'] } discard
  * @property { DomMutationPlugin['stage'] } stage
- * @property { DomMutationPlugin['stash'] } stash
- * @property { DomMutationPlugin['unstash'] } unstash
  * @property { DomMutationPlugin['stageCustomMutation'] } stageCustomMutation
  * @property { DomMutationPlugin['applyCustomMutation'] } applyCustomMutation
  * @property { DomMutationPlugin['hasStagedMutations'] } hasStagedMutations
@@ -135,13 +132,10 @@ import { withSequence } from "@html_editor/utils/resource";
  */
 export class DomMutationPlugin extends Plugin {
     static id = "domMutation";
-    static dependencies = ["domReference", "history", "sanitize"];
+    static dependencies = ["domReference", "sanitize"];
     static shared = [
         // Main public API
-        "discard",
         "stage",
-        "stash",
-        "unstash",
 
         // Observer on/off
         "ignoreDOMMutations",
@@ -171,15 +165,6 @@ export class DomMutationPlugin extends Plugin {
         },
         on_prepare_drag_handlers: this.disableHasStagedMutationsWarning.bind(this),
         on_history_cleaned_handlers: this.clean.bind(this),
-        on_will_add_external_commit_handlers: () => {
-            // The last commit is an uncommited draft, revert it first.
-            this.stash();
-        },
-        on_external_commit_added_handlers: () => {
-            // Reapply the uncommited draft, since this is not an operation
-            // which should cancel it.
-            this.unstash();
-        },
         on_apply_commit_handlers: (commit, { ensureNewMutations = false } = {}) => {
             if (commit.data.mutations) {
                 this.applyMutations(commit.data.mutations, { ensureNewMutations });
@@ -189,13 +174,28 @@ export class DomMutationPlugin extends Plugin {
                 // coherent?
             }
         },
+        on_history_unstashed_handlers: (stashedData) => {
+            // TODO AGE: this condition is theoretically insufficient because
+            // the observer could also be disconnected. I guess best would be to
+            // reactivate it before calling `applyMutation` and disable it
+            // again. See about that when looking into
+            // `disableObserver`/`withObserverOff`.
+            if (stashedData.mutations && this.isObserverDisabled) {
+                // Make sure the unstashed mutations are recorded.
+                this.stage(stashedData.mutations);
+            }
+        },
         on_revert_commit_handlers: (commit, { ensureNewMutations = false } = {}) => {
             if (commit.data.mutations) {
                 this.revertMutations(commit.data.mutations, { ensureNewMutations });
             }
         },
-        on_will_undo_handlers: this.discard.bind(this),
-        on_will_redo_handlers: this.discard.bind(this),
+        on_history_discard_handlers: () => {
+            this.processAndStageMutations();
+            this.revertMutations([...this.mutations]);
+            this.observer.takeRecords();
+            this.mutations = [];
+        },
         pending_commit_data_processors: (data, origin) => {
             this.flush(!!origin);
             return { ...data, mutations: [...this.mutations] };
@@ -231,9 +231,6 @@ export class DomMutationPlugin extends Plugin {
             this.processAndStageMutations();
             return { ...savePoint, mutations: [...this.mutations] };
         },
-        on_will_restore_save_point_handlers: withSequence(0, () => {
-            this.discard();
-        }),
         on_savepoint_restored_handlers: withSequence(0, (savePoint) => {
             // Apply draft mutations to recover the same mutations state as before.
             this.applyMutations(savePoint.mutations, { ensureNewMutations: true });
@@ -258,8 +255,6 @@ export class DomMutationPlugin extends Plugin {
         this.enableObserverCallbacks = new Set();
         this._cleanups.push(() => this.observer.disconnect());
         this.clean();
-        /** @type { DomMutationCommitData[] } */
-        this.currentStash = [];
     }
 
     clean() {
@@ -271,37 +266,6 @@ export class DomMutationPlugin extends Plugin {
     // ===============
     // Main public API
     // ===============
-
-    discard() {
-        const mutations = [...this.mutations];
-        // Discard current draft.
-        this.processAndStageMutations();
-        this.revertMutations([...this.mutations]);
-        this.observer.takeRecords();
-        this.mutations = [];
-        return mutations;
-    }
-
-    stash() {
-        this.currentStash.push(this.discard());
-    }
-
-    unstash(index = -1) {
-        if (this.currentStash.length > index) {
-            const mutations = this.currentStash.splice(index, 1)[0];
-            this.applyMutations(mutations);
-            // TODO AGE: this condition is theoretically insufficient because
-            // the observer could also be disconnected. I guess best would be to
-            // reactivate it before calling `applyMutation` and disable it
-            // again. See about that when looking into
-            // `disableObserver`/`withObserverOff`.
-            if (this.isObserverDisabled) {
-                // Make sure the unstashed mutations are recorded.
-                this.stage(mutations);
-            }
-            // TODO AGE: shouldn't this also apply other changes?
-        }
-    }
 
     /**
      * Add the given serialized mutation(s) to `this.mutations`, which will

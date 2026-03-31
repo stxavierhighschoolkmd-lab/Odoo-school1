@@ -21,6 +21,9 @@ import { EditorCommit } from "../utils/commit";
 /**
  * @typedef { Object } HistoryShared
  * @property { HistoryPlugin['commit'] } commit
+ * @property { HistoryPlugin['stash'] } stash
+ * @property { HistoryPlugin['unstash'] } unstash
+ * @property { HistoryPlugin['discard'] } discard
  * @property { HistoryPlugin['undo'] } undo
  * @property { HistoryPlugin['redo'] } redo
  * @property { HistoryPlugin['canUndo'] } canUndo
@@ -49,7 +52,8 @@ import { EditorCommit } from "../utils/commit";
  * @typedef { (() => void)[] } on_restore_save_point_handlers
  * @typedef { (() => void)[] } on_commit_restored_handlers
  * @typedef { (() => void)[] } on_irreversible_commit_applied_handlers
- * @typedef { ((savePoint: Object) => void)[] } on_will_restore_save_point_handlers
+ * @typedef { (() => void)[] } on_history_discard_handlers
+ * @typedef { (({ stashedData: EditorCommitData }) => void)[] } on_history_unstashed_handlers
  * @typedef { ((savePoint: Object, lastRevertedChanges: EditorCommitData) => void)[] } on_savepoint_restored_handlers
  * @typedef { ((lastRevertedChanges: EditorCommitData) => void)[] } on_restored_to_commit_handlers
  * @typedef { (() => void)[] } on_current_history_data_reset_handlers
@@ -66,10 +70,13 @@ export const COMMIT_DEBOUNCE_DELAY = 250;
 
 export class HistoryPlugin extends Plugin {
     static id = "history";
-    static dependencies = ["domReference", "selection"];
+    static dependencies = ["domReference"];
     static shared = [
         // Main public API
         "commit",
+        "stash",
+        "unstash",
+        "discard",
         "undo",
         "redo",
         "canUndo",
@@ -144,6 +151,8 @@ export class HistoryPlugin extends Plugin {
         this.addDomListener(this.document, "beforeinput", this.onDocumentBeforeInput.bind(this));
         this.addDomListener(this.document, "input", this.onDocumentInput.bind(this));
         this.clean();
+        /** @type { HistoryCommitData[] } */
+        this.currentStash = [];
     }
 
     clean() {
@@ -188,6 +197,26 @@ export class HistoryPlugin extends Plugin {
         return this.writeCommit(commit);
     }
 
+    stash() {
+        const data = this.processCommitData();
+        this.discard();
+        this.currentStash.push(data);
+    }
+
+    unstash(index = -1) {
+        if (this.currentStash.length > index) {
+            const stashedData = this.currentStash.splice(index, 1)[0];
+            this.applyCommit(new EditorCommit({ data: stashedData }));
+            this.trigger("on_history_unstashed_handlers", stashedData);
+        }
+    }
+
+    discard() {
+        const data = this.processCommitData();
+        this.trigger("on_history_discard_handlers");
+        return data;
+    }
+
     /**
      * Undo the last undo-able batch of commits.
      */
@@ -195,7 +224,7 @@ export class HistoryPlugin extends Plugin {
         if (this.commits.length === 1) {
             return;
         }
-        this.trigger("on_will_undo_handlers");
+        this.discard();
         let revertedCommit;
         for (revertedCommit of this.getNextRevisionCommits("undo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
@@ -221,7 +250,7 @@ export class HistoryPlugin extends Plugin {
      * Redo the last redo-able batch of commits.
      */
     redo() {
-        this.trigger("on_will_redo_handlers");
+        this.discard();
         let revertedCommit;
         for (revertedCommit of this.getNextRevisionCommits("redo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
@@ -459,7 +488,8 @@ export class HistoryPlugin extends Plugin {
      * @param { number } index
      */
     addExternalCommit(newCommit, index) {
-        this.trigger("on_will_add_external_commit_handlers");
+        // The last commit is an uncommited draft, revert it first.
+        this.stash();
         const commitsAfterNewCommit = this.commits.slice(index);
         for (const commitToRevert of commitsAfterNewCommit.slice().reverse()) {
             this.revertCommit(commitToRevert);
@@ -475,6 +505,9 @@ export class HistoryPlugin extends Plugin {
         for (const commitToApply of commitsAfterNewCommit) {
             this.applyCommit(commitToApply);
         }
+        // Reapply the uncommited draft, since this is not an operation that
+        // should cancel it.
+        this.unstash();
         this.trigger("on_external_commit_added_handlers");
     }
 
@@ -526,7 +559,7 @@ export class HistoryPlugin extends Plugin {
             if (savePoint.hasBeenRestored) {
                 return;
             }
-            this.trigger("on_will_restore_save_point_handlers", savePoint);
+            this.discard();
             const lastRevertedChanges = this.restoreToCommit(savePoint.commit);
             savePoint.hasBeenRestored = true;
             this.trigger("on_savepoint_restored_handlers", savePoint, lastRevertedChanges);
