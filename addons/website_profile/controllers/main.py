@@ -149,6 +149,12 @@ class WebsiteProfile(http.Controller):
         values = self._profile_edition_preprocess_values(user, **kwargs)
         if not user.partner_id._can_edit_country() and values.get('country_id') != user.partner_id.country_id.id:
             raise UserError(_("Changing the country is not allowed once document(s) have been issued for your account. Please contact us directly for this operation."))
+        if not user.has_access('write'):
+            # no write access, grant it if we can edit the partner
+            if user.partner_id._can_be_edited_by_current_customer(**kwargs):
+                user = user.sudo()
+            else:
+                raise UserError(_("You are not allowed to edit this user"))
         user.write(values)
 
     # Ranks and Badges
