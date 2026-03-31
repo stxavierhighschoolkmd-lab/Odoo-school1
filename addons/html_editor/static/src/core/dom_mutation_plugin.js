@@ -172,6 +172,7 @@ export class DomMutationPlugin extends Plugin {
                 // its serialized focus and selection, and updating the state,
                 // while _applying_ a commit doesn't. Couldn't we make this more
                 // coherent?
+                this.processAndStageMutations({ dispatch: false });
             }
         },
         on_history_unstashed_handlers: (stashedData) => {
@@ -188,6 +189,7 @@ export class DomMutationPlugin extends Plugin {
         on_revert_commit_handlers: (commit, { ensureNewMutations = false } = {}) => {
             if (commit.data.mutations) {
                 this.revertMutations(commit.data.mutations, { ensureNewMutations });
+                this.processAndStageMutations({ dispatch: false });
             }
         },
         on_history_discard_handlers: () => {
@@ -199,16 +201,6 @@ export class DomMutationPlugin extends Plugin {
         pending_commit_data_processors: (data, origin) => {
             this.flush(!!origin);
             return { ...data, mutations: [...this.mutations] };
-        },
-        on_commit_restored_handlers: () => {
-            // Process and stage mutations so that the attribute comparison for
-            // the state change is done with the intermediate attribute value
-            // and not with the final value in the DOM after all commits were
-            // reverted then applied again.
-            this.processAndStageMutations({ dispatch: false });
-        },
-        on_irreversible_commit_applied_handlers: () => {
-            this.processAndStageMutations({ dispatch: false });
         },
         commit_root_providers: (commit) =>
             this.getMutationsRoot(commit.data.mutations || []) || this.editable,

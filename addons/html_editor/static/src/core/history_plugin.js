@@ -50,8 +50,6 @@ import { EditorCommit } from "../utils/commit";
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_redone_handlers
  * @typedef {(() => void)[]} on_preview_handlers
  * @typedef { (() => void)[] } on_restore_save_point_handlers
- * @typedef { (() => void)[] } on_commit_restored_handlers
- * @typedef { (() => void)[] } on_irreversible_commit_applied_handlers
  * @typedef { (() => void)[] } on_history_discard_handlers
  * @typedef { (({ stashedData: EditorCommitData }) => void)[] } on_history_unstashed_handlers
  * @typedef { ((savePoint: Object, lastRevertedChanges: EditorCommitData) => void)[] } on_savepoint_restored_handlers
@@ -597,7 +595,6 @@ export class HistoryPlugin extends Plugin {
                 ensureNewMutations: true,
                 restoreFocus: false,
             });
-            this.trigger("on_commit_restored_handlers");
             if (commitToRestore.discard) {
                 commitToRestore.discard();
                 lastRevertedChanges = commitToRestore.data;
@@ -608,7 +605,6 @@ export class HistoryPlugin extends Plugin {
         // Re-apply every non reversible commit (typically collaborators commits).
         for (const irreversibleCommit of irreversibleCommits) {
             this.applyCommit(irreversibleCommit, { ensureNewMutations: true });
-            this.trigger("on_irreversible_commit_applied_handlers");
         }
         this.trigger("on_restored_to_commit_handlers", lastRevertedChanges);
         // Register resulting mutations as a new "restore" commit (prevent
