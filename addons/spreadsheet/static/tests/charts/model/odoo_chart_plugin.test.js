@@ -34,7 +34,7 @@ import { waitForDataLoaded } from "@spreadsheet/helpers/model";
 import { setGlobalFilterValue } from "../../helpers/commands";
 
 const { chartRegistry } = spreadsheet.registries;
-const { toZone } = spreadsheet.helpers;
+const { toZone, UuidGenerator } = spreadsheet.helpers;
 
 const cumulativeDateServerData = getBasicServerData();
 cumulativeDateServerData.models.partner.records = [
@@ -863,7 +863,7 @@ test("Remove odoo chart when sheet is deleted", async () => {
     const { model } = await createSpreadsheetWithChart({ type: "odoo_line" });
     const sheetId = model.getters.getActiveSheetId();
     model.dispatch("CREATE_SHEET", {
-        sheetId: model.uuidGenerator.smallUuid(),
+        sheetId: UuidGenerator.smallUuid(),
         position: model.getters.getSheetIds().length,
     });
     expect(model.getters.getOdooChartIds().length).toBe(1);
