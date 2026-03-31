@@ -549,72 +549,60 @@ export class HistoryPlugin extends Plugin {
      * @returns { Function }
      */
     makeSavePoint() {
+        // TODO AGE: see if I could make this into a special kind of commit.
         const savePoint = this.processThrough("save_point_data_processors", {
-            commit: this.commits.at(-1),
+            origin: this.commits.at(-1),
             hasBeenRestored: false,
         });
         return () => {
-            if (savePoint.hasBeenRestored) {
+            /** @type { EditorCommit } */
+            const origin = savePoint.origin;
+            if (savePoint.hasBeenRestored || origin === this.commits.at(-1)) {
                 return;
             }
             this.discard();
-            const lastRevertedChanges = this.restoreToCommit(savePoint.commit);
+            const authorTimestamp = this.authorTimestamp;
+            let lastRevertedChanges = this.processCommitData({ data: { authorTimestamp } });
+            const commitsToRestore = this.getCommitsUntil(origin.id);
+            const irreversibleCommits = [];
+            for (const commitToRestore of commitsToRestore) {
+                const isReversible = this.isReversibleCommit(commitToRestore);
+                // Savepoint restoration is used for previews, so keep focus on the
+                // external UI (for example the color picker) while reverting the
+                // underlying editor commit.
+                this.revertCommit(commitToRestore, {
+                    ensureNewMutations: true,
+                    restoreFocus: false,
+                });
+                if (isReversible) {
+                    this.discardedCommits.add(commitToRestore.id);
+                    lastRevertedChanges = commitToRestore.data;
+                } else {
+                    irreversibleCommits.unshift(commitToRestore);
+                }
+            }
+            // Re-apply every non reversible commit (typically collaborators commits).
+            for (const irreversibleCommit of irreversibleCommits) {
+                this.applyCommit(irreversibleCommit, {
+                    ensureNewMutations: true,
+                });
+            }
+            this.trigger("on_restored_to_commit_handlers", lastRevertedChanges);
+            // Register resulting mutations as a new "restore" commit (prevent
+            // undo).
+            const restoreCommit = new EditorCommit({
+                type: "restore",
+                data: this.processCommitData({ origin }),
+            });
+            this.writeCommit(restoreCommit);
             savePoint.hasBeenRestored = true;
+            // TODO AGE: see if `lastRevertedChanges` isn't just `savePoint.origin.data`.
             this.trigger("on_savepoint_restored_handlers", savePoint, lastRevertedChanges);
         };
     }
 
     processCommitData({ data = {}, origin } = {}) {
         return this.processThrough("pending_commit_data_processors", data, origin);
-    }
-
-    /**
-     * Restores the editable to the state of a previous commit.
-     * It does so by discarding the current draft and reverting reversible commits
-     * until the specified commit index, while ensuring that irreversible commits
-     * are maintained. This will add a new "restore" commit and set the reverted
-     * commits's state to "discarded".
-     *
-     * @param { EditorCommit } commit
-     * @returns { EditorCommitData | undefined }
-     */
-    restoreToCommit(commit) {
-        if (commit === this.commits.at(-1)) {
-            return;
-        }
-        let lastRevertedChanges = this.processCommitData({
-            data: { authorTimestamp: this.authorTimestamp },
-        });
-        const commitsToRestore = this.getCommitsUntil(commit.id);
-        const irreversibleCommits = [];
-        for (const commitToRestore of commitsToRestore) {
-            // Savepoint restoration is used for previews, so keep focus on the
-            // external UI (for example the color picker) while reverting the
-            // underlying editor commit.
-            this.revertCommit(commitToRestore, {
-                ensureNewMutations: true,
-                restoreFocus: false,
-            });
-            if (commitToRestore.discard) {
-                commitToRestore.discard();
-                lastRevertedChanges = commitToRestore.data;
-            } else {
-                irreversibleCommits.unshift(commitToRestore);
-            }
-        }
-        // Re-apply every non reversible commit (typically collaborators commits).
-        for (const irreversibleCommit of irreversibleCommits) {
-            this.applyCommit(irreversibleCommit, { ensureNewMutations: true });
-        }
-        this.trigger("on_restored_to_commit_handlers", lastRevertedChanges);
-        // Register resulting mutations as a new "restore" commit (prevent
-        // undo).
-        const restoreCommit = new EditorCommit({
-            type: "restore",
-            data: this.processCommitData({ origin: commit }),
-        });
-        this.writeCommit(restoreCommit);
-        return lastRevertedChanges;
     }
 
     /**
@@ -727,22 +715,11 @@ export class HistoryPlugin extends Plugin {
      *
      * @param { EditorCommitId } [commitId]
      * // TODO AGE: review this.
-     * @returns { { ...EditorCommit, discard: false | () => void }[] }
+     * @returns { EditorCommit[] }
      */
     getCommitsUntil(commitId) {
         const commitIndex = this.commits.findLastIndex((commit) => commit?.id === commitId);
-        return this.commits
-            .slice(commitIndex === -1 ? 1 : commitIndex + 1)
-            .map((commit) => {
-                if (commit && this.isReversibleCommit(commit)) {
-                    commit.discard = () => {
-                        this.discardedCommits.add(commit.id);
-                    };
-                }
-                return commit;
-            })
-            .filter(Boolean)
-            .reverse();
+        return this.commits.slice(commitIndex === -1 ? 1 : commitIndex + 1).reverse();
     }
 
     // =============
