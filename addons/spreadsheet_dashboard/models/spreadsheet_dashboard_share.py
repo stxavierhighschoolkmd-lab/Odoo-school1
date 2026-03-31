@@ -9,17 +9,34 @@ class SpreadsheetDashboardShare(models.Model):
     _name = 'spreadsheet.dashboard.share'
     _inherit = ['spreadsheet.mixin']
     _description = 'Copy of a shared dashboard'
+    _order = 'create_date desc'
 
     dashboard_id = fields.Many2one('spreadsheet.dashboard', required=True, ondelete='cascade')
+    dashboard_group_id = fields.Many2one(related='dashboard_id.dashboard_group_id')
     excel_export = fields.Binary()
+    active = fields.Boolean(default=True)
     access_token = fields.Char(required=True, default=lambda _x: str(uuid.uuid4()))
     full_url = fields.Char(string="URL", compute='_compute_full_url')
-    name = fields.Char(related='dashboard_id.name')
+    name = fields.Char(required=True)
 
     @api.depends('access_token')
     def _compute_full_url(self):
         for share in self:
             share.full_url = "%s/dashboard/share/%s/%s" % (share.get_base_url(), share.id, share.access_token)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # Browse all referenced dashboards once so their names are prefetched in
+        # batch instead of being read one share at a time during multi-create.
+        dashboard_ids = {vals['dashboard_id'] for vals in vals_list if vals.get('dashboard_id')}
+        dashboards = self.env['spreadsheet.dashboard'].browse(dashboard_ids)
+        dashboard_name_by_id = {dashboard.id: dashboard.name for dashboard in dashboards}
+
+        for vals in vals_list:
+            dashboard_id = vals.get('dashboard_id')
+            if dashboard_id:
+                vals['name'] = f"{dashboard_name_by_id[dashboard_id]} - Share Link"
+        return super().create(vals_list)
 
     @api.model
     def action_get_share_url(self, vals):
@@ -43,3 +60,22 @@ class SpreadsheetDashboardShare(models.Model):
         user_access = dashboard.has_access("read")
         if not (token_access and user_access):
             raise Forbidden(_("You don't have access to this dashboard. "))
+
+    def action_open_rename_dialog(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Rename'),
+            'res_model': self._name,
+            'res_id': self.id,
+            'views': [
+                (
+                    self.env.ref(
+                        'spreadsheet_dashboard.spreadsheet_dashboard_share_view_form_rename'
+                    ).id,
+                    'form',
+                )
+            ],
+            'target': 'new',
+            'context': {'dialog_size': 'medium'},
+        }
