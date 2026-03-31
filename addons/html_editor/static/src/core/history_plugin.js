@@ -44,7 +44,7 @@ import { EditorCommit } from "../utils/commit";
  * @typedef {(() => void)[]} on_history_reset_handlers
  * @typedef {(() => void)[]} on_history_reset_from_commits_handlers
  * @typedef {((commit: EditorCommit) => void)[]} on_history_committed_handlers
- * @typedef {((commit: EditorCommit, options?: { ensureNewMutations?: boolean }) => void)[]} on_apply_commit_handlers
+ * @typedef {((commit: EditorCommit, options?: { ensureNewMutations?: boolean, restoreSelection?: boolean }) => void)[]} on_apply_commit_handlers
  * @typedef {((commit: EditorCommit, options?: { ensureNewMutations?: boolean, restoreFocus?: boolean }) => void)[]} on_revert_commit_handlers
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_undone_handlers
  * @typedef {((revertedCommit: EditorCommit) => void)[]} on_redone_handlers
@@ -53,7 +53,6 @@ import { EditorCommit } from "../utils/commit";
  * @typedef { (() => void)[] } on_history_discard_handlers
  * @typedef { (({ stashedData: EditorCommitData }) => void)[] } on_history_unstashed_handlers
  * @typedef { ((savePoint: Object, lastRevertedChanges: EditorCommitData) => void)[] } on_savepoint_restored_handlers
- * @typedef { ((lastRevertedChanges: EditorCommitData) => void)[] } on_restored_to_commit_handlers
  * @typedef { (() => void)[] } on_current_history_data_reset_handlers
  *
  * @typedef {((commit: EditorCommit) => boolean | undefined)[]} is_commit_reversible_predicates
@@ -368,9 +367,13 @@ export class HistoryPlugin extends Plugin {
      * concerned plugins.
      *
      * @param { EditorCommit } commit
+     * @param { Object } [param1 = {}]
+     * TODO AGE: get rid of both these options.
+     * @param { boolean } [param1.ensureNewMutations = false]
+     * @param { boolean } [param1.restoreSelection = false]
      */
-    applyCommit(commit, { ensureNewMutations = false } = {}) {
-        this.trigger("on_apply_commit_handlers", commit, { ensureNewMutations });
+    applyCommit(commit, { ensureNewMutations = false, restoreSelection = false } = {}) {
+        this.trigger("on_apply_commit_handlers", commit, { ensureNewMutations, restoreSelection });
     }
 
     /**
@@ -585,9 +588,9 @@ export class HistoryPlugin extends Plugin {
             for (const irreversibleCommit of irreversibleCommits) {
                 this.applyCommit(irreversibleCommit, {
                     ensureNewMutations: true,
+                    restoreSelection: true,
                 });
             }
-            this.trigger("on_restored_to_commit_handlers", lastRevertedChanges);
             // Register resulting mutations as a new "restore" commit (prevent
             // undo).
             const restoreCommit = new EditorCommit({

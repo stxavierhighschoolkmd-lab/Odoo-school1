@@ -263,9 +263,9 @@ export class SelectionPlugin extends Plugin {
                 this.currentData.selection = commit.data.selectionAfter;
             }
         }),
-        on_restored_to_commit_handlers: (lastRevertedChanges) => {
-            if (lastRevertedChanges?.selection) {
-                this.setSerializedSelection(lastRevertedChanges.selection);
+        on_apply_commit_handlers: (commit, { restoreSelection = false } = {}) => {
+            if (restoreSelection && commit.data.selection) {
+                this.setSerializedSelection(commit.data.selection);
             }
         },
         on_savepoint_restored_handlers: (savePoint, lastRevertedChanges) => {
