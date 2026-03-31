@@ -196,12 +196,8 @@ export class DomMutationPlugin extends Plugin {
         },
         on_will_undo_handlers: this.discard.bind(this),
         on_will_redo_handlers: this.discard.bind(this),
-        revision_commit_data_processors: (data) => {
-            this.flush(true);
-            return { ...data, mutations: [...this.mutations] };
-        },
-        restoration_commit_data_processors: (data) => {
-            this.flush(true);
+        pending_commit_data_processors: (data, origin) => {
+            this.flush(!!origin);
             return { ...data, mutations: [...this.mutations] };
         },
         on_commit_restored_handlers: () => {
@@ -230,10 +226,6 @@ export class DomMutationPlugin extends Plugin {
         },
         on_current_history_data_reset_handlers: () => {
             this.mutations = [];
-        },
-        pending_commit_data_processors: (data) => {
-            this.flush();
-            return { ...data, mutations: [...this.mutations] };
         },
         save_point_data_processors: (savePoint) => {
             this.processAndStageMutations();

@@ -311,8 +311,6 @@ export class SelectionPlugin extends Plugin {
             selectionAfter: null,
         }),
         // TODO AGE: Same remark as for `on_revert_commit_handlers`
-        revision_commit_data_processors: withSequence(15, this.processCommitData.bind(this)),
-        restoration_commit_data_processors: withSequence(15, this.processCommitData.bind(this)),
         pending_commit_data_processors: withSequence(15, this.processCommitData.bind(this)),
     };
 

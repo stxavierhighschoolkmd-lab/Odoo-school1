@@ -174,11 +174,6 @@ export class BuilderOptionsPlugin extends Plugin {
             }
             return buttons;
         },
-        revision_commit_data_processors: (data, revertedCommit) => ({
-            ...data,
-            currentTarget: revertedCommit.data.currentTarget,
-            nextTarget: revertedCommit.data.nextTarget,
-        }),
         pending_commit_data_processors: this.processCommitData.bind(this),
         save_point_data_processors: (savePoint) => ({
             ...savePoint,
@@ -346,11 +341,11 @@ export class BuilderOptionsPlugin extends Plugin {
         return this.target;
     }
 
-    processCommitData(data) {
+    processCommitData(data, origin) {
         return {
             ...data,
-            currentTarget: this.targetState.current,
-            nextTarget: this.targetState.next,
+            currentTarget: origin ? origin.data.currentTarget : this.targetState.current,
+            nextTarget: origin ? origin.data.nextTarget : this.targetState.next,
         };
     }
 

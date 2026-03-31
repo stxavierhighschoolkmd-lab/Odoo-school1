@@ -57,10 +57,8 @@ import { EditorCommit } from "../utils/commit";
  * @typedef {((commit: EditorCommit) => boolean | undefined)[]} is_commit_reversible_predicates
  * @typedef {((commit: EditorCommit) => boolean | undefined)[]} has_commit_changes_predicates
  *
- * @typedef { ((data: EditorCommitData) => EditorCommitData | undefined)[] } pending_commit_data_processors
+ * @typedef { ((data: EditorCommitData, origin?: EditorCommitData) => EditorCommitData | undefined)[] } pending_commit_data_processors
  * @typedef {((data: EditorCommitData) => EditorCommitData | undefined)[]} snapshot_commit_data_processors
- * @typedef {((data: EditorCommitData, revertedCommit: EditorCommit) => EditorCommitData | undefined)[]} revision_commit_data_processors
- * @typedef {((data: EditorCommitData) => EditorCommitData | undefined)[]} restoration_commit_data_processors
  * @typedef { ((savePoint: Object) => Object | void)[] } save_point_data_processors
  */
 
@@ -180,12 +178,13 @@ export class HistoryPlugin extends Plugin {
         // Set the type of the commit here. That way, the state of undo and redo
         // is truly accessible when executing the `onChange` callback. It is
         // useful for external components if they execute `can(Undo|Redo)`.
-        const commit = new EditorCommit({
-            data: this.processThrough("pending_commit_data_processors", {
+        const data = this.processCommitData({
+            data: {
                 batchable,
                 authorTimestamp: this.authorTimestamp,
-            }),
+            },
         });
+        const commit = new EditorCommit({ data });
         return this.writeCommit(commit);
     }
 
@@ -201,14 +200,13 @@ export class HistoryPlugin extends Plugin {
         for (revertedCommit of this.getNextRevisionCommits("undo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
             this.revertedCommits.add(revertedCommit.id);
-            const commitData = this.processThrough(
-                "revision_commit_data_processors",
-                {
+            const commitData = this.processCommitData({
+                data: {
                     batchable: revertedCommit.data.batchable,
                     commitTimestamp: revertedCommit.data.commitTimestamp,
                 },
-                revertedCommit
-            );
+                origin: revertedCommit,
+            });
             this.writeCommit(
                 new EditorCommit({
                     type: "undo",
@@ -228,14 +226,13 @@ export class HistoryPlugin extends Plugin {
         for (revertedCommit of this.getNextRevisionCommits("redo")) {
             this.revertCommit(revertedCommit, { ensureNewMutations: true });
             this.revertedCommits.add(revertedCommit.id);
-            const commitData = this.processThrough(
-                "revision_commit_data_processors",
-                {
+            const commitData = this.processCommitData({
+                data: {
                     batchable: revertedCommit.data.batchable,
                     commitTimestamp: revertedCommit.data.commitTimestamp,
                 },
-                revertedCommit
-            );
+                origin: revertedCommit,
+            });
             this.writeCommit(
                 new EditorCommit({
                     type: "redo",
@@ -536,6 +533,10 @@ export class HistoryPlugin extends Plugin {
         };
     }
 
+    processCommitData({ data = {}, origin } = {}) {
+        return this.processThrough("pending_commit_data_processors", data, origin);
+    }
+
     /**
      * Restores the editable to the state of a previous commit.
      * It does so by discarding the current draft and reverting reversible commits
@@ -550,8 +551,8 @@ export class HistoryPlugin extends Plugin {
         if (commit === this.commits.at(-1)) {
             return;
         }
-        let lastRevertedChanges = this.processThrough("pending_commit_data_processors", {
-            authorTimestamp: this.authorTimestamp,
+        let lastRevertedChanges = this.processCommitData({
+            data: { authorTimestamp: this.authorTimestamp },
         });
         const commitsToRestore = this.getCommitsUntil(commit.id);
         const irreversibleCommits = [];
@@ -577,9 +578,13 @@ export class HistoryPlugin extends Plugin {
             this.trigger("on_irreversible_commit_applied_handlers");
         }
         this.trigger("on_restored_to_commit_handlers", lastRevertedChanges);
-        // Register resulting mutations as a new "restore" commit (prevent undo).
-        const commitData = this.processThrough("restoration_commit_data_processors", {});
-        this.writeCommit(new EditorCommit({ type: "restore", data: commitData }));
+        // Register resulting mutations as a new "restore" commit (prevent
+        // undo).
+        const restoreCommit = new EditorCommit({
+            type: "restore",
+            data: this.processCommitData({ origin: commit }),
+        });
+        this.writeCommit(restoreCommit);
         return lastRevertedChanges;
     }
 

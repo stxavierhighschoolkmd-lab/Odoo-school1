@@ -41,9 +41,7 @@ export class CollaborationPlugin extends Plugin {
         /** Overrides */
         set_attribute_overrides: this.setAttribute.bind(this),
 
-        pending_commit_data_processors: this.processCommitData.bind(this),
-        revision_commit_data_processors: this.processCommitData.bind(this),
-        restoration_commit_data_processors: this.processCommitData.bind(this),
+        pending_commit_data_processors: (data) => ({ ...data, peerId: this.peerId }),
         is_commit_reversible_predicates: (commit) => {
             if (commit.data.peerId !== this.peerId) {
                 return false;
@@ -308,11 +306,5 @@ export class CollaborationPlugin extends Plugin {
     onMutationsCommitted(commit) {
         commit.updateData("peerId", this.peerId);
         this.trigger("on_collaboration_commit_added_handlers", commit);
-    }
-    /**
-     * @param {EditorCommit} commit
-     */
-    processCommitData(data) {
-        return { ...data, peerId: this.peerId };
     }
 }
