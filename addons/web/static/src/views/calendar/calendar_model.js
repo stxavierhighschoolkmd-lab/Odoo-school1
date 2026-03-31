@@ -729,6 +729,12 @@ export class CalendarModel extends Model {
         this.notify();
     }
     /**
+     * @private
+     */
+    _getScheduleEventContext() {
+        return {};
+    }
+    /**
      * @protected
      * @param {Number} eventId
      * @param {DateTime} rawRecord
@@ -738,22 +744,33 @@ export class CalendarModel extends Model {
             ? [date, date.plus({ hours: 1 })]
             : this.getAllDayDates(date);
         const { date_start, date_stop } = this.meta.fieldMapping;
-        await this.orm.write(this.meta.resModel, [eventId], {
-            [date_stop]: serializeDateTime(end),
-            [date_start]: serializeDateTime(start),
-        });
+        await this.orm.write(
+            this.meta.resModel,
+            [eventId],
+            {
+                [date_stop]: serializeDateTime(end),
+                [date_start]: serializeDateTime(start),
+            },
+            { context: this._getScheduleEventContext() }
+        );
         await this.load();
+    }
+    /**
+     * @private
+     */
+    _getUnscheduleData() {
+        const { date_start, date_stop } = this.meta.fieldMapping;
+        return {
+            [date_stop]: false,
+            [date_start]: false,
+        };
     }
     /**
      * @protected
      * @param {Number} eventId
      */
     async unscheduleEvent(eventId) {
-        const { date_start, date_stop } = this.meta.fieldMapping;
-        await this.orm.write(this.meta.resModel, [eventId], {
-            [date_stop]: false,
-            [date_start]: false,
-        });
+        await this.orm.write(this.meta.resModel, [eventId], this._getUnscheduleData());
         await this.load();
     }
     /**
