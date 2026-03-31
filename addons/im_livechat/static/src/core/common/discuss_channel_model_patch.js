@@ -15,6 +15,11 @@ const discussChannelPatch = {
         this.country_id = fields.One("res.country");
         this.livechat_agent_history_ids = fields.Many("im_livechat.channel.member.history", {
             inverse: "channelAsAgentHistory",
+            onUpdate() {
+                if (this.livechat_agent_history_ids.length && this.chatbot) {
+                    this.chatbot.resetFailedState();
+                }
+            },
         });
         this.livechat_bot_history_ids = fields.Many("im_livechat.channel.member.history", {
             inverse: "channelAsBotHistory",
@@ -77,6 +82,7 @@ const discussChannelPatch = {
                     .find((member) => member.livechat_member_type === "visitor");
             },
         });
+        this.hasLoadingFailedStepTrigger = fields.Attr(false);
     },
     get allowDescriptionTypes() {
         return [...super.allowDescriptionTypes, "livechat"];
