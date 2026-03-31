@@ -1,16 +1,15 @@
-import { useChildSubEnv, useState } from "@web/owl2/utils";
+import { useState } from "@web/owl2/utils";
 import { Component, markRaw, onWillStart } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
-import { download } from "@web/core/network/download";
 
 import { useSpreadsheetNotificationStore } from "@spreadsheet/hooks";
 
 import * as spreadsheet from "@odoo/o-spreadsheet";
-import { Spreadsheet, Model, registries } from "@odoo/o-spreadsheet";
-import { _t } from "@web/core/l10n/translation";
+import { Spreadsheet, Model } from "@odoo/o-spreadsheet";
 import { useSpreadsheetPrint } from "../hooks";
+import { _t } from "@web/core/l10n/translation";
 
-registries.topbarMenuRegistry.addChild("download_public_excel", ["file"], {
+spreadsheet.registries.topbarMenuRegistry.addChild("download_public_excel", ["file"], {
     name: _t("Download"),
     execute: (env) => env.downloadExcel(),
     isReadonlyAllowed: true,
@@ -32,14 +31,6 @@ export class PublicReadonlySpreadsheet extends Component {
         this.http = useService("http");
         this.state = useState({
             isFilterShown: false,
-        });
-        useChildSubEnv({
-            downloadExcel: () =>
-                download({
-                    url: this.props.downloadExcelUrl,
-                    data: {},
-                }),
-            canDownloadExcel: () => Boolean(this.props.downloadExcelUrl),
         });
         useSpreadsheetPrint(() => this.model);
         onWillStart(this.createModel.bind(this));
@@ -66,6 +57,9 @@ export class PublicReadonlySpreadsheet extends Component {
             this.data,
             {
                 mode: this.props.mode === "dashboard" ? "dashboard" : "readonly",
+                custom: {
+                    isFrozenSpreadsheet: true,
+                },
             },
             this.data.revisions || []
         );
