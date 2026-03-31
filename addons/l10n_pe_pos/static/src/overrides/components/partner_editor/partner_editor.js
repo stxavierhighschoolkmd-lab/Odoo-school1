@@ -13,6 +13,7 @@ patch(PartnerDetailsEdit.prototype, {
         }
         this.intFields.push("city_id", "l10n_latam_identification_type_id", "l10n_pe_district");
         this.changes.city_id = this.props.partner.city_id && this.props.partner.city_id[0];
+        this.changes.city = this.props.partner.city_id && this.props.partner.city_id[1];
         this.changes.l10n_latam_identification_type_id =
             this.props.partner.l10n_latam_identification_type_id &&
             this.props.partner.l10n_latam_identification_type_id[0];
