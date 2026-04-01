@@ -708,11 +708,15 @@ export class FormOptionPlugin extends Plugin {
             const field = Object.assign({}, fields[getFieldName(fieldEl)]);
             const type = getFieldType(fieldEl);
 
-            const [optionText, checkType] = selectEl
-                ? [_t("Option List"), "exclusive_boolean"]
-                : type === "selection"
-                ? [_t("Radio Button List"), "exclusive_boolean"]
-                : [_t("Checkbox List"), "boolean"];
+            const isMultiDropdown = type === "many2many_dropdown";
+            const [optionText, checkType] =
+                selectEl && !isMultiDropdown
+                    ? [_t("Option List"), "exclusive_boolean"]
+                    : type === "selection"
+                    ? [_t("Radio Button List"), "exclusive_boolean"]
+                    : isMultiDropdown
+                    ? [_t("Option List"), "boolean"]
+                    : [_t("Checkbox List"), "boolean"];
             const defaults = [...fieldEl.querySelectorAll("[checked], [selected]")].map((el) =>
                 isSmallInteger(el.value) ? parseInt(el.value) : el.value
             );
@@ -726,7 +730,9 @@ export class FormOptionPlugin extends Plugin {
                 addItemTitle: _t("Add New Option"),
                 checkType,
                 defaultItemName: _t("Item"),
-                hasDefault: ["one2many", "many2many"].includes(type) ? "multiple" : "unique",
+                hasDefault: ["one2many", "many2many", "many2many_dropdown"].includes(type)
+                    ? "multiple"
+                    : "unique",
                 defaults: JSON.stringify(defaults),
                 availableRecords: availableRecords,
                 newRecordId: isFieldCustom(fieldEl) ? getNewRecordId(fieldEl) : "",

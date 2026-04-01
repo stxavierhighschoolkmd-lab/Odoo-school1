@@ -195,7 +195,9 @@ export class FormFieldOption extends BaseOptionComponent {
         const el = this.env.getEditingElement();
         return (
             !isFieldCustom(el) &&
-            ["selection", "many2one", "many2many"].includes(el.dataset.type) &&
+            ["selection", "many2one", "many2many", "many2many_dropdown"].includes(
+                el.dataset.type
+            ) &&
             !el.querySelector("input[type='file']")
         );
     }

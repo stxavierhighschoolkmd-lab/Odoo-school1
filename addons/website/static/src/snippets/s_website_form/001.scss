@@ -88,6 +88,12 @@
             caret-color: transparent;
         }
     }
+
+    .s_website_form_m2m_dropdown {
+        .dropdown-item {
+            cursor: pointer;
+        }
+    }
 }
 
 .o_datetime_picker .o_day_of_week_cell,
