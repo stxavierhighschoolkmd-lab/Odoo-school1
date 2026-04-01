@@ -183,7 +183,7 @@ export class ChannelMember extends Record {
     }
 
     get isOnline() {
-        return this.store.onlineMemberStatuses.includes(this.imStatusUI);
+        return ["away", "busy", "online"].includes(this.imStatusUI);
     }
 
     /**

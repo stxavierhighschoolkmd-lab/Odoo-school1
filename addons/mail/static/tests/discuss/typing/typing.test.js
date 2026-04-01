@@ -658,12 +658,8 @@ test("current partner is typing should not translate on textual typing status", 
 
 test("[text composer] chat: correspondent is typing", async () => {
     const pyEnv = await startServer();
-    const userId = pyEnv["res.users"].create({ name: "Demo" });
-    const partnerId = pyEnv["res.partner"].create({
-        im_status: "online",
-        name: "Demo",
-        user_ids: [userId],
-    });
+    const userId = pyEnv["res.users"].create({ name: "Demo", im_status: "online" });
+    const partnerId = pyEnv["res.partner"].create({ name: "Demo", user_ids: [userId] });
     const channelId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),
@@ -696,12 +692,8 @@ test("[text composer] chat: correspondent is typing", async () => {
 test.tags("html composer");
 test("chat: correspondent is typing", async () => {
     const pyEnv = await startServer();
-    const userId = pyEnv["res.users"].create({ name: "Demo" });
-    const partnerId = pyEnv["res.partner"].create({
-        im_status: "online",
-        name: "Demo",
-        user_ids: [userId],
-    });
+    const userId = pyEnv["res.users"].create({ name: "Demo", im_status: "online" });
+    const partnerId = pyEnv["res.partner"].create({ name: "Demo", user_ids: [userId] });
     const channelId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),
@@ -733,12 +725,8 @@ test("chat: correspondent is typing", async () => {
 
 test("[text composer] chat: correspondent is typing in chat window", async () => {
     const pyEnv = await startServer();
-    const userId = pyEnv["res.users"].create({ name: "Demo" });
-    const partnerId = pyEnv["res.partner"].create({
-        im_status: "online",
-        name: "Demo",
-        user_ids: [userId],
-    });
+    const userId = pyEnv["res.users"].create({ name: "Demo", im_status: "online" });
+    const partnerId = pyEnv["res.partner"].create({ name: "Demo", user_ids: [userId] });
     const channelId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),
@@ -771,12 +759,8 @@ test("[text composer] chat: correspondent is typing in chat window", async () =>
 test.tags("html composer");
 test("chat: correspondent is typing in chat window", async () => {
     const pyEnv = await startServer();
-    const userId = pyEnv["res.users"].create({ name: "Demo" });
-    const partnerId = pyEnv["res.partner"].create({
-        im_status: "online",
-        name: "Demo",
-        user_ids: [userId],
-    });
+    const userId = pyEnv["res.users"].create({ name: "Demo", im_status: "online" });
+    const partnerId = pyEnv["res.partner"].create({ name: "Demo", user_ids: [userId] });
     const channelId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),
@@ -930,12 +914,8 @@ test("show typing in member list", async () => {
 
 test("[text composer] switching to another channel triggers notify_typing to stop", async () => {
     const pyEnv = await startServer();
-    const userId = pyEnv["res.users"].create({ name: "Demo" });
-    const partnerId = pyEnv["res.partner"].create({
-        im_status: "online",
-        name: "Demo",
-        user_ids: [userId],
-    });
+    const userId = pyEnv["res.users"].create({ name: "Demo", im_status: "online" });
+    const partnerId = pyEnv["res.partner"].create({ name: "Demo", user_ids: [userId] });
     const chatId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),
@@ -959,12 +939,8 @@ test("[text composer] switching to another channel triggers notify_typing to sto
 test.tags("html composer");
 test("switching to another channel triggers notify_typing to stop", async () => {
     const pyEnv = await startServer();
-    const userId = pyEnv["res.users"].create({ name: "Demo" });
-    const partnerId = pyEnv["res.partner"].create({
-        im_status: "online",
-        name: "Demo",
-        user_ids: [userId],
-    });
+    const userId = pyEnv["res.users"].create({ name: "Demo", im_status: "online" });
+    const partnerId = pyEnv["res.partner"].create({ name: "Demo", user_ids: [userId] });
     const chatId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),

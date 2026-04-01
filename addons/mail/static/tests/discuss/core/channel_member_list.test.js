@@ -79,23 +79,28 @@ test("should have correct members in member list", async () => {
 
 test("members should be correctly categorised into online/offline", async () => {
     const pyEnv = await startServer();
-    const [onlinePartnerId, idlePartnerId] = pyEnv["res.partner"].create([
-        { name: "Online Partner", im_status: "online" },
-        { name: "Idle Partner", im_status: "away" },
+    const [onlinePartnerId, idlePartnerId, noUserPartnerId] = pyEnv["res.partner"].create([
+        { name: "Online Partner" },
+        { name: "Idle Partner" },
+        { name: "No User Partner" },
     ]);
-    pyEnv["res.partner"].write([serverState.partnerId], { im_status: "im_partner" });
+    pyEnv["res.users"].create([
+        { partner_id: onlinePartnerId, im_status: "online" },
+        { partner_id: idlePartnerId, im_status: "away" },
+    ]);
     const channelId = pyEnv["discuss.channel"].create({
         name: "TestChanel",
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),
             Command.create({ partner_id: onlinePartnerId }),
             Command.create({ partner_id: idlePartnerId }),
+            Command.create({ partner_id: noUserPartnerId }),
         ],
         channel_type: "channel",
     });
     await start();
     await openDiscuss(channelId);
-    await contains(".o-discuss-ChannelMemberList h6:text('Online - 2')");
+    await contains(".o-discuss-ChannelMemberList h6:text('Online - 3')");
     await contains(".o-discuss-ChannelMemberList h6:text('Offline - 1')");
 });
 
@@ -260,18 +265,13 @@ test("Channel member count update after user left", async () => {
 
 test("Members are partitioned by online/offline", async () => {
     const pyEnv = await startServer();
-    const [userId_1, userId_2] = pyEnv["res.users"].create([{ name: "Dobby" }, { name: "John" }]);
+    const [userId_1, userId_2] = pyEnv["res.users"].create([
+        { name: "Dobby", im_status: "offline" },
+        { name: "John", im_status: "online" },
+    ]);
     const [partnerId_1, partnerId_2] = pyEnv["res.partner"].create([
-        {
-            name: "Dobby",
-            user_ids: [userId_1],
-            im_status: "offline",
-        },
-        {
-            name: "John",
-            user_ids: [userId_2],
-            im_status: "online",
-        },
+        { name: "Dobby", user_ids: [userId_1] },
+        { name: "John", user_ids: [userId_2] },
     ]);
     const channelId = pyEnv["discuss.channel"].create({
         name: "General",
@@ -281,7 +281,6 @@ test("Members are partitioned by online/offline", async () => {
             Command.create({ partner_id: partnerId_2 }),
         ],
     });
-    pyEnv["res.partner"].write([serverState.partnerId], { im_status: "online" });
     await start();
     await openDiscuss(channelId);
     await contains(".o-discuss-ChannelMember", { count: 3 });

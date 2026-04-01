@@ -85,7 +85,7 @@ class TestMailPresence(WebsocketCase, MailCommon):
                 (bob, "presence"),
                 "mail.record/insert",
                 {
-                    "res.partner": [{"id": bob.partner_id.id, "im_status": "offline"}],
+                    "res.users": [{"id": bob.id, "im_status": "offline"}],
                 },
             ),
         ):

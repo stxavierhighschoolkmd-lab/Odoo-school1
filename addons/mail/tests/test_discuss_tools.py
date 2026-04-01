@@ -372,21 +372,21 @@ class TestDiscussTools(MailCase):
         store = Store()
         store.add(user_a, "_store_im_status_fields")
         data = store.get_result()
-        self.assertEqual(data["res.partner"][0]["im_status"], "offline")
+        self.assertEqual(data["res.users"][0]["im_status"], "offline")
         self.env["mail.presence"]._update_presence(user_a)
         store.add(user_a, "_store_im_status_fields")
         data2 = store.get_result()
-        self.assertEqual(data2["res.partner"][0]["im_status"], "online")
+        self.assertEqual(data2["res.users"][0]["im_status"], "online")
 
     def test_393_delayed_add(self):
         """Test that delayed store.add() postpones reading fields until get_result()."""
         user_a = new_test_user(self.env, "test_user_390@example.com")
         store = Store()
         store.add(user_a, "_store_im_status_fields")
-        self.assertEqual(user_a.partner_id.im_status, "offline")
+        self.assertEqual(user_a.im_status, "offline")
         self.env["mail.presence"]._update_presence(user_a)
         data = store.get_result()
-        self.assertEqual(data["res.partner"][0]["im_status"], "online")
+        self.assertEqual(data["res.users"][0]["im_status"], "online")
 
     def test_395_delayed_add_ignores_deleted_record(self):
         """Test that delayed store.add() ignores deleted records."""
