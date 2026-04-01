@@ -49,6 +49,7 @@ import { closestElement, lastLeaf } from "@html_editor/utils/dom_traversal";
 import { rightPos } from "@html_editor/utils/position";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { usePopover } from "@web/core/popover/popover_hook";
+import { IndexedDB } from "@web/core/utils/indexed_db";
 
 const EDIT_CLICK_TYPE = {
     CANCEL: "cancel",
@@ -1040,20 +1041,16 @@ export class Composer extends Component {
             replyToMessageId,
             fromFullComposer = composer.restoredFromFullComposer,
         }) => {
+            const db = new IndexedDB("mail");
             if (isHtmlEmpty(composerHtml)) {
-                browser.localStorage.removeItem(composer.localId);
+                db.delete("composer", composer.localId);
             } else {
-                browser.localStorage.setItem(
-                    composer.localId,
-                    JSON.stringify({
-                        emailAddSignature,
-                        replyToMessageId,
-                        composerHtml: isMarkup(composerHtml)
-                            ? ["markup", composerHtml]
-                            : composerHtml,
-                        fromFullComposer,
-                    })
-                );
+                db.write("composer", composer.localId, {
+                    emailAddSignature,
+                    replyToMessageId,
+                    composerHtml: isMarkup(composerHtml) ? ["markup", composerHtml] : composerHtml,
+                    fromFullComposer,
+                });
             }
         };
         if (this.state.isFullComposerOpen) {
@@ -1071,13 +1068,14 @@ export class Composer extends Component {
         }
     }
 
-    restoreContent() {
+    async restoreContent() {
         const composer = toRaw(this.props.composer);
         let config;
+        const db = new IndexedDB("mail");
         try {
-            config = JSON.parse(browser.localStorage.getItem(composer.localId));
+            config = await db.read("composer", composer.localId);
         } catch {
-            browser.localStorage.removeItem(composer.localId);
+            db.delete("composer", composer.localId);
         }
         if (!config) {
             return;
