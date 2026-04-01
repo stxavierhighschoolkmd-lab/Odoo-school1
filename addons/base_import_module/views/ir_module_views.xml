@@ -71,7 +71,8 @@
             <field name="inherit_id" ref="base.view_module_filter"/>
             <field name="arch" type="xml">
                 <xpath expr="//searchpanel/field[@name='category_id']" position="before">
-                    <field name="module_type" string="Apps" expand="1"/>
+                    <!-- TODO MANO: remove, for testing only -->
+                    <field name="module_type" string="Apps" expand="1" select="multi"/>
                 </xpath>
             </field>
         </record>
