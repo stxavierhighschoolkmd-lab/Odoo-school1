@@ -125,6 +125,6 @@ class AccountAnalyticLine(models.Model):
     def unlink(self):
         affected_move_lines = self.move_line_id
         res = super().unlink()
-        self.env.invalidate_all()  # reset all caches as before
+        #self.env.invalidate_all()  # reset all caches as before
         affected_move_lines._update_analytic_distribution()
         return res
