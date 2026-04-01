@@ -8,16 +8,8 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
     _name = 'crm.lead2opportunity.partner.mass'
     _description = 'Convert Lead to Opportunity (in mass)'
 
-    allowed_options = fields.Json(compute="_compute_allowed_options")
-    # All the found duplicates - displayed when using deduplicate
     duplicated_lead_ids = fields.Many2many(
         'crm.lead', context={'active_test': False}, compute='_compute_duplicated_lead_ids',
-        store=True, compute_sudo=False, readonly=False)
-    duplicated_leads_message = fields.Char('Leads With Duplicates Message', compute='_compute_duplicate_leads_message')
-    # Matching opportunities, displayed when using convert_and_merge
-    duplicated_opportunity_ids = fields.Many2many(
-        'crm.lead', 'lead2opp_mass_duplicate_opportunities_rel', 'wizard_id', 'lead_id',
-        context={'active_test': False}, compute='_compute_duplicated_lead_ids',
         store=True, compute_sudo=False, readonly=False)
     force_assignment = fields.Boolean('Even if assigned')
     lead_tomerge_ids = fields.Many2many(
@@ -30,20 +22,10 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
     name = fields.Selection([
         ('convert', 'Convert to Opportunities'),
         ('convert_and_merge', 'Convert & Merge with Opportunities'),
-        ('deduplicate', 'Deduplicate leads')
     ], 'Conversion Action', default='convert', readonly=False, required=True)
     team_id = fields.Many2one('crm.team', 'Sales Team', compute='_compute_team_id',
         readonly=False, store=True, compute_sudo=False)
     user_ids = fields.Many2many('res.users', string='Salespersons')
-
-    @api.depends('duplicated_lead_ids', 'duplicated_opportunity_ids')
-    def _compute_allowed_options(self):
-        allowed = ['convert']
-        if self.duplicated_opportunity_ids:
-            allowed.append('convert_and_merge')
-        if self.duplicated_lead_ids:
-            allowed.append('deduplicate')
-        self.allowed_options = allowed
 
     @api.depends('lead_tomerge_ids')
     def _compute_duplicated_lead_ids(self):
@@ -58,19 +40,6 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
                     all_duplicates |= duplicate_leads
 
             convert.duplicated_lead_ids = all_duplicates.ids
-            convert.duplicated_opportunity_ids = all_duplicates.filtered(lambda l: l.type == 'opportunity').ids
-
-    @api.depends('lead_tomerge_ids', 'name')
-    def _compute_duplicate_leads_message(self):
-        for convert in self:
-            if len(convert.duplicated_opportunity_ids):
-                convert.duplicated_leads_message = _(
-                    'Potential duplicates found. Use "Convert & Merge" or "Deduplicate" to clean your data before converting.'
-                )
-            else:
-                convert.duplicated_leads_message = _(
-                    'Potential duplicates found. Use "Deduplicate" to clean your data before converting.'
-                )
 
     @api.depends('user_ids')
     def _compute_team_id(self):
@@ -91,16 +60,9 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
         if not self.duplicated_lead_ids:
             self.name = 'convert'
 
-    @api.onchange('duplicated_opportunity_ids')
-    def _onchange_duplicated_opportunity_ids(self):
-        if not self.duplicated_opportunity_ids:
-            self.name = 'convert'
-
     def action_apply(self):
         affected_leads_count = len(self.lead_tomerge_ids)
-        if self.name == 'deduplicate':
-            affected_leads_count = self._action_deduplicate()
-        elif self.name == 'convert_and_merge':
+        if self.name == 'convert_and_merge':
             self._action_convert_and_merge()
         else:
             self._convert_and_allocate(self.lead_tomerge_ids)
@@ -109,7 +71,7 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "type": "success",
+                "type": "success" if affected_leads_count else "warning",
                 "message": self._get_success_toast_message(affected_leads_count),
                 "sticky": False,
                 "next": {"type": "ir.actions.act_window_close"},
@@ -117,43 +79,14 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
         }
 
     def _get_success_toast_message(self, affected_leads_count):
-        if self.name == 'deduplicate':
-            return _("%(duplicate_count)s leads have been deduplicated", duplicate_count=affected_leads_count)
+        if affected_leads_count == 1:
+            return _("1 lead has been converted")
         else:
-            if affected_leads_count == 1:
-                return _("1 lead has been converted")
-            else:
-                return _("%(converted_count)s leads have been converted", converted_count=affected_leads_count)
-
-    def _action_deduplicate(self):
-        """
-        For each selected lead, merge all of its duplicates except those explicitly removed by the user
-        @return: number of affected leads
-        """
-        merged_lead_ids = set()
-        deduplicated_count = 0
-
-        for lead in self.lead_tomerge_ids:
-            if lead.id not in merged_lead_ids:
-                # Because we don't store a mapping of each lead to it's duplicate, we recompute the duplicates
-                # when the user submits the form. To apply the user's changes, we perform a union with the stored list
-                # from which the user can remove records
-                duplicated_leads = self.env['crm.lead']._get_lead_duplicates(
-                    partners=lead.partner_id,
-                    email_list=[lead.partner_id and lead.partner_id.email or lead.email_from],
-                    include_lost=False
-                ) & self.duplicated_lead_ids
-                if len(duplicated_leads) > 1:
-                    deduplicated_count += len(duplicated_leads)
-                    duplicated_leads.merge_opportunity()
-                    merged_lead_ids.update(duplicated_leads.ids)
-
-        return deduplicated_count
+            return _("%(converted_count)s leads have been converted", converted_count=affected_leads_count)
 
     def _action_convert_and_merge(self):
         """Convert all selected leads. If any of them have a matching existing opportunity, merge it"""
         merge_result_opportunity_ids = self.env['crm.lead']
-        leads_without_opportunity_ids = self.env['crm.lead']
 
         for lead in self.lead_tomerge_ids:
             if lead.id in merge_result_opportunity_ids.ids:
@@ -162,21 +95,21 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
             # Because we don't store a mapping of each opportunity to it's duplicate, we recompute the duplicates
             # when the user submits the form. To apply the user's changes, we perform a union with the stored list
             # of opportunities from which the user can remove records
-            duplicate_opportunities = self.env['crm.lead']._get_lead_duplicates(
+            duplicate_leads = self.env['crm.lead']._get_lead_duplicates(
                 partners=lead.partner_id,
                 email_list=[lead.partner_id and lead.partner_id.email or lead.email_from],
                 include_lost=False
-            ) & self.duplicated_opportunity_ids
+            ) & self.duplicated_lead_ids
 
-            # Merge with first matching existing opportunity
-            if len(duplicate_opportunities):
-                merge_result_opportunity_ids += (duplicate_opportunities[0] + lead).merge_opportunity()
-            else:
+            if len(duplicate_leads) > 1: # Merge remaining leads together
+                merge_result_opportunity_ids += duplicate_leads.merge_opportunity()
+            elif len(duplicate_leads) == 1: # Convert the remaining lead in the list
+                merge_result_opportunity_ids += duplicate_leads
+            else: # If all duplicates were removed from the list, convert the original
                 merge_result_opportunity_ids += lead
-                leads_without_opportunity_ids += lead
 
         # Convert leads that weren't merged with opportunities
-        self._convert_and_allocate(leads_without_opportunity_ids)
+        self._convert_and_allocate(merge_result_opportunity_ids.filtered(lambda l: l.type != 'opportunity'))
 
     def _convert_and_allocate(self, leads):
         for lead in leads:
