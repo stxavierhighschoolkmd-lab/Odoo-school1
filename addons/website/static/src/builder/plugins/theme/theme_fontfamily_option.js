@@ -5,7 +5,7 @@ import { BuilderButton } from "@html_builder/core/building_blocks/builder_button
 import { getCSSVariableValue } from "@html_editor/utils/formatting";
 
 export class ThemeFontFamilyOption extends BaseOptionComponent {
-    static template = "html_builder.ThemeFontFamilyOption";
+    static template = "website.ThemeFontFamilyOption";
     static props = {
         cssVariable: String,
         buttonIcon: String,

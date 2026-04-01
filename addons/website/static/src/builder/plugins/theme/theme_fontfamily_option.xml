@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-<t t-name="html_builder.ThemeFontFamilyOption">
+<t t-name="website.ThemeFontFamilyOption">
     <BuilderFontFamilyPicker
         action="'customizeWebsiteVariable'"
         actionParam="this.props.cssVariable"

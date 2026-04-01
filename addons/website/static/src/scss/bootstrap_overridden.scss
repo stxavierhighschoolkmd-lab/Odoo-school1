@@ -192,10 +192,23 @@ $display-4-margin-bottom: o-website-value('display-4-margin-bottom') or $heading
 $headings-color: o-color('o-cc1-headings') !default;
 
 $lead-font-size: $font-size-base * $o-lead-ratio !default;
-// Note that we currently load only 700 for Google fonts, we may consider trying
-// to load more or this one only instead. Meanwhile, this fallbacks on 700
-// if 600 is not available anyway.
-$font-weight-bold: 600 !default;
+
+@if o-website-value('lead-font-weight') {
+    $lead-font-weight: o-website-value('lead-font-weight');
+}
+@if o-website-value('font-weight-normal') {
+    $font-weight-normal: o-website-value('font-weight-normal');
+}
+@if o-website-value('font-weight-bolder') {
+    $font-weight-bolder: o-website-value('font-weight-bolder');
+}
+@if o-website-value('headings-font-weight') {
+    $headings-font-weight: o-website-value('headings-font-weight');
+    $display-font-weight: o-website-value('headings-font-weight');
+}
+@if o-website-value('btn-font-weight') {
+    $btn-font-weight: o-website-value('btn-font-weight');
+}
 
 $text-muted: mute-color($body-color) !default;
 

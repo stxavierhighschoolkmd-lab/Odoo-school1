@@ -60,6 +60,11 @@
                 </BuilderRow>
             </t>
         </BuilderRow>
+        <ThemeFontWeightOption
+            regularVariable="'btn-font-weight'"
+            boldVariable="'btn-font-weight-bold'"
+            fontVariable="'buttons-font'"
+        />
         <BuilderRow label.translate="Round Corners" action="'customizeWebsiteVariable'">
             <BuilderNumberInput actionParam="'btn-border-radius'" unit="'px'" saveUnit="'rem'"/>
             <t t-set-slot="collapse">
