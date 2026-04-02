@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="website_sale.SpecificationsOption">
+
+    <!-- Field selector -->
+    <BuilderRow label.translate="Field">
+        <BuilderSelect dataAttributeAction="'pendingFieldId'" preview="false">
+            <t t-foreach="state.fields" t-as="field" t-key="field.id">
+                <BuilderSelectItem dataAttributeActionValue="`${field.id}`">
+                    <t t-out="field.field_description"/>
+                </BuilderSelectItem>
+            </t>
+        </BuilderSelect>
+    </BuilderRow>
+
+    <!-- Category selector + plus/times toggle -->
+    <BuilderRow label.translate="Category">
+        <BuilderSelect dataAttributeAction="'pendingCategoryId'" preview="false">
+            <BuilderSelectItem dataAttributeActionValue="''">
+                Others
+            </BuilderSelectItem>
+            <t t-foreach="categories" t-as="category" t-key="category.id">
+                <BuilderSelectItem dataAttributeActionValue="`${category.id}`">
+                    <t t-out="category.name"/>
+                </BuilderSelectItem>
+            </t>
+        </BuilderSelect>
+        <BuilderButton
+            t-if="!categoryCreateMode.value"
+            title.translate="Create new category"
+            className="'fa fa-plus text-success border-0'"
+            style="'background-color: transparent !important;'"
+            preview="false"
+            t-on-click="() => this.openCategoryCreate()"
+        />
+        <BuilderButton
+            t-if="categoryCreateMode.value"
+            title.translate="Cancel"
+            className="'fa fa-times text-danger border-0'"
+            style="'background-color: transparent !important;'"
+            preview="false"
+            t-on-click="() => this.cancelCategoryCreate()"
+        />
+    </BuilderRow>
+
+    <!-- New category name input + Create button -->
+    <t t-if="categoryCreateMode.value">
+        <BuilderRow label.translate="Name" level="1">
+            <BuilderTextInput
+                dataAttributeAction="'pendingNewCategoryName'"
+                placeholder.translate="Category name..."
+            />
+        </BuilderRow>
+        <BuilderRow label.translate=" ">
+            <BuilderButton
+                action="'createCategory'"
+                preview="false"
+                type="'success'"
+                className="'w-auto'"
+            >
+                Create Category
+            </BuilderButton>
+        </BuilderRow>
+    </t>
+
+    <!-- Add Field button — hidden while category create is open -->
+    <t t-if="!categoryCreateMode.value">
+        <BuilderRow label.translate=" ">
+            <BuilderButton
+                action="'addSpecField'"
+                preview="false"
+                type="'success'"
+            >
+                + Add Field
+            </BuilderButton>
+        </BuilderRow>
+    </t>
+
+</t>
+
+<t t-name="website_sale.SpecFieldRowOption">
+</t>
+
+</templates>

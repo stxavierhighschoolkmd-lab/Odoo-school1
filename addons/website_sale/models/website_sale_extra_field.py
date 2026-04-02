@@ -18,3 +18,4 @@ class WebsiteSaleExtraField(models.Model):
     )
     label = fields.Char(related="field_id.field_description")
     name = fields.Char(related="field_id.name")
+    category_id = fields.Many2one(comodel_name="product.attribute.category")

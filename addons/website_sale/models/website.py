@@ -139,12 +139,6 @@ class Website(models.Model):
         selection="_get_product_sort_mapping", required=True, default="website_sequence asc"
     )
 
-    shop_extra_field_ids = fields.One2many(
-        string="E-Commerce Extra Fields",
-        comodel_name="website.sale.extra.field",
-        inverse_name="website_id",
-    )
-
     product_page_container = fields.Selection(
         selection=[("unset", "Unset"), ("regular", "Regular"), ("fluid", "Full-width")],
         default="unset",
@@ -1198,3 +1192,16 @@ class Website(models.Model):
         :rtype: dict
         """
         return json_scriptsafe.dumps(self._prepare_ecommerce_store_markup_data(), indent=2)
+
+    def get_extra_spec_fields_by_category(self):
+        """Return a dict mapping category (or False) to extra fields for this website.
+
+        :return: dict {product.attribute.category}
+        """
+        extra_fields = self.env["website.sale.extra.field"].search([("website_id", "=", self.id)])
+        result = {}
+        for extra_field in extra_fields:
+            key = extra_field.category_id or False
+            result.setdefault(key, self.env["website.sale.extra.field"])
+            result[key] |= extra_field
+        return result
