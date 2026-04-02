@@ -4,6 +4,7 @@ import base64
 import json
 
 from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 from odoo.tools.urls import urljoin
 
 from odoo.addons.payment import utils as payment_utils
@@ -62,7 +63,32 @@ class PaymentTransaction(models.Model):
         if self.provider_code != "redsys":
             return super()._get_specific_rendering_values(processing_values)
 
+        return {
+            "api_url": self.provider_id._build_request_url("/realizarPago"),
+            "url_params": self._redsys_prepare_request_payload(),
+        }
+
+    def _send_payment_request(self):
+        """Override of `payment` to send a payment request to Redsys."""
+        if self.provider_code != "redsys":
+            return super()._send_payment_request()
+
+        try:
+            response = self._send_api_request(
+                "POST", "/rest/trataPeticionREST", json=self._redsys_prepare_request_payload()
+            )
+        except ValidationError as error:
+            self._set_error(str(error))
+        else:
+            payment_data = json.loads(
+                base64.b64decode(response.get("Ds_MerchantParameters")).decode()
+            )
+            self._process("redsys", payment_data)
+
+    def _redsys_prepare_request_payload(self):
+        """Prepare the Redsys request payload with encoded merchant parameters and signature."""
         merchant_parameters = self._redsys_prepare_merchant_parameters()
+
         encoded_merchant_parameters = base64.b64encode(
             json.dumps(merchant_parameters).encode()
         ).decode()
@@ -70,12 +96,9 @@ class PaymentTransaction(models.Model):
             encoded_merchant_parameters, self.reference, self.provider_id.redsys_secret_key
         )
         return {
-            "api_url": self.provider_id._redsys_get_api_url(),
-            "url_params": {
-                "Ds_MerchantParameters": encoded_merchant_parameters,
-                "Ds_Signature": signature,
-                "Ds_SignatureVersion": "HMAC_SHA256_V1",
-            },
+            "Ds_MerchantParameters": encoded_merchant_parameters,
+            "Ds_Signature": signature,
+            "Ds_SignatureVersion": "HMAC_SHA256_V1",
         }
 
     def _redsys_prepare_merchant_parameters(self):
@@ -88,7 +111,7 @@ class PaymentTransaction(models.Model):
         base_url = self.provider_id.get_base_url()
         return_url = urljoin(base_url, RedsysController._return_url)
         webhook_url = urljoin(base_url, RedsysController._webhook_url)
-        return {
+        merchant_parameters = {
             "DS_MERCHANT_AMOUNT": str(converted_amount),
             "DS_MERCHANT_CURRENCY": self.currency_id.iso_numeric,
             "DS_MERCHANT_MERCHANTCODE": self.provider_id.redsys_merchant_code,
@@ -111,6 +134,20 @@ class PaymentTransaction(models.Model):
                 "email": self.partner_email,
             },
         }
+        if self.tokenize:
+            merchant_parameters.update({
+                "DS_MERCHANT_COF_INI": "S",
+                "DS_MERCHANT_COF_TYPE": "R",
+                "DS_MERCHANT_IDENTIFIER": "REQUIRED",
+            })
+        elif self.token_id:
+            merchant_parameters.update({
+                "DS_MERCHANT_COF_TYPE": "R",
+                "DS_MERCHANT_DIRECTPAYMENT": "true",
+                "DS_MERCHANT_EXCEP_SCA": "MIT",
+                "DS_MERCHANT_IDENTIFIER": self.token_id.provider_ref,
+            })
+        return merchant_parameters
 
     @api.model
     def _extract_reference(self, provider_code, payment_data):
@@ -134,6 +171,16 @@ class PaymentTransaction(models.Model):
             .name
         )
         return {"amount": amount, "currency_code": currency}
+
+    def _extract_token_values(self, payment_data):
+        """Override of `payment` to return token data based on Redsys payment data."""
+        if self.provider_code != "redsys":
+            return super()._extract_token_values(payment_data)
+
+        return {
+            "provider_ref": payment_data.get("Ds_Merchant_Identifier"),
+            "payment_details": payment_data.get("Ds_Card_Number", "")[-4:],
+        }
 
     def _apply_updates(self, payment_data):
         """Override of `payment' to update the transaction based on the payment data."""

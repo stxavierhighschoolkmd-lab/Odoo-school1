@@ -1,6 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from unittest.mock import patch
+
 from odoo.tests import tagged
+from odoo.tools import mute_logger
 
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment_redsys.tests.common import RedsysCommon
@@ -28,6 +31,34 @@ class TestPaymentTransaction(RedsysCommon):
         self.assertEqual(merchant_parameters["DS_MERCHANT_ORDER"], tx.reference)
         self.assertEqual(merchant_parameters["DS_MERCHANT_PAYMETHODS"], "C")  # credit card
         self.assertTrue("DS_MERCHANT_EMV3DS" in merchant_parameters)
+
+    def test_payload_preparation_in_payment_with_tokenize(self):
+        """Test that the payload is prepared correctly when the transaction is done with tokenize
+        option enabled."""
+        tx = self._create_transaction(flow="redirect", tokenize=True)
+
+        payload = tx._redsys_prepare_merchant_parameters()
+        expected_payload = {
+            "DS_MERCHANT_COF_INI": "S",
+            "DS_MERCHANT_COF_TYPE": "R",
+            "DS_MERCHANT_IDENTIFIER": "REQUIRED",
+        }
+        self.assertDictEqual({k: payload[k] for k in expected_payload}, expected_payload)
+
+    def test_payload_preparation_in_payment_with_token(self):
+        """Test that the payload is prepared correctly when the transaction is done with token."""
+        token = self._create_token()
+        token.provider_ref = self.provider_ref
+        tx = self._create_transaction(flow="redirect", token_id=token.id)
+
+        payload = tx._redsys_prepare_merchant_parameters()
+        expected_payload = {
+            "DS_MERCHANT_COF_TYPE": "R",
+            "DS_MERCHANT_DIRECTPAYMENT": "true",
+            "DS_MERCHANT_EXCEP_SCA": "MIT",
+            "DS_MERCHANT_IDENTIFIER": tx.token_id.provider_ref,
+        }
+        self.assertDictEqual({k: payload[k] for k in expected_payload}, expected_payload)
 
     def test_search_by_reference_returns_tx(self):
         """Test that the transaction is returned from the payment data."""
@@ -58,4 +89,37 @@ class TestPaymentTransaction(RedsysCommon):
         successful payment."""
         tx = self._create_transaction("redirect")
         tx._apply_updates(self.merchant_parameters)
+        self.assertEqual(tx.state, "done")
+
+    @mute_logger("odoo.addons.payment_redsys.controllers.main")
+    def test_process_tokenizes_transaction(self):
+        """Ensure `_process` tokenizes the transaction when using tokenize option."""
+        tx = self._create_transaction("redirect", tokenize=True)
+
+        with (
+            patch(
+                "odoo.addons.payment.models.payment_provider.PaymentProvider._send_api_request",
+                return_value=self.token_merchant_data,
+            ),
+            patch(
+                "odoo.addons.payment.models.payment_transaction.PaymentTransaction._tokenize"
+            ) as tokenize_mock,
+        ):
+            tx._process("redsys", self.token_merchant_data)
+
+        self.assertEqual(tokenize_mock.call_count, 1)
+
+    @mute_logger("odoo.addons.payment_redsys.controllers.main")
+    def test_process_sets_transaction_done_with_existing_token(self):
+        """Ensure `_process` sets the transaction to done when using an existing token."""
+        token = self._create_token()
+        token.provider_ref = self.provider_ref
+        tx = self._create_transaction("redirect", token_id=token.id)
+
+        with patch(
+            "odoo.addons.payment.models.payment_provider.PaymentProvider._send_api_request",
+            return_value=self.token_merchant_data,
+        ):
+            tx._process("redsys", self.token_merchant_data)
+
         self.assertEqual(tx.state, "done")

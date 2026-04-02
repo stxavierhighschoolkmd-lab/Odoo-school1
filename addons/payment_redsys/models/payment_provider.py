@@ -15,6 +15,7 @@ except ImportError:
     from cryptography.hazmat.primitives.ciphers.algorithms import TripleDES
 
 from odoo import fields, models
+from odoo.tools.urls import urljoin
 
 from odoo.addons.payment_redsys import const
 
@@ -38,6 +39,13 @@ class PaymentProvider(models.Model):
         groups="base.group_system",
     )
 
+    # === COMPUTED METHODS === #
+
+    def _compute_feature_support_fields(self):
+        """Override of `payment` to enable additional features."""
+        super()._compute_feature_support_fields()
+        self.filtered(lambda p: p.code == "redsys").update({"support_tokenization": True})
+
     # === CRUD METHODS === #
 
     def _get_default_payment_method_codes(self):
@@ -49,12 +57,16 @@ class PaymentProvider(models.Model):
 
     # === BUSINESS METHODS === #
 
-    def _redsys_get_api_url(self):
+    def _build_request_url(self, endpoint, **kwargs):
+        """Override of `payment` to build the request URL."""
+        if self.code != "redsys":
+            return super()._build_request_url(endpoint, **kwargs)
+
         if self.state == "enabled":
-            api_url = "https://sis.redsys.es/sis/realizarPago"
+            base = "https://sis.redsys.es/sis"
         else:  # 'test'
-            api_url = "https://sis-t.redsys.es:25443/sis/realizarPago"
-        return api_url
+            base = "https://sis-t.redsys.es:25443/sis"
+        return urljoin(base, endpoint)
 
     def _redsys_calculate_signature(self, merchant_parameters, reference, secret_key):
         """Calculate the signature for the provided data.

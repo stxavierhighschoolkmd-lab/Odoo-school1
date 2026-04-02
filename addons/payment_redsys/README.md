@@ -11,10 +11,10 @@ submission provided by the `payment` module.
 
 - Payment with redirection flow
 - Webhook notifications
+- Tokenization
 
 ## Not implemented features
 
-- [Tokenization](https://pagosonline.redsys.es/desarrolladores-inicio/documentacion-funcionalidades-avanzadas/tokenizacion/)
 - [Manual capture](https://pagosonline.redsys.es/desarrolladores-inicio/documentacion-operativa/preautorizaciones-y-confirmaciones/)
 - [Refunds](https://pagosonline.redsys.es/desarrolladores-inicio/documentacion-operativa/devolver-o-anular-un-pago/)
 
@@ -22,6 +22,8 @@ submission provided by the `payment` module.
 
 - `19.0`
   - Integration with the Redirection API. odoo/odoo#205135.
+- `saas-19.3`
+  - Support Tokenization. odoo/odoo#253606.
 
 ## Testing instructions
 
