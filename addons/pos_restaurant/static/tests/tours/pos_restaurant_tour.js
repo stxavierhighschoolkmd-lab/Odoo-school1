@@ -1301,6 +1301,7 @@ registry.category("web_tour.tours").add("test_guest_count_bank_payment", {
     steps: () =>
         [
             Chrome.startPoS(),
+            FloorScreen.isShown(),
             FloorScreen.clickTable("2"),
             NumberPopup.enterValue("5"),
             NumberPopup.isShown("5"),

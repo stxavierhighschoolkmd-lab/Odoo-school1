@@ -224,8 +224,11 @@ class PosConfig(models.Model):
     statistics_for_current_session = fields.Json(string="Session Statistics", compute="_compute_statistics_for_session")
     kanban_dashboard_graph = fields.Text(compute='_kanban_dashboard_graph')
     iface_printbill = fields.Boolean(string='Bill Printing', help="Allows to print the Bill before payment.")
-
     pos_snooze_ids = fields.One2many('pos.product.template.snooze', 'pos_config_id', string='Snoozed Products')
+    use_download_invoice = fields.Boolean(
+        string='Download Invoice',
+        help="Automatically download the invoice PDF on the POS device when an order is invoiced. To avoid blocking the ui, invoice generation process will be done through cron in background."
+    )
 
     @api.onchange('receipt_printer_ids')
     def _onchange_receipt_printer_ids(self):

@@ -653,6 +653,7 @@ class TestPointOfSaleFlow(CommonPosTest):
             'payment_method_id': self.customer_account_payment_method.id
         })
         order_payment.with_context(**payment_context).check()
+        order.generate_order_invoice()
 
         self.assertEqual(order.account_move.invoice_date_due, (datetime.now() + timedelta(days=30)).date())
 
@@ -1346,6 +1347,7 @@ class TestPointOfSaleFlow(CommonPosTest):
         }
         pos_order_id = self.env['pos.order'].sync_from_ui([product_order])['pos.order'][0]['id']
         pos_order = self.env['pos.order'].search([('id', '=', pos_order_id)])
+        pos_order.generate_order_invoice()
         payments = pos_order.payment_ids
         self.assertRecordValues(payments.sorted(), [
             {'amount': -50.0, 'payment_method_id': cash_payment_method.id, 'is_change': True},
