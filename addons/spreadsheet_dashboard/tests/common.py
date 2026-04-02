@@ -9,6 +9,11 @@ class DashboardTestCommon(TransactionCase):
         super().setUpClass()
         cls.group = cls.env["res.groups"].create({"name": "test group"})
         cls.user = new_test_user(cls.env, login="Raoul")
+        cls.dashboard_manager = new_test_user(
+            cls.env,
+            login="Mitchell",
+            groups="spreadsheet_dashboard.group_dashboard_manager",
+        )
         cls.user.group_ids |= cls.group
 
     def create_dashboard(self, group=None):
@@ -24,11 +29,10 @@ class DashboardTestCommon(TransactionCase):
         )
         return dashboard
 
-    def share_dashboard(self, dashboard):
-        share = self.env["spreadsheet.dashboard.share"].create(
-            {
-                "dashboard_id": dashboard.id,
-                "spreadsheet_data": dashboard.spreadsheet_data,
-            }
-        )
+    def share_dashboard(self, dashboard, **values):
+        share = self.env["spreadsheet.dashboard.share"].create({
+            "dashboard_id": dashboard.id,
+            "spreadsheet_data": dashboard.spreadsheet_data,
+            **values,
+        })
         return share
