@@ -745,7 +745,9 @@ class AccountMove(models.Model):
         groups="account.group_account_invoice,account.group_account_readonly",
     )
     duplicated_ref_ids = fields.Many2many(comodel_name='account.move', compute='_compute_duplicated_ref_ids')
+    # used to check if any moves in duplicated_ref_ids are in the 'Draft' state.
     is_draft_duplicated_ref_ids = fields.Boolean(compute="_compute_is_draft_duplicated_ref_ids")
+    is_exact_move_duplicate = fields.Boolean(compute='_compute_is_draft_duplicated_ref_ids')
     need_cancel_request = fields.Boolean(compute='_compute_need_cancel_request')
 
     show_update_fpos = fields.Boolean(string="Has Fiscal Position Changed", store=False)  # True if the fiscal position was changed
@@ -2076,7 +2078,13 @@ class AccountMove(models.Model):
         for move in self:
             move.quick_encoding_vals = move._get_quick_edit_suggestions()
 
+<<<<<<< e98ee9be3f21a09b694b7e57c4718f947434f4a7
     @api.depends(lambda self: self._duplicated_ref_ids_depends())
+||||||| 7ba48de13e6732b1b7cce17a1c59aa2302278d2c
+    @api.depends('ref', 'move_type', 'partner_id', 'invoice_date', 'tax_totals')
+=======
+    @api.depends('ref', 'move_type', 'partner_id', 'invoice_date', 'tax_totals', 'currency_id')
+>>>>>>> ce7af90288a8fa5675af66b760bec8fc8f021dae
     def _compute_duplicated_ref_ids(self):
         move_to_duplicate_move = self._fetch_duplicate_reference()
         for move in self:
@@ -2092,7 +2100,13 @@ class AccountMove(models.Model):
         if not moves:
             return {}
 
+<<<<<<< e98ee9be3f21a09b694b7e57c4718f947434f4a7
         used_fields = [f for f in self._duplicated_ref_ids_depends() if self._fields[f].store] + ["commercial_partner_id", "company_id", "amount_total", "state"]
+||||||| 7ba48de13e6732b1b7cce17a1c59aa2302278d2c
+        used_fields = ("company_id", "partner_id", "commercial_partner_id", "ref", "move_type", "invoice_date", "state", "amount_total")
+=======
+        used_fields = ("company_id", "partner_id", "commercial_partner_id", "ref", "move_type", "invoice_date", "state", "amount_total", "currency_id")
+>>>>>>> ce7af90288a8fa5675af66b760bec8fc8f021dae
 
         self.env["account.move"].flush_model(used_fields)
 
@@ -2193,12 +2207,87 @@ class AccountMove(models.Model):
                 )
             """)
             to_query.append((in_moves, in_moves_sql_condition))
+<<<<<<< e98ee9be3f21a09b694b7e57c4718f947434f4a7
         return to_query
+||||||| 7ba48de13e6732b1b7cce17a1c59aa2302278d2c
+
+        result = []
+        for moves, move_type_sql_condition in to_query:
+            result.extend(self.env.execute_query(SQL("""
+                SELECT move.id AS move_id,
+                       array_agg(duplicate_move.id) AS duplicate_ids
+                  FROM %(move_table_and_alias)s
+                  JOIN account_move AS duplicate_move
+                    ON move.company_id = duplicate_move.company_id
+                   AND move.id != duplicate_move.id
+                   AND duplicate_move.state IN %(matching_states)s
+                   AND move.move_type = duplicate_move.move_type
+                   AND (
+                           move.commercial_partner_id = duplicate_move.commercial_partner_id
+                           OR (move.commercial_partner_id IS NULL AND duplicate_move.state = 'draft')
+                       )
+                   AND (%(move_type_sql_condition)s)
+                 WHERE move.id IN %(moves)s
+                 GROUP BY move.id
+                """,
+                matching_states=tuple(matching_states),
+                moves=tuple(moves.ids or [0]),
+                move_table_and_alias=move_table_and_alias,
+                move_type_sql_condition=move_type_sql_condition,
+            )))
+        return {
+            self.env['account.move'].browse(move_id): self.env['account.move'].browse(duplicate_ids)
+            for move_id, duplicate_ids in result
+        }
+=======
+
+        result = []
+        for moves, move_type_sql_condition in to_query:
+            result.extend(self.env.execute_query(SQL("""
+                SELECT move.id AS move_id,
+                       array_agg(duplicate_move.id) AS duplicate_ids
+                  FROM %(move_table_and_alias)s
+                  JOIN account_move AS duplicate_move
+                    ON move.company_id = duplicate_move.company_id
+                   AND move.id != duplicate_move.id
+                   AND duplicate_move.state IN %(matching_states)s
+                   AND move.move_type = duplicate_move.move_type
+                   AND move.currency_id = duplicate_move.currency_id
+                   AND (
+                           move.commercial_partner_id = duplicate_move.commercial_partner_id
+                           OR (move.commercial_partner_id IS NULL AND duplicate_move.state = 'draft')
+                       )
+                   AND (%(move_type_sql_condition)s)
+                 WHERE move.id IN %(moves)s
+                 GROUP BY move.id
+                """,
+                matching_states=tuple(matching_states),
+                moves=tuple(moves.ids or [0]),
+                move_table_and_alias=move_table_and_alias,
+                move_type_sql_condition=move_type_sql_condition,
+            )))
+        return {
+            self.env['account.move'].browse(move_id): self.env['account.move'].browse(duplicate_ids)
+            for move_id, duplicate_ids in result
+        }
+>>>>>>> ce7af90288a8fa5675af66b760bec8fc8f021dae
 
     @api.depends('duplicated_ref_ids')
     def _compute_is_draft_duplicated_ref_ids(self):
         for move in self:
+            move.is_exact_move_duplicate = False
             move.is_draft_duplicated_ref_ids = any(duplicate_move.state == 'draft' for duplicate_move in move.duplicated_ref_ids)
+            if move.is_purchase_document():
+                for dup in move.duplicated_ref_ids:
+                    if (
+                        move.ref and move.ref == dup.ref
+                        and move.move_type == dup.move_type
+                        and move.partner_id == dup.partner_id
+                        and move.invoice_date == dup.invoice_date
+                        and move.tax_totals['total_amount_currency'] == dup.tax_totals['total_amount_currency']
+                    ):
+                        move.is_exact_move_duplicate = True
+                        break
 
     @api.depends('company_id')
     def _compute_display_qr_code(self):
@@ -5297,11 +5386,10 @@ class AccountMove(models.Model):
         self.ensure_one()
         if self.env.context.get('name_as_amount_total'):
             currency_amount = self.currency_id.format(self.amount_total)
-            if self.state == 'posted':
-                ref = f" - {self.ref}" if self.ref else ""
-                return _("%(name)s%(ref)s at %(currency_amount)s", name=(self.name), ref=ref, currency_amount=currency_amount)
-            if self.name:
-                return _("%(name)s - Draft at (%(currency_amount)s)", name=(self.name), currency_amount=currency_amount)
+            if self.ref:
+                return _("%(ref)s at %(currency_amount)s", ref=self.ref, currency_amount=currency_amount)
+            elif self.name:
+                return _("%(name)s at %(currency_amount)s", name=self.name, currency_amount=currency_amount)
             else:
                 return _("Draft (%(currency_amount)s)", currency_amount=currency_amount)
         name = ''
