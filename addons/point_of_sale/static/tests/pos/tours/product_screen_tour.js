@@ -584,6 +584,16 @@ registry.category("web_tour.tours").add("PosCategoriesOrder", {
         [
             Chrome.startPoS(),
             Dialog.confirm("Open Register"),
+            {
+                content: "category selector keeps category-list styling",
+                trigger: ".category-list",
+                run: function () {
+                    const categoryList = document.querySelector(".category-list");
+                    if (!categoryList) {
+                        throw new Error("Category list should always have the category-list class");
+                    }
+                },
+            },
             ProductScreen.verifyCategorySequence(["AAA", "AAB", "AAC"]),
             {
                 trigger: '.category-button:eq(1) > div span:contains("AAB")',
