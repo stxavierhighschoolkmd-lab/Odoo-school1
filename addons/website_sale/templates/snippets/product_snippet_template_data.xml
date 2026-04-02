@@ -81,15 +81,13 @@
                         />
                         <div class="o_wsale_product_sub justify-content-between gap-2">
                             <!-- Price(s) -->
-                            <div
-                                aria-label="Price information"
-                            >
+                            <div aria-label="Price information">
                                 <t t-call="website_sale.price_dynamic_filter_template_product_product"/>
                                 <small
                                     t-if="data.get('base_unit_price')"
                                     class="o_product_price_unit text-muted d-block"
                                 >
-                                    <t t-call="website_sale.base_unit_price" base_unit_price="data.get('base_unit_price')"/>
+                                    <t t-call="website_sale.base_unit_price" base_unit_price="data['base_unit_price']"/>
                                 </small>
                             </div>
                             <!-- Actions -->

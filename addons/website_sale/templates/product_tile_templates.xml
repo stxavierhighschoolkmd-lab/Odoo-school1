@@ -89,7 +89,7 @@
                             t-if="template_price_vals.get('base_unit_price')"
                             class="o_product_price_unit text-muted d-block"
                         >
-                            <t t-call="website_sale.base_unit_price" base_unit_price="template_price_vals.get('base_unit_price')"/>
+                            <t t-call="website_sale.base_unit_price" base_unit_price="template_price_vals['base_unit_price']"/>
                         </small>
                     </div>
                 </t>

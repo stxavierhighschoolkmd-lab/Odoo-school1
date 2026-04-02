@@ -363,10 +363,12 @@ class ProductTemplate(models.Model):
         comparison_prices_enabled = self.env["res.groups"]._is_feature_enabled(
             "website_sale.group_product_price_comparison"
         )
+        product_reference_price_enabled = self.env["res.groups"]._is_feature_enabled(
+            "product.group_show_uom_price"
+        )
 
         res = {}
         for template in self:
-            product_or_template = template.product_variant_id or template
             pricelist_price, pricelist_rule_id = pricelist_prices[template.id]
 
             product_taxes = template.sudo().taxes_id._filter_taxes_by_company(self.env.company)
@@ -398,8 +400,8 @@ class ProductTemplate(models.Model):
                     template.compare_list_price, currency, self.env.company, date, round=False
                 )
 
-            if self.env["res.groups"]._is_feature_enabled("product.group_show_uom_price"):
-                template_price_vals["base_unit_price"] = product_or_template._get_base_unit_price(
+            if product_reference_price_enabled:
+                template_price_vals["base_unit_price"] = template._get_base_unit_price(
                     template_price_vals["price_reduce"]
                 )
 
