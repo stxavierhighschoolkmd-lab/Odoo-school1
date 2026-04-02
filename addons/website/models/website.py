@@ -17,7 +17,7 @@ from lxml import etree, html
 from urllib.parse import urlparse
 from werkzeug import urls
 
-from odoo import api, fields, models, tools, release
+from odoo import api, fields, models, netsvc, tools, release
 from odoo.addons.website.models.ir_http import sitemap_qs2dom
 from odoo.addons.website.tools import similarity_score, text_from_html, get_base_domain
 from odoo.addons.portal.controllers.portal import pager
@@ -1441,8 +1441,8 @@ class Website(models.CachedModel):
 
         # The format of `httprequest.host` is `domain:port`
         domain_name = (
-            request and request.httprequest.host
-            or hasattr(threading.current_thread(), 'url') and threading.current_thread().url
+            (request and request.httprequest.host)
+            or netsvc.ExecutionInfo.get().url
             or '')
         website_id = self.sudo()._get_current_website_id(domain_name, fallback=fallback)
         return self.browse(website_id)
