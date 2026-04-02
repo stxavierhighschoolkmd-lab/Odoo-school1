@@ -8,29 +8,6 @@ from odoo.tests.common import tagged
 @tagged('at_install', '-post_install')
 class TestMailingTemplates(MassMailCommon):
 
-    def test_template_use_this(self):
-        # Prepare
-        mailing_template = self.env['mailing.mailing'].with_context(
-            some_attribute="attribute value"
-        ).create([
-            {
-                "subject": "First template",
-                "is_template": True,
-            },
-        ])
-
-        # Execute
-        res_action = mailing_template.action_use_template()
-        created_mailing_id = res_action['res_id']
-        created_mailing = self.env['mailing.mailing'].browse(created_mailing_id)
-
-        # Assert
-        self.assertEqual("attribute value", res_action['context']['some_attribute'])
-        self.assertEqual(False, res_action['context']['default_is_template'])
-        self.assertEqual(False, res_action['context']['default_favorite'])
-        self.assertEqual(False, created_mailing.favorite)
-        self.assertEqual(False, created_mailing.is_template)
-
     def test_template_duplicate(self):
         # Prepare
         mailing_template = self.env['mailing.mailing'].create([

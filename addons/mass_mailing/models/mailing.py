@@ -229,7 +229,7 @@ class MailingMailing(models.Model):
     clicks_ratio = fields.Float(compute="_compute_clicks_ratio", string="Number of Clicks")
     link_trackers_count = fields.Integer(compute="_compute_link_trackers_count", string="Link Trackers Count")
     next_departure = fields.Datetime(compute="_compute_next_departure", string='Scheduled date')
-    is_template = fields.Boolean(default=False, copy=True)
+    is_template = fields.Boolean("Template")
     # UX
     next_departure_is_past = fields.Boolean(compute="_compute_next_departure")
     warning_message = fields.Char(
@@ -600,16 +600,14 @@ class MailingMailing(models.Model):
     # ------------------------------------------------------
 
     def action_use_template(self):
-        if mass_mailing_copy := self._create_mailing_from_template(self):
-            res_context = {**self.env.context, 'default_is_template': 0, 'default_favorite': 0}
-            return {
-                'type': 'ir.actions.act_window',
-                'view_mode': 'form',
-                'res_model': 'mailing.mailing',
-                'res_id': mass_mailing_copy.id,
-                'context': res_context,
-            }
-        return False
+        mass_mailing_copy = self._create_mailing_from_template(self)
+        return {
+            'type': 'ir.actions.act_window',
+            'view_mode': 'form',
+            'res_model': 'mailing.mailing',
+            'res_id': mass_mailing_copy.id,
+            'context': {**self.env.context, 'default_is_template': 0, 'default_favorite': 0},
+        }
 
     def _create_mailing_from_template(self, mass_mailing_template):
         mass_mailing_template.ensure_one()
