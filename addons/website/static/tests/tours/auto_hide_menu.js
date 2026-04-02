@@ -79,6 +79,10 @@ registerWebsitePreviewTour(
             trigger: ".hb-row[data-label='Content Width'] .o-hb-btn[title='Small']",
             run: "click",
         },
+        {
+            content: "Check that the width changed to small",
+            trigger: ".hb-row[data-label='Content Width'] .o-hb-btn.active[title='Small']",
+        },
         checkThatLayoutChanged,
         {
             content: "Make content width large",
@@ -100,6 +104,11 @@ registerWebsitePreviewTour(
             content: "Set the page layout to 'boxed'",
             trigger: ".o-hb-select-dropdown-item[data-action-value='boxed']",
             run: "click",
+        },
+        {
+            content: "Wait for the layout 'boxed' to be active",
+            trigger:
+                ".hb-row[data-label='Page Layout'] .o-hb-select-dropdown-item.active[data-action-value='boxed']:not(:visible)",
         },
         checkThatLayoutChanged,
     ]
