@@ -368,8 +368,7 @@ class PosSession(models.Model):
         for session in self.filtered(lambda session: session.state == 'opening_control'):
             values = {}
             if session.config_id.cash_control and not session.rescue:
-                last_session = self.search([('config_id', '=', session.config_id.id), ('id', '!=', session.id)], limit=1)
-                session.cash_register_balance_start = last_session.cash_register_balance_end_real  # defaults to 0 if lastsession is empty
+                session.cash_register_balance_start = session.cash_journal_id.current_statement_balance
             session.write(values)
         return True
 
@@ -477,14 +476,29 @@ class PosSession(models.Model):
         self.env.flush_all()  # ensure sale.report is up to date
         return True
 
+    def _create_bank_statement(self, name, journal_id, balance_end_real, balance_start):
+        return self.env['account.bank.statement'].create({
+            'name': name,
+            'journal_id': journal_id,
+            'balance_end_real': balance_end_real,
+            'balance_start': balance_start,
+        })
+
     def _post_statement_difference(self, amount):
         if amount:
             if self.config_id.cash_control:
+                statement_id = self._create_bank_statement(
+                    _('Closing cash difference %s', self.name),
+                    self.cash_journal_id.id,
+                    self.cash_register_balance_end_real,
+                    self.cash_register_balance_end,
+                )
                 st_line_vals = {
                     'journal_id': self.cash_journal_id.id,
                     'amount': amount,
                     'date': self.statement_line_ids.sorted()[-1:].date or fields.Date.context_today(self),
                     'pos_session_id': self.id,
+                    'statement_id': statement_id.id,
                 }
 
             if amount < 0.0:
@@ -1178,15 +1192,17 @@ class PosSession(models.Model):
         # handle split cash payments
         split_cash_statement_line_vals = []
         split_cash_receivable_vals = []
+        payment_amount = 0.0
         for payment, amounts in split_receivables_cash.items():
             journal_id = payment.payment_method_id.journal_id
             split_cash_statement_line_vals.append(
-                self._get_split_statement_line_vals(
+                self.with_context(payment_amount=payment_amount)._get_split_statement_line_vals(
                     journal_id,
                     amounts['amount'],
                     payment
                 )
             )
+            payment_amount += amounts['amount']
             split_cash_receivable_vals.append(
                 self._get_split_receivable_vals(
                     payment,
@@ -1447,18 +1463,32 @@ class PosSession(models.Model):
 
     def _get_combine_statement_line_vals(self, journal, amount, payment_method):
         amount_values = self._prepare_statement_line_amount_values(journal, amount)
+        statement_id = self._create_bank_statement(
+            self.name,
+            journal.id,
+            journal.current_statement_balance + amount,
+            journal.current_statement_balance,
+        )
         return {
             'date': fields.Date.context_today(self),
             'payment_ref': self.name,
             'pos_session_id': self.id,
             'journal_id': journal.id,
             'counterpart_account_id': self._get_receivable_account(payment_method).id,
-            **amount_values
+            'statement_id': statement_id.id,
+            **amount_values,
         }
 
     def _get_split_statement_line_vals(self, journal, amount, payment):
         accounting_partner = self.env["res.partner"]._find_accounting_partner(payment.partner_id)
         amount_values = self._prepare_statement_line_amount_values(journal, amount)
+        payment_amount = self.env.context.get('payment_amount', 0.0)
+        statement_id = self._create_bank_statement(
+            self.name,
+            journal.id,
+            journal.current_statement_balance + amount + payment_amount,
+            journal.current_statement_balance + payment_amount,
+        )
         return {
             'date': fields.Date.context_today(self, timestamp=payment.payment_date),
             'payment_ref': payment.name,
@@ -1466,7 +1496,8 @@ class PosSession(models.Model):
             'journal_id': journal.id,
             'counterpart_account_id': accounting_partner.property_account_receivable_id.id,
             'partner_id': accounting_partner.id,
-            **amount_values
+            'statement_id': statement_id.id,
+            **amount_values,
         }
 
     def _prepare_statement_line_amount_values(self, journal, amount):
@@ -1718,6 +1749,25 @@ class PosSession(models.Model):
         ).search([('code', '=', 'pos.session'), ('company_id', 'in', [self.config_id.company_id.id, False])], order='company_id', limit=1)
 
         self.name = (self.config_id.name if sequence.prefix == '/' else '') + sequence.next_by_code('pos.session') + (self.name if self.name != '/' else '')
+        if self.cash_journal_id:
+            self._create_opening_cash_statement(cashbox_value)
+
+    def _create_opening_cash_statement(self, cashbox_value):
+        is_first_session = len(self.config_id.session_ids) == 1
+        statement_id = self._create_bank_statement(
+            _('Initial cash deposit') if is_first_session else _('Opening cash difference %s', self.name),
+            self.cash_journal_id.id,
+            cashbox_value,
+            self.cash_journal_id.current_statement_balance,
+        )
+        statement_line_vals_list = {
+            'journal_id': self.cash_journal_id.id,
+            'payment_ref': _('Opening cash balance') if is_first_session else _('Opening cash difference'),
+            'amount': cashbox_value - self.cash_journal_id.current_statement_balance,
+            'date': fields.Date.context_today(self),
+            'statement_id': statement_id.id,
+        }
+        self.env['account.bank.statement.line'].with_context(no_retrieve_partner=True).create(statement_line_vals_list)
 
     def _post_cash_details_message(self, state, expected, difference, notes):
         expected_formatted = self.currency_id.format(expected)
@@ -1793,11 +1843,28 @@ class PosSession(models.Model):
         sessions = self.filtered('cash_journal_id')
         if not sessions:
             raise UserError(_("There is no cash payment method for this PoS Session"))
-
-        vals_list = [
-            self._prepare_account_bank_statement_line_vals(session, sign, amount, reason, partner_id, extras)
-            for session in sessions
-        ]
+        vals_list = []
+        session_name_by_journal_id = {session.cash_journal_id.id: session.name for session in sessions}
+        bank_statements = self.env['account.bank.statement'].with_context(lang='en_US').search([
+            ('journal_id', 'in', session_name_by_journal_id.keys()),
+            ('name', 'in', ['Cash in/Cash out ' + name for name in session_name_by_journal_id.values()])
+        ])
+        bank_statements_by_journal_id = {statement.journal_id.id: statement for statement in bank_statements}
+        for session in sessions:
+            statement_id = bank_statements_by_journal_id.get(session.cash_journal_id.id)
+            if not statement_id:
+                statement_id = self.env['account.bank.statement'].create({
+                    'name': _('Cash in/Cash out %s', session.name),
+                    'journal_id': session.cash_journal_id.id,
+                    'balance_end_real': session.cash_journal_id.current_statement_balance + sign * amount,
+                    'balance_start': session.cash_journal_id.current_statement_balance,
+                })
+            else:
+                statement_id.balance_end_real += sign * amount
+            vals_list.append({
+                'statement_id': statement_id.id,
+                **session._prepare_account_bank_statement_line_vals(session, sign, amount, reason, partner_id, extras),
+            })
 
         self.env['account.bank.statement.line'].with_context(no_retrieve_partner=True).create(vals_list)
 
@@ -1810,6 +1877,8 @@ class PosSession(models.Model):
         cashier_name = absl.partner_id.name
         amount = absl.amount
         action = cashier_name + ': ' + str(amount)
+        absl.statement_id.balance_end_real -= absl.amount
+        absl.statement_id = False
         absl.unlink()
         self.log_partner_message(partner_id, action, "CASH_IN_OUT_UNLINK")
 

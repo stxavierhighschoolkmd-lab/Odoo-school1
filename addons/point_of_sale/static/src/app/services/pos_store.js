@@ -195,6 +195,9 @@ export class PosStore extends WithLazyGetterTrap {
         initLNA(this.notification, (type, message) => {
             this.lnaState = { type, message };
         });
+        this.data.connectWebSocket("SESSION_UPDATED", async ({ session_id }) => {
+            await this.data.searchRead("pos.session", [["id", "=", session_id]]);
+        });
     }
 
     navigate(routeName, routeParams = {}) {
