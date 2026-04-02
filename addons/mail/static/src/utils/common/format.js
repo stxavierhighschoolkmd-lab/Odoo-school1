@@ -32,20 +32,26 @@ const messageUrlRegExp = new RegExp(`^${escapeRegExp(getOrigin())}/mail/message/
 
 /**
  * @param {string|ReturnType<markup>} rawBody
- * @param {Object} validMentions
- * @param {import("models").Persona[]} validMentions.partners
+ * @param {Object} [param1]
+ * @param {Object} [param1.validMentions]
+ * @param {import("models").Persona[]} [param1.validMentions.partners]
+ * @param {import("models").Thread[]} [param1.thread]
+ * @param {boolean} [param1.trim=true] whether the text content should be trimmed or not.
+ *   Trim is useful for when posting message and having the auto-trim of content, but when using auto-sync between html and text the whitespaces should be preserved and should have trim=false.
  * @returns {Promise<string|ReturnType<markup>>}
  */
-export function prettifyMessageText(rawBody, { validMentions = {}, thread } = {}) {
+export function prettifyMessageText(rawBody, { validMentions = {}, thread, trim = true } = {}) {
     if (rawBody instanceof markup().constructor) {
         // markup is already "pretty"
         return rawBody;
     }
-    let body = htmlTrim(rawBody);
+    let body = trim ? htmlTrim(rawBody) : rawBody;
     body = htmlReplace(body, /(\r|\n){2,}/g, () => markup`<br/><br/>`);
     body = htmlReplace(body, /(\r|\n)/g, () => markup`<br/>`);
     body = htmlReplace(body, /&nbsp;/g, () => " ");
-    body = htmlTrim(body);
+    if (trim) {
+        body = htmlTrim(body);
+    }
     // This message will be received from the mail composer as html content
     // subtype but the urls will not be linkified. If the mail composer
     // takes the responsibility to linkify the urls we end up with double

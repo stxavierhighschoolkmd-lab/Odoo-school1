@@ -68,6 +68,7 @@ export class Composer extends Record {
             const prettifiedHtml = prettifyMessageText(this.composerText, {
                 validMentions,
                 thread: this.targetThread,
+                trim: false,
             });
             if (this.composerHtml.toString() !== prettifiedHtml.toString()) {
                 this.updateFrom = "text";
