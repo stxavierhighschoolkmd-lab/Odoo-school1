@@ -2430,12 +2430,11 @@ describe("save image", () => {
         ];
         onRpc("/html_editor/attachment/add_data", async (request) => {
             const { params } = await request.json();
-            const { res_id, res_model } = params;
-            expect.step(`add_data: ${res_model} ${res_id}`);
+            expect.step(`add_data: ${params.res_model} ${params.res_id}`);
+            expect(params.public).toBe(true);
             return {
                 image_src: "/test_image_url.png",
-                access_token: "1234",
-                public: false,
+                public: true,
             };
         });
 
@@ -2464,7 +2463,7 @@ describe("save image", () => {
 
         // Save changes.
         await contains(".o_form_button_save").click();
-        expect(img.getAttribute("src")).toBe("/test_image_url.png?access_token=1234");
+        expect(img.getAttribute("src")).toBe("/test_image_url.png");
         expect(img).not.toHaveClass("o_b64_image_to_save");
         expect.verifySteps(["add_data: partner 1"]);
     });
@@ -2480,21 +2479,20 @@ describe("save image", () => {
         const def = new Deferred();
         onRpc("/html_editor/attachment/add_data", async (request) => {
             const { params } = await request.json();
-            const { res_id, res_model } = params;
-            expect.step(`add_data-start: ${res_model} ${res_id}`);
+            expect.step(`add_data-start: ${params.res_model} ${params.res_id}`);
+            expect(params.public).toBe(true);
             await def;
-            expect.step(`add_data-end: ${res_model} ${res_id}`);
+            expect.step(`add_data-end: ${params.res_model} ${params.res_id}`);
             return {
                 image_src: "/test_image_url.png",
-                access_token: "1234",
-                public: false,
+                public: true,
             };
         });
 
         onRpc("partner", "web_save", ({ args }) => {
             expect.step("web_save");
             expect(args[1].txt).toBe(
-                `<p class="test_target"><img class="img-fluid" data-file-name="test_image.png" src="/test_image_url.png?access_token=1234"></p>`
+                `<p class="test_target"><img class="img-fluid" data-file-name="test_image.png" src="/test_image_url.png"></p>`
             );
         });
 
@@ -2528,7 +2526,7 @@ describe("save image", () => {
 
         def.resolve();
         await tick();
-        expect(img.getAttribute("src")).toBe("/test_image_url.png?access_token=1234");
+        expect(img.getAttribute("src")).toBe("/test_image_url.png");
         expect(img).not.toHaveClass("o_b64_image_to_save");
 
         expect.verifySteps(["add_data-start: partner 1", "add_data-end: partner 1", "web_save"]);
@@ -2549,21 +2547,20 @@ describe("save image", () => {
         const def = new Deferred();
         onRpc("/html_editor/attachment/add_data", async (request) => {
             const { params } = await request.json();
-            const { res_id, res_model } = params;
-            expect.step(`add_data-start: ${res_model} ${res_id}`);
+            expect.step(`add_data-start: ${params.res_model} ${params.res_id}`);
+            expect(params.public).toBe(true);
             await def;
-            expect.step(`add_data-end: ${res_model} ${res_id}`);
+            expect.step(`add_data-end: ${params.res_model} ${params.res_id}`);
             return {
                 image_src: "/test_image_url.png",
-                access_token: "1234",
-                public: false,
+                public: true,
             };
         });
 
         onRpc("partner", "web_save", ({ args }) => {
             expect.step("web_save");
             expect(args[1].txt).toBe(
-                `<p class="test_target"><img class="img-fluid" data-file-name="test_image.png" src="/test_image_url.png?access_token=1234"></p>`
+                `<p class="test_target"><img class="img-fluid" data-file-name="test_image.png" src="/test_image_url.png"></p>`
             );
         });
 
@@ -2604,59 +2601,6 @@ describe("save image", () => {
         expect.verifySteps(["add_data-start: partner 1", "add_data-end: partner 1", "web_save"]);
     });
 
-    test("Pasted/dropped images are converted to attachments without access_token on save", async () => {
-        Partner._records = [
-            {
-                id: 1,
-                txt: "<p class='test_target'><br></p>",
-            },
-        ];
-        onRpc("/html_editor/attachment/add_data", async (request) => {
-            const { params } = await request.json();
-            const { res_id, res_model } = params;
-            expect.step(`add_data: ${res_model} ${res_id}`);
-            return {
-                image_src: "/test_image_url.png",
-                id: 123,
-                public: false,
-            };
-        });
-
-        onRpc("ir.attachment", "generate_access_token", ({ args }) => {
-            expect.step(`generate_access_token: ${args}`);
-            return ["12345"];
-        });
-
-        await mountView({
-            type: "form",
-            resId: 1,
-            resModel: "partner",
-            arch: `
-                <form>
-                    <field name="txt" widget="html"/>
-                </form>`,
-        });
-        setSelectionInHtmlField(".test_target");
-
-        // Paste image.
-        pasteFile(
-            htmlEditor,
-            createBase64ImageFile(
-                "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII"
-            )
-        );
-        await waitFor("img");
-        const img = htmlEditor.editable.querySelector("img");
-        expect(img.src.startsWith("data:image/png;base64,")).toBe(true);
-        expect(img).toHaveClass("o_b64_image_to_save");
-
-        // Save changes.
-        await contains(".o_form_button_save").click();
-        expect(img.getAttribute("src")).toBe("/test_image_url.png?access_token=12345");
-        expect(img).not.toHaveClass("o_b64_image_to_save");
-        expect.verifySteps(["add_data: partner 1", "generate_access_token: 123"]);
-    });
-
     test("Ensure a traceback is not raised when hiding an HtmlField with unsaved images", async () => {
         Partner._records = [
             {
@@ -2667,15 +2611,14 @@ describe("save image", () => {
 
         onRpc("/html_editor/attachment/add_data", async (request) => {
             const { params } = await request.json();
-            const { res_id, res_model } = params;
-            expect.step(`add_data-start: ${res_model} ${res_id}`);
+            expect.step(`add_data-start: ${params.res_model} ${params.res_id}`);
+            expect(params.public).toBe(true);
             // add a delay to emulate saving a big image.
             await delay(50);
-            expect.step(`add_data-end: ${res_model} ${res_id}`);
+            expect.step(`add_data-end: ${params.res_model} ${params.res_id}`);
             return {
                 image_src: "/test_image_url.png",
-                access_token: "1234",
-                public: false,
+                public: true,
             };
         });
 
@@ -2714,7 +2657,7 @@ describe("save image", () => {
         await contains(".o_notebook_headers .nav-link:not(.active)").click();
         await waitFor(".odoo-editor-editable", { timeout: 1500 });
         const savedImg = htmlEditor.editable.querySelector("img");
-        expect(savedImg.getAttribute("src")).toBe("/test_image_url.png?access_token=1234");
+        expect(savedImg.getAttribute("src")).toBe("/test_image_url.png");
         expect(savedImg).not.toHaveClass("o_b64_image_to_save");
 
         expect.verifySteps(["add_data-start: partner 1", "add_data-end: partner 1"]);

@@ -258,7 +258,7 @@ class HTML_Editor(Controller):
         context.pop('allowed_company_ids', None)
         request.update_env(context=context)
 
-    def _attachment_create(self, name='', data=False, url=False, res_id=False, res_model='ir.ui.view'):
+    def _attachment_create(self, name='', data=False, url=False, res_id=False, res_model='ir.ui.view', public=False):
         """Create and return a new attachment."""
         IrAttachment = request.env['ir.attachment']
 
@@ -276,7 +276,7 @@ class HTML_Editor(Controller):
 
         attachment_data = {
             'name': name,
-            'public': res_model == 'ir.ui.view',
+            'public': public,
             'res_id': res_id,
             'res_model': res_model,
         }
@@ -428,7 +428,7 @@ class HTML_Editor(Controller):
         )
 
     @route(['/web_editor/attachment/add_data', '/html_editor/attachment/add_data'], type='jsonrpc', auth='user', methods=['POST'], website=True)
-    def add_data(self, name, data, is_image, quality=0, width=0, height=0, res_id=False, res_model='ir.ui.view', **kwargs):
+    def add_data(self, name, data, is_image, quality=0, width=0, height=0, res_id=False, res_model='ir.ui.view', public=False, **kwargs):
         data = b64decode(data)
         if is_image:
             format_error_msg = _("Uploaded image's format is not supported. Try with: %s", ', '.join(SUPPORTED_IMAGE_MIMETYPES.values()))
@@ -449,13 +449,13 @@ class HTML_Editor(Controller):
                 return {'error': e.args[0]}
 
         self._clean_context()
-        attachment = self._attachment_create(name=name, data=data, res_id=res_id, res_model=res_model)
+        attachment = self._attachment_create(name=name, data=data, res_id=res_id, res_model=res_model, public=public)
         return attachment._get_media_info()
 
     @route(['/web_editor/attachment/add_url', '/html_editor/attachment/add_url'], type='jsonrpc', auth='user', methods=['POST'], website=True)
-    def add_url(self, url, res_id=False, res_model='ir.ui.view', **kwargs):
+    def add_url(self, url, res_id=False, res_model='ir.ui.view', public=False, **kwargs):
         self._clean_context()
-        attachment = self._attachment_create(url=url, res_id=res_id, res_model=res_model)
+        attachment = self._attachment_create(url=url, res_id=res_id, res_model=res_model, public=public)
         return attachment._get_media_info()
 
     @route(['/web_editor/modify_image/<model("ir.attachment"):attachment>', '/html_editor/modify_image/<model("ir.attachment"):attachment>'], type="jsonrpc", auth="user", website=True)
