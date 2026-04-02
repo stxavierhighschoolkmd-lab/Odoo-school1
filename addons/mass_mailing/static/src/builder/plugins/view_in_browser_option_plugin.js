@@ -3,6 +3,7 @@ import { Plugin } from "@html_editor/plugin";
 import { registry } from "@web/core/registry";
 
 const VIEW_IN_BROWSER_LINK_SELECTOR = "o_snippet_view_in_browser";
+const VIEW_IN_BROWSWER_SNIPPET_NAME = "s_mail_block_header_view";
 
 export class ViewInBrowserOptionPlugin extends Plugin {
     static id = "mass_mailing.ViewInBrowserOptionPlugin";
@@ -15,8 +16,15 @@ export class ViewInBrowserOptionPlugin extends Plugin {
         },
     };
 
+    setup() {
+        this.snippet = this.config.snippetModel.snippetStructures.find(
+            (s) => s.name === VIEW_IN_BROWSWER_SNIPPET_NAME
+        );
+        this.snippet.isDisabled = true; // Hide the snippet from the snippet library
+    }
+
     isPresent() {
-        return !!this.linkElement;
+        return Boolean(this.linkElement);
     }
 
     insertViewInBrowserLink() {
@@ -24,7 +32,7 @@ export class ViewInBrowserOptionPlugin extends Plugin {
             return;
         }
 
-        const linkElement = this._buildViewInBrowserLinkElement();
+        const linkElement = this.snippet.content.cloneNode(true);
         this.editable.querySelector(".o_mail_wrapper .o_mail_wrapper_td").prepend(linkElement);
         this.dependencies.history.addStep();
     }
@@ -39,25 +47,6 @@ export class ViewInBrowserOptionPlugin extends Plugin {
 
     get linkElement() {
         return this.editable.querySelector(`.${VIEW_IN_BROWSER_LINK_SELECTOR}`);
-    }
-
-    _buildViewInBrowserLinkElement() {
-        const section = this.document.createElement("section");
-        section.classList.add(
-            VIEW_IN_BROWSER_LINK_SELECTOR,
-            "o_mail_snippet_general",
-            "pt16",
-            "pb16"
-        );
-        section.dataset.name = "View Online";
-        section.dataset.vxml = "001";
-        section.innerHTML = `
-            <p style="text-align: center" class="mb-0">
-                <a href="/view">View in Browser</a>
-            </p>
-        `;
-
-        return section;
     }
 }
 
@@ -78,7 +67,6 @@ export class ToggleViewInBrowserAction extends BuilderAction {
     }
 
     isApplied() {
-        console.log();
         return this.dependencies["mass_mailing.ViewInBrowserOptionPlugin"].isPresent();
     }
 }
