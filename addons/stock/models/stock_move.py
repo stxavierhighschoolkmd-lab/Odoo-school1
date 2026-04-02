@@ -517,9 +517,31 @@ Please change the quantity done or the rounding precision in your settings.""",
                 move.forecast_availability = free_qty
                 continue
             if move._is_consuming():
+<<<<<<< 0ba457a7d5ce8db4acdfaf5518d22b5ea8ec3573
                 if move.state == 'draft':
+||||||| a6b542e680abf4b7c169fd2abcbe4fc2d09486fa
+                if move.state == 'assigned':
+                    move.forecast_availability = move.product_uom._compute_quantity(
+                        move.quantity, move.product_id.uom_id, rounding_method='HALF-UP')
+                elif move.state == 'draft':
+=======
+                if move.state == 'assigned':
+                    move.forecast_availability = move.product_uom._compute_quantity(
+                        move.quantity, move.product_id.uom_id, rounding_method='HALF-UP')
+                elif move.state == 'draft':
+                    free_qty = virtual_available_dict[key_virtual_available(move)][move.product_id.id]
+                    if float_compare(free_qty, move.product_qty, precision_rounding=move.product_id.uom_id.rounding) >= 0:
+                        move.forecast_availability = free_qty
+                        continue
+>>>>>>> 582073e53fa1c588cf3ca35555d2e2195297df4e
                     # for move _is_consuming and in draft -> the forecast_availability > 0 if in stock
+<<<<<<< 0ba457a7d5ce8db4acdfaf5518d22b5ea8ec3573
                     move.forecast_availability = virtual_available_dict[key_virtual_available(move)][move.product_id.id][0] - move.product_qty
+||||||| a6b542e680abf4b7c169fd2abcbe4fc2d09486fa
+                    move.forecast_availability = virtual_available_dict[key_virtual_available(move)][move.product_id.id] - move.product_qty
+=======
+                    move.forecast_availability = free_qty - move.product_qty
+>>>>>>> 582073e53fa1c588cf3ca35555d2e2195297df4e
                 elif move.state in ('waiting', 'confirmed', 'partially_available'):
                     outgoing_unreserved_moves_per_warehouse[move.location_id.warehouse_id].add(move.id)
             elif move.picking_type_id.code == 'internal':
