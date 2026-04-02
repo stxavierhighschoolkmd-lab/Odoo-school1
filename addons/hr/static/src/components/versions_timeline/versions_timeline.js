@@ -37,11 +37,11 @@ export class VersionsTimeline extends StatusBarField {
     /** @override **/
     getFieldNames() {
         const fieldNames = super.getFieldNames();
-        fieldNames.push([
+        fieldNames.push(
             "contract_type_id",
             "contract_date_start",
             "contract_date_end",
-        ]);
+        );
         return fieldNames.filter((fName) => fName in this.props.record.fields);
     }
 
