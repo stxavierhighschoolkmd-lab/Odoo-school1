@@ -3,7 +3,7 @@ import { DiscussAvatar } from "@mail/core/common/discuss_avatar";
 import { onExternalClick } from "@mail/utils/common/hooks";
 import { markEventHandled, isEventHandled } from "@web/core/utils/misc";
 
-import { Component } from "@odoo/owl";
+import { Component, onPatched } from "@odoo/owl";
 
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
 import { usePosition } from "@web/core/position/position_hook";
@@ -30,6 +30,7 @@ export class NavigableList extends Component {
 
     setup() {
         super.setup();
+        window.aku = this;
         this.rootRef = useRef("root");
         this.state = useState({
             activeIndex: null,
@@ -38,6 +39,10 @@ export class NavigableList extends Component {
         });
         this.hotkey = useService("hotkey");
         this.hotkeysToRemove = [];
+        onPatched(() => {
+            console.log(this.props === this.lastProps);
+            this.lastProps = this.props;
+        });
 
         useExternalListener(window, "keydown", this.onKeydown, true);
         onExternalClick("root", async (ev) => {

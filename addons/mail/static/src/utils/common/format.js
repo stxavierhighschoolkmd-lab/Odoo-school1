@@ -369,8 +369,12 @@ export function htmlToTextContentInline(htmlString) {
         .replace(/\s\s+/g, " ");
 }
 
-export function convertBrToLineBreak(str) {
-    str = htmlReplace(str, /<br\s*\/?>/gi, () => "\n");
+export function convertBrToLineBreak(str, { trim = true } = {}) {
+    const regex = trim ? /<br\s*\/?>/gi : /<br\/?>/gi;
+    str = htmlReplace(str, regex, () => "\n");
+    if (!trim) {
+        str = htmlReplace(str, /\s/g, () => markup`&nbsp;`);
+    }
     return createDocumentFragmentFromContent(str).body.textContent;
 }
 

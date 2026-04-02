@@ -38,6 +38,10 @@ export class UseSuggestion {
             },
             () => [this.search.delimiter, this.search.position, this.search.term]
         );
+        useLayoutEffect(() => {
+            const test = 1;
+            void test;
+        });
         useLayoutEffect(
             () => {
                 this.detect();

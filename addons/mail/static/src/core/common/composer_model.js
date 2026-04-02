@@ -93,7 +93,7 @@ export class Composer extends Record {
             }
             const prettifiedText = isHtmlEmpty(this.composerHtml)
                 ? ""
-                : convertBrToLineBreak(this.composerHtml);
+                : convertBrToLineBreak(this.composerHtml, { trim: false });
             if (this.composerText !== prettifiedText) {
                 this.updateFrom = "html";
                 this.composerText = prettifiedText;
