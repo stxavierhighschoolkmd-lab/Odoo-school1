@@ -24,3 +24,18 @@ export function getEditingEls(rootEl, { selector, exclude, applyTo }) {
     }
     return targetEls;
 }
+
+export const setHrefUrl = (targetEl, value) => {
+    let url = value;
+    if (!url) {
+        // As long as there is no URL, the image is not considered a link.
+        targetEl.removeAttribute("href");
+        return;
+    }
+    if (!url.startsWith("/") && !url.startsWith("#") && !/^([a-zA-Z]*.):.+$/gm.test(url)) {
+        // We permit every protocol (http:, https:, ftp:, mailto:,...).
+        // If none is explicitly specified, we assume it is a http.
+        url = "http://" + url;
+    }
+    targetEl.setAttribute("href", url);
+};

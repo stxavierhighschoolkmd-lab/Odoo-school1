@@ -3409,3 +3409,9 @@ input[value*="data-oe-translation-source-sha"] {
 img.o_image_popup {
     cursor: pointer;
 }
+
+*:has(> .stretched-link:focus-visible) {
+    outline: auto;
+    outline-color: black;
+    outline-offset: 2px;
+}
