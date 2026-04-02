@@ -254,6 +254,7 @@ class WebsiteEventController(http.Controller):
             'quantity': count,
         } for tid, count in ticket_order.items() if count]
 
+<<<<<<< 8a29c7b975c68d1689a53144252b49bf8f76a1f0
     @http.route(['/event/<model("event.event"):event>/registration/slot/<int:slot_id>/tickets'], type='jsonrpc', auth="public", methods=['POST'], website=True)
     def registration_tickets(self, event, slot_id):
         """ After slot selection, render ticket selection modal.
@@ -278,6 +279,12 @@ class WebsiteEventController(http.Controller):
     def registration_new(self, event, **post):
         """ After (slot and) tickets selection, render attendee(s) registration form.
         Slot and tickets availability check already performed in the template. """
+||||||| 94364e7473492e9bf0ce1f395895f9dbc405d848
+    @http.route(['/event/<model("event.event"):event>/registration/new'], type='jsonrpc', auth="public", methods=['POST'], website=True)
+    def registration_new(self, event, **post):
+=======
+    def _prepare_registration_new_values(self, event, **post):
+>>>>>>> f6918cfda7722301829b1851a02960bdb19e2512
         tickets = self._process_tickets_form(event, post)
         slot_id = post.get('event_slot_id', False)
         # Availability check needed as the total number of tickets can exceed the event/slot available tickets
@@ -308,13 +315,21 @@ class WebsiteEventController(http.Controller):
                     "email": visitor.email,
                     "phone": visitor.mobile,
                 }
-        return request.env['ir.ui.view']._render_template("website_event.registration_attendee_details", {
+
+        return {
             'tickets': tickets,
             'event_slot_id': slot_id,
             'event': event,
             'availability_check': availability_check,
             'default_first_attendee': default_first_attendee,
-        })
+        }
+
+    @http.route(['/event/<model("event.event"):event>/registration/new'], type='jsonrpc', auth="public", methods=['POST'], website=True)
+    def registration_new(self, event, **post):
+        values = self._prepare_registration_new_values(event, **post)
+        if not values:
+            return values
+        return request.env['ir.ui.view']._render_template("website_event.registration_attendee_details", values)
 
     def _process_attendees_form(self, event, form_details):
         """ Process data posted from the attendee details form.
