@@ -77,6 +77,39 @@ class TestMrpValuationOperationStandard(TestBomPriceOperationCommon):
     #         {'product_id': self.glass.id, 'value': 10},
     #     ])
 
+    def test_standard_byproduct_price_unit(self):
+        """Check that byproducts get their price_unit set correctly when the
+        finished product uses standard costing: standard byproducts use their
+        standard_price, AVCO byproducts use cost based on cost_share."""
+        self.dining_table.categ_id = self.category_standard
+        self.scrap_wood.categ_id = self.category_standard
+        self.scrap_wood.standard_price = 30
+        self._make_in_move(self.glass, 1, 10)
+        mo = self._create_mo(self.bom_1, 1)
+        self._produce(mo)
+        mo.button_mark_done()
+        byproduct_moves = mo.move_byproduct_ids.filtered(lambda m: m.state == 'done')
+        self.assertRecordValues(byproduct_moves, [
+            {'product_id': self.scrap_wood.id, 'price_unit': 30.0},
+            {'product_id': self.scrap_wood.id, 'price_unit': 30.0},
+        ])
+
+    def test_standard_finished_avco_byproduct_price_unit(self):
+        """Check that AVCO byproducts get their price_unit computed from
+        total_cost and cost_share when the finished product uses standard costing."""
+        self.dining_table.categ_id = self.category_standard
+        self.scrap_wood.categ_id = self.category_avco
+        self._make_in_move(self.glass, 1, 10)
+        mo = self._create_mo(self.bom_1, 1)
+        self._produce(mo)
+        mo.button_mark_done()
+        byproduct_moves = mo.move_byproduct_ids.filtered(lambda m: m.state == 'done')
+        total_cost = PRICE + 10
+        self.assertRecordValues(byproduct_moves, [
+            {'product_id': self.scrap_wood.id, 'value': self.company.currency_id.round(total_cost * 0.01)},
+            {'product_id': self.scrap_wood.id, 'value': self.company.currency_id.round(total_cost * 0.12)},
+        ])
+
     def test_fifo_cost_scrap_kit_product(self):
         """Verify that scrapping a Kit correctly propagates FIFO valuation to the exploded component moves.
         """
