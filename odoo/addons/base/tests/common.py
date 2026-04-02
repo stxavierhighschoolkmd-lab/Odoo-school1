@@ -8,10 +8,8 @@ from odoo.tests.common import new_test_user, TransactionCase, HttpCase
 from odoo.tools.mail import email_split_and_format
 
 DISABLED_MAIL_CONTEXT = {
-    'tracking_disable': True,
     'mail_create_nolog': True,
     'mail_create_nosubscribe': True,
-    'mail_notrack': True,
     'no_reset_password': True,
 }
 
