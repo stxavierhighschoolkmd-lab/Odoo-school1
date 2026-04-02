@@ -214,31 +214,32 @@ class WebsiteVisitorTests(WebsiteVisitorTestsCommon):
         res = self.url_open(url)
         self.assertEqual(res.status_code, 200)
         tree = html.fromstring(res.content)
-        script_content = tree.xpath("//script[@id='odoo_tracker']/text()")
-        if not script_content:
-            return res
+        html_content = tree.xpath("//html")[0]
+        main_object_attr = html_content.attrib.get('data-main-object')
+        tracking_enabled_attr = html_content.attrib.get('data-tracking-enabled')
 
-        js_code = script_content[0]
-        res_model = re.search(r"res_model:\s*'(.+?)'", js_code).group(1)
-        res_id = re.search(r"res_id:\s*(\d+)", js_code).group(1)
+        match = re.search(r'^([^(]+)\((\d+)', main_object_attr)
+        res_model = match.group(1)
+        res_id = match.group(2)
         csrf_token = re.search(r'''csrf_token:\s*['"]?(\w+)['"]?''', res.text).group(1)
 
-        # mimic the js tracking call
-        tracking_url = "/website/odoo_track"
-        payload = {
-            "params": {
-                "csrf_token": csrf_token,
-                "res_model": res_model,
-                "res_id": int(res_id),
-                "url": url,
+        if tracking_enabled_attr:
+            # mimic the js tracking call
+            tracking_url = "/website/odoo_track"
+            payload = {
+                "params": {
+                    "csrf_token": csrf_token,
+                    "res_model": res_model,
+                    "res_id": int(res_id),
+                    "url": url,
+                }
             }
-        }
-        track_res = self.url_open(
-            tracking_url,
-            data=json.dumps(payload),
-            headers={'Content-Type': 'application/json'},
-        )
-        self.assertEqual(track_res.status_code, 200)
+            track_res = self.url_open(
+                tracking_url,
+                data=json.dumps(payload),
+                headers={'Content-Type': 'application/json'},
+            )
+            self.assertEqual(track_res.status_code, 200)
         return res
 
     def test_visitor_creation_on_tracked_page(self):
