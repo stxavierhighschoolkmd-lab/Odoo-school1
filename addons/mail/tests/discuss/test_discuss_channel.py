@@ -503,15 +503,16 @@ class TestChannelInternals(MailCommon, HttpCase):
                     {
                         "res.partner": self._filter_partners_fields(
                             {
+                                "agent_ids": [],
                                 "id": self.test_partner.id,
-                                "im_status": self.test_partner.im_status,
-                                "im_status_access_token": self.test_partner._get_im_status_access_token(),
-                                "main_user_id": self.test_user.id,
+                                "user_ids": [self.test_user.id],
                             },
                         ),
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "im_status": self.test_user.im_status,
+                                "im_status_access_token": self.test_user._get_im_status_access_token(),
                                 "id": self.test_user.id,
                                 "partner_id": self.test_partner.id,
                             },
@@ -553,19 +554,20 @@ class TestChannelInternals(MailCommon, HttpCase):
                         ],
                         "res.partner": self._filter_partners_fields(
                             {
+                                "agent_ids": [],
                                 "avatar_128_access_token": self.test_partner._get_avatar_128_access_token(),
                                 "id": self.test_partner.id,
-                                "im_status": self.test_partner.im_status,
-                                "im_status_access_token": self.test_partner._get_im_status_access_token(),
-                                "main_user_id": self.test_user.id,
                                 "mention_token": self.test_partner._get_mention_token(),
                                 "name": self.test_partner.name,
+                                "user_ids": [self.test_user.id],
                                 "write_date": fields.Datetime.to_string(self.test_partner.write_date),
                             },
                         ),
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "im_status": self.test_user.im_status,
+                                "im_status_access_token": self.test_user._get_im_status_access_token(),
                                 "id": self.test_user.id,
                                 "partner_id": self.test_partner.id,
                             },

@@ -248,13 +248,12 @@ class ChatbotCase(MailCommon, chatbot_common.ChatbotCase):
                 0,
                 self._filter_partners_fields({
                     "active": False,
+                    "agent_ids": [],
                     "avatar_128_access_token": self.chatbot_script.operator_partner_id._get_avatar_128_access_token(),
                     "country_id": False,
                     "id": self.chatbot_script.operator_partner_id.id,
-                    "im_status": "im_partner",
-                    "im_status_access_token": self.chatbot_script.operator_partner_id._get_im_status_access_token(),
                     "is_public": False,
-                    "main_user_id": False,
+                    "user_ids": [],
                     "mention_token": self.chatbot_script.operator_partner_id._get_mention_token(),
                     "name": "Testing Bot",
                     "user_livechat_username": False,
@@ -370,16 +369,17 @@ class ChatbotCase(MailCommon, chatbot_common.ChatbotCase):
                     {
                         "res.partner": self._filter_partners_fields(
                             {
+                                "agent_ids": [],
                                 "email": "e.e@example.com",
                                 "id": self.partner_employee.id,
-                                "im_status": "offline",
-                                "im_status_access_token": self.partner_employee._get_im_status_access_token(),
-                                "main_user_id": self.user_employee.id,
+                                "user_ids": [self.user_employee.id],
                                 "tz": False,
                             },
                         ),
                         "res.users": self._filter_users_fields({
                             "employee_ids": [],
+                            "im_status": "offline",
+                            "im_status_access_token": self.user_employee._get_im_status_access_token(),
                             "id": self.user_employee.id,
                             "partner_id": self.partner_employee.id,
                         }),
