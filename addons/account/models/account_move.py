@@ -513,6 +513,7 @@ class AccountMove(models.Model):
         compute='_compute_preferred_payment_method_line_id',
         store=True,
         readonly=False,
+        default_init=lambda model: None,  # skip initialization
     )
 
     # === Currency fields === #
@@ -789,11 +790,6 @@ class AccountMove(models.Model):
     # used in <account.journal>._query_has_sequence_holes
     _made_gaps = models.Index('(journal_id, state, payment_state, move_type, date) WHERE (made_sequence_gap IS TRUE)')
     _duplicate_bills_idx = models.Index("(ref) WHERE (move_type IN ('in_invoice', 'in_refund'))")
-
-    def _auto_init(self):
-        super()._auto_init()
-        if not column_exists(self.env.cr, "account_move", "preferred_payment_method_line_id"):
-            create_column(self.env.cr, "account_move", "preferred_payment_method_line_id", "int4")
 
     # -------------------------------------------------------------------------
     # COMPUTE METHODS

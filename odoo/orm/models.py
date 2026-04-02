@@ -2489,20 +2489,25 @@ class BaseModel(metaclass=MetaModel):
                     continue
                 if field.manual and not update_custom_fields:
                     continue            # don't update custom fields
-                new = field.update_db(self, columns)
-                if new and field.compute:
-                    fields_to_compute.append(field)
+                to_recompute = field.update_db(self, columns)
+                if to_recompute and field.compute:
+                    fields_to_compute.append((field, to_recompute))
 
-            if fields_to_compute:
-                # mark existing records for computation now, so that computed
-                # required fields are flushed before the NOT NULL constraint is
-                # added to the database
+            # mark existing records for computation now, so that computed
+            # required fields are flushed before the NOT NULL constraint is
+            # added to the database
+            if any(records is True for _field, records in fields_to_compute):
                 cr.execute(SQL('SELECT id FROM %s', SQL.identifier(self._table)))
-                records = self.browse(row[0] for row in cr.fetchall())
-                if records:
-                    for field in fields_to_compute:
-                        _logger.info("Prepare computation of %s", field)
-                        self.env.add_to_compute(field, records)
+                all_records = self.browse(row[0] for row in cr.fetchall())
+            for field, record_ids in fields_to_compute:
+                if record_ids is True:
+                    records = all_records
+                else:
+                    records = self.browse(record_ids)
+                if not records:
+                    continue
+                _logger.info("Prepare computation of %s", field)
+                self.env.add_to_compute(field, records)
 
         if self._auto:
             self._add_sql_constraints()

@@ -122,6 +122,13 @@ class Field[T]:
         ``default=None`` to discard default values for the field
     :type default: value or callable
 
+    :param str default_init: the function that can initialize the column in the database;
+
+        The function can initialize the column in the database. It should
+        register a callback in `model.pool.post_init`.
+        The function returns a list of ids to recompute (can be nothing).
+        The ORM cannot be used in this function!
+
     :param str groups: comma-separated list of group xml ids (string); this
         restricts the field access to the users of the given groups only
 
@@ -296,6 +303,7 @@ class Field[T]:
     related: str | None = None          # sequence of field names, for related fields
     company_dependent: bool = False     # whether ``self`` is company-dependent (property field)
     default: Callable[[BaseModel], T] | T | None = None  # default(recs) returns the default value
+    default_init: str | Callable[[BaseModel], list[IdType] | bool | None] | None = None  # initializes the newly created column
 
     string: str | None = None           # field label
     export_string_translation: bool = True  # whether the field label translations are exported
@@ -684,6 +692,16 @@ class Field[T]:
             # being on the abstract model) are assigned an XML id
             delegate_field = model._fields[self.related.split('.')[0]]
             self._modules = tuple({*self._modules, *delegate_field._modules, *field._modules})
+
+        if (
+            self.related.count('.') == 1
+            and self.related_field.store
+            and not self.related_field.compute
+            and self.related_field.column_type
+            and not self.default_init
+        ):
+            # optimization for computing simple related fields like 'foo_id.bar'
+            self.default_init = self._init_field_related
 
     def _compute_related(self, records: BaseModel) -> None:
         """ Compute the related field ``self`` on ``records``. """
@@ -1140,12 +1158,12 @@ class Field[T]:
         """ Prescribed column order in table. """
         return 0 if self.column_type is None else sql.SQL_ORDER_BY_TYPE[self.column_type[0]]
 
-    def update_db(self, model: BaseModel, columns: dict[str, dict[str, typing.Any]]) -> bool:
+    def update_db(self, model: BaseModel, columns: dict[str, dict[str, typing.Any]]) -> list[IdType] | bool:
         """ Update the database schema to implement this field.
 
             :param model: an instance of the field's model
             :param columns: a dict mapping column names to their configuration in database
-            :return: ``True`` if the field must be recomputed on existing rows
+            :return: ``True`` if the field must be recomputed on all rows, ids otherwise
         """
         if not self.column_type:
             return False
@@ -1157,24 +1175,13 @@ class Field[T]:
         self.update_db_column(model, column)
         self.update_db_notnull(model, column)
 
-        # optimization for computing simple related fields like 'foo_id.bar'
-        if (
-            not column
-            and self.related and self.related.count('.') == 1
-            and self.related_field.store and not self.related_field.compute
-            and not (self.related_field.type == 'binary' and self.related_field.attachment)
-            and self.related_field.type not in ('one2many', 'many2many')
-        ):
-            join_field = model._fields[self.related.split('.')[0]]
-            if (
-                join_field.type == 'many2one'
-                and join_field.store and not join_field.compute
-            ):
-                model.pool.post_init(self.update_db_related, model)
-                # discard the "classical" computation
-                return False
+        if column:  # column already exists
+            return False
 
-        return not column
+        if self.default_init:
+            return determine(self.default_init, model)
+
+        return bool(self.compute)  # recompute all
 
     def update_db_column(self, model: BaseModel, column: dict[str, typing.Any]):
         """ Create/update the column corresponding to ``self``.
@@ -1233,7 +1240,18 @@ class Field[T]:
         elif not self.required and has_notnull:
             sql.drop_not_null(model.env.cr, model._table, self.name)
 
-    def update_db_related(self, model: BaseModel) -> None:
+    def _init_field_related(self, model: BaseModel) -> bool:
+        join_field = model._fields[self.related.split('.')[0]]
+        if (
+            join_field.type == 'many2one'
+            and join_field.store and not join_field.compute
+        ):
+            model.pool.post_init(self._update_db_related, model)
+            # discard the "classical" computation
+            return False
+        return True
+
+    def _update_db_related(self, model: BaseModel) -> None:
         """ Compute a stored related field directly in SQL. """
         comodel = model.env[self.related_field.model_name]
         join_field, comodel_field = self.related.split('.')
