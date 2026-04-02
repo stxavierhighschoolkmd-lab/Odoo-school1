@@ -23,11 +23,16 @@ class ProductTemplate(models.Model):
             for company in self.env.companies
         )
         for record in self:
-            check_hsn = record.sale_ok and record.l10n_in_hsn_code and active_hsn_code_digit_len
-            if check_hsn and (not re.match(r'^\d{4}$|^\d{6}$|^\d{8}$', record.l10n_in_hsn_code) or len(record.l10n_in_hsn_code) < active_hsn_code_digit_len):
-                record.l10n_in_hsn_warning = _(
+            warning = False
+            if record.taxes_id and not record.l10n_in_hsn_code:
+                warning = _("HSN code field is required when Sales taxes are set on the product.")
+            elif (
+                (record.sale_ok and record.l10n_in_hsn_code and active_hsn_code_digit_len)
+                and (not re.match(r'^\d{4}$|^\d{6}$|^\d{8}$', record.l10n_in_hsn_code)
+                or len(record.l10n_in_hsn_code) < active_hsn_code_digit_len)
+            ):
+                warning = _(
                     "HSN code field must consist solely of digits and be %s in length.",
                     digit_suffixes.get(str(active_hsn_code_digit_len))
                 )
-                continue
-            record.l10n_in_hsn_warning = False
+            record.l10n_in_hsn_warning = warning
