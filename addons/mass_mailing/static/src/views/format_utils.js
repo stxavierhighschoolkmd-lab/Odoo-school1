@@ -12,6 +12,8 @@ export function formatMailingPercentage(value, options = {}) {
 }
 
 /**
- * Used by the `ListRenderer.computAggregates()`.
+ * Add the format function to the gloabl `formatters` as it will be used by the
+ * `ListRenderer.computeAggregates` when trying to format the value provided by
+ * the `mailing_percentage` widget.
  */
-registry.category("formatters").add("mailing-percentage", formatMailingPercentage);
+registry.category("formatters").add("mailing_percentage", formatMailingPercentage);

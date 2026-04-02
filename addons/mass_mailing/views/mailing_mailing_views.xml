@@ -44,11 +44,11 @@
                     <field name="ab_testing_enabled" string="A/B Test" groups="mass_mailing.group_mass_mailing_campaign"/>
                     <field name="campaign_id" string="Campaign" groups="mass_mailing.group_mass_mailing_campaign" optional="hide"/>
                     <field name="sent" sum="Total" />
-                    <field name="received_ratio" widget="mailing-percentage" string="Delivered" avg="Average"/>
-                    <field name="opened_ratio" widget="mailing-percentage" string="Opened" avg="Average"/>
-                    <field name="bounced_ratio" widget="mailing-percentage" string="Bounced" optional="hide" avg="Average"/>
-                    <field name="clicks_ratio" widget="mailing-percentage" string="Clicked" avg="Average"/>
-                    <field name="replied_ratio" widget="mailing-percentage" string="Replied" avg="Average"/>
+                    <field name="received_ratio" widget="mailing_percentage" string="Delivered" avg="Average"/>
+                    <field name="opened_ratio" widget="mailing_percentage" string="Opened" avg="Average"/>
+                    <field name="bounced_ratio" widget="mailing_percentage" string="Bounced" optional="hide" avg="Average"/>
+                    <field name="clicks_ratio" widget="mailing_percentage" string="Clicked" avg="Average"/>
+                    <field name="replied_ratio" widget="mailing_percentage" string="Replied" avg="Average"/>
                     <field name="state" decoration-info="state in ['in_queue']" decoration-success="state == 'sending' or state == 'done'" widget="badge"/>
                 </list>
             </field>
