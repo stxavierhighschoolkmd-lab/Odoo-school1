@@ -7,6 +7,61 @@ import { ACTIONS_GROUP_NUMBER } from "@web/search/action_menus/action_menus";
 
 const cogMenuRegistry = registry.category("cogMenu");
 
+const BUTTON_CONFIG = {
+    fetch: {
+        action: "button_fetch_in_einvoices",
+        field: "show_fetch_in_einvoices_button",
+        journalType: "purchase",
+        label: _t("Fetch e-Invoices"),
+    },
+    refresh: {
+        action: "button_refresh_out_einvoices_status",
+        field: "show_refresh_out_einvoices_status_button",
+        journalType: "sale",
+        label: _t("Refresh e-Invoices Status"),
+    },
+};
+
+function getButtonConfig(searchModel) {
+    const { globalContext, context } = searchModel;
+    if (globalContext.show_fetch_in_einvoices_button) {
+        return BUTTON_CONFIG.fetch;
+    }
+    if (globalContext.show_refresh_out_einvoices_status_button) {
+        return BUTTON_CONFIG.refresh;
+    }
+
+    if ((context.default_move_type || "").startsWith("in_")) {
+        return BUTTON_CONFIG.fetch;
+    }
+    if ((context.default_move_type || "").startsWith("out_")) {
+        return BUTTON_CONFIG.refresh;
+    }
+
+    return null;
+}
+
+async function getRelevantJournalIds(searchModel) {
+    const journalId = searchModel.globalContext.default_journal_id;
+    if (journalId) {
+        return [journalId];
+    }
+
+    const buttonConfig = getButtonConfig(searchModel);
+    if (!buttonConfig) {
+        return [];
+    }
+
+    // The button-visibility fields are computed/unstored, so filter after reading.
+    const journals = await searchModel.orm.searchRead(
+        "account.journal",
+        [["type", "=", buttonConfig.journalType]],
+        ["id", buttonConfig.field],
+        { context: searchModel.context }
+    );
+    return journals.filter((j) => j[buttonConfig.field]).map((j) => j.id);
+}
+
 export class FetchEInvoices extends Component {
     static template = "account.FetchEInvoices";
     static props = {};
@@ -18,26 +73,22 @@ export class FetchEInvoices extends Component {
     }
 
     get buttonAction() {
-        return this.env.searchModel.globalContext.show_fetch_in_einvoices_button
-            ? "button_fetch_in_einvoices"
-            : "button_refresh_out_einvoices_status";
+        return getButtonConfig(this.env.searchModel)?.action;
     }
 
     get buttonLabel() {
-        return this.env.searchModel.globalContext.show_fetch_in_einvoices_button
-            ? _t("Fetch e-Invoices")
-            : _t("Refresh e-Invoices Status");
+        return getButtonConfig(this.env.searchModel)?.label;
     }
 
-    fetchEInvoices() {
-        const journalId = this.env.searchModel.globalContext.default_journal_id;
-        if (!journalId) {
+    async fetchEInvoices() {
+        const journalIds = await getRelevantJournalIds(this.env.searchModel);
+        if (!journalIds.length || !this.buttonAction) {
             return;
         }
 
-        this.action.doActionButton({
+        await this.action.doActionButton({
             type: "object",
-            resId: journalId,
+            resIds: journalIds,
             name: this.buttonAction,
             resModel: "account.journal",
             onClose: () => window.location.reload(),
@@ -48,12 +99,13 @@ export class FetchEInvoices extends Component {
 export const fetchEInvoicesActionMenu = {
     Component: FetchEInvoices,
     groupNumber: ACTIONS_GROUP_NUMBER,
-    isDisplayed: ({ config, searchModel }) =>
-        searchModel.resModel === "account.move" &&
-        (searchModel.globalContext.default_journal_id || false) &&
-        (searchModel.globalContext.show_fetch_in_einvoices_button ||
-            searchModel.globalContext.show_refresh_out_einvoices_status_button ||
-            false),
+    isDisplayed: async ({ searchModel }) => {
+        if (searchModel.resModel !== "account.move") {
+            return false;
+        }
+
+        return Boolean((await getRelevantJournalIds(searchModel)).length);
+    },
 };
 
 cogMenuRegistry.add("account-fetch-e-invoices", fetchEInvoicesActionMenu, { sequence: 11 });
