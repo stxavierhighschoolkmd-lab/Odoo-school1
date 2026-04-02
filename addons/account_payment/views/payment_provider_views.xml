@@ -20,8 +20,10 @@
             <group name="payment_followup_bank_details" position="inside">
                 <field
                     name="bank_account_id"
-                    context="{'default_partner_id': company_partner_id}"
-                    required="state != 'disabled'"
+                    context="{
+                        'default_company_id': company_id,
+                        'default_partner_id': company_partner_id,
+                    }"
                 />
             </group>
             <field name="available_country_ids" position="after">

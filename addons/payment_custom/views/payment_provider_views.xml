@@ -27,7 +27,6 @@
                 <attribute name="invisible">code == 'custom'</attribute>
             </group>
             <group name="payment_followup_bank_details" position="attributes">
-                <attribute name="string">Payment Followup</attribute>
                 <attribute name="invisible">
                     not (code == 'custom' and custom_mode == 'wire_transfer')
                 </attribute>
