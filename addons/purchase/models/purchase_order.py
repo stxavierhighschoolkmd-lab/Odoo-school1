@@ -77,6 +77,7 @@ class PurchaseOrder(models.Model):
             order.invoice_ids = invoices
             order.invoice_count = len(invoices)
 
+
     name = fields.Char('Order Reference', required=True, index='trigram', copy=False, default='New')
     priority = fields.Selection(
         [('0', 'Normal'), ('1', 'Urgent')], 'Priority', default='0', index=True)
@@ -153,6 +154,18 @@ class PurchaseOrder(models.Model):
     tax_calculation_rounding_method = fields.Selection(
         related='company_id.tax_calculation_rounding_method',
         string='Tax calculation rounding method', readonly=True)
+    document_tax_mode = fields.Selection(
+        selection=[
+            ('tax_excluded', "Tax Excl."),
+            ('tax_included', "Tax Incl."),
+        ],
+        compute='_compute_document_tax_mode',
+        precompute=True,
+        store=True,
+        readonly=False,
+        required=True,
+    )
+    disable_tax_mode_selection = fields.Boolean(compute='_compute_disable_tax_mode_selection')
     payment_term_id = fields.Many2one('account.payment.term', 'Payment Terms', domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
     incoterm_id = fields.Many2one('account.incoterms', 'Incoterm', help="International Commercial Terms are a series of predefined commercial terms used in international transactions.")
 
@@ -493,6 +506,21 @@ class PurchaseOrder(models.Model):
         Trigger the recompute of the taxes if the fiscal position is changed on the PO.
         """
         self.order_line._compute_tax_id()
+
+    @api.depends('company_id')
+    def _compute_document_tax_mode(self):
+        for move in self:
+            company = move.company_id or self.env.company
+            move.document_tax_mode = company.account_price_include
+
+    @api.depends('state')
+    def _compute_disable_tax_mode_selection(self):
+        for move in self:
+            #add check for gloabl discount
+            if move.state != 'draft':
+                move.disable_tax_mode_selection = True
+            else:
+                move.disable_tax_mode_selection = False
 
     # ------------------------------------------------------------
     # MAIL.THREAD

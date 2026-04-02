@@ -2,3 +2,23 @@
     color: $o-gray-600 !important;
     background-color: $o-gray-200 !important;
 }
+.my_right_aligned_badge {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+}
+.o_notebook {
+    position: relative;
+}
+.overlap_badge_tab {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    z-index: 2;
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: none;
+}
+.overlap_badge_tab > * {
+    pointer-events: auto;
+}

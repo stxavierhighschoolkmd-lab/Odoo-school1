@@ -584,6 +584,8 @@
                 </group>
                 <notebook>
                     <page string="Order Lines" name="order_lines">
+                    <field name="document_tax_mode" class="overlap_badge_tab" widget="badges_selection" nolabel="True" readonly="disable_tax_mode_selection"/>
+                    <field name="disable_tax_mode_selection" invisible="1"/>
                         <field
                             name="order_line"
                             widget="sol_o2m"
@@ -835,12 +837,12 @@
                                 <field
                                     name="price_subtotal"
                                     string="Amount"
-                                    column_invisible="parent.company_price_include == 'tax_included'"
+                                    column_invisible="parent.document_tax_mode == 'tax_included'"
                                     invisible="is_downpayment"/>
                                 <field
                                     name="price_total"
                                     string="Amount"
-                                    column_invisible="parent.company_price_include == 'tax_excluded'"
+                                    column_invisible="parent.document_tax_mode == 'tax_excluded'"
                                     invisible="is_downpayment"/>
                                 <!-- Optional amounts columns -->
                                 <field

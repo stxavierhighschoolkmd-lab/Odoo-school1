@@ -980,7 +980,7 @@ class AccountTax(models.Model):
                 results['batch_per_tax'][batch_tax.id] = batch
         return results
 
-    def _propagate_extra_taxes_base(self, tax, taxes_data, special_mode=False):
+    def _propagate_extra_taxes_base(self, tax, taxes_data, special_mode=False, document_tax_mode=False):
         """ In some cases, depending the computation order of taxes, the special_mode or the configuration
         of taxes (price included, affect base of subsequent taxes, etc), some taxes need to affect the base and
         the tax amount of the others. That's the purpose of this method: adding which tax need to be added as
@@ -1152,6 +1152,7 @@ class AccountTax(models.Model):
         special_mode=False,
         manual_tax_amounts=None,
         filter_tax_function=None,
+        document_tax_mode=None,
     ):
         """ Compute the tax/base amounts for the current taxes.
 
@@ -1189,7 +1190,7 @@ class AccountTax(models.Model):
                 taxes_data[tax.id]['tax_amount'] = float_round(taxes_data[tax.id]['tax_amount'], precision_rounding=precision_rounding)
             if tax.has_negative_factor:
                 reverse_charge_taxes_data[tax.id]['tax_amount'] = -taxes_data[tax.id]['tax_amount']
-            sorted_taxes._propagate_extra_taxes_base(tax, taxes_data, special_mode=special_mode)
+            sorted_taxes._propagate_extra_taxes_base(tax, taxes_data, special_mode=special_mode, document_tax_mode=document_tax_mode)
 
         def eval_tax_amount(tax_amount_function, tax):
             is_already_computed = 'tax_amount' in taxes_data[tax.id]
@@ -1207,6 +1208,8 @@ class AccountTax(models.Model):
         def prepare_tax_extra_data(tax, **kwargs):
             if tax.has_negative_factor:
                 price_include = False
+            elif document_tax_mode:
+                price_include = document_tax_mode == 'tax_included'
             elif special_mode == 'total_included':
                 price_include = True
             elif special_mode == 'total_excluded':
@@ -1217,6 +1220,7 @@ class AccountTax(models.Model):
                 **kwargs,
                 'tax': tax,
                 'price_include': price_include,
+                'document_tax_mode': document_tax_mode,
                 'extra_base_for_tax': 0.0,
                 'extra_base_for_base': 0.0,
             }
@@ -1231,6 +1235,7 @@ class AccountTax(models.Model):
                 tax,
                 group=batching_results['group_per_tax'].get(tax.id),
                 batch=batching_results['batch_per_tax'][tax.id],
+                document_tax_mode=document_tax_mode,
             )
             if tax.has_negative_factor:
                 reverse_charge_taxes_data[tax.id] = {
@@ -1249,6 +1254,7 @@ class AccountTax(models.Model):
             'quantity': quantity,
             'raw_base': raw_base,
             'special_mode': special_mode,
+            'document_tax_mode': document_tax_mode,
         }
 
         # Define the order in which the taxes must be evaluated.
@@ -1289,7 +1295,7 @@ class AccountTax(models.Model):
                 if other_tax.has_negative_factor
             )
             base = raw_base + tax_data['extra_base_for_base']
-            if tax_data['price_include'] and special_mode in (False, 'total_included'):
+            if tax_data['price_include'] and (special_mode in (False, 'total_included')):
                 base -= total_tax_amount
             tax_data['base'] = base
 
@@ -1345,7 +1351,7 @@ class AccountTax(models.Model):
     # -------------------------------------------------------------------------
 
     @api.model
-    def _adapt_price_unit_to_another_taxes(self, price_unit, product, original_taxes, new_taxes, product_uom=None):
+    def _adapt_price_unit_to_another_taxes(self, price_unit, product, original_taxes, new_taxes, product_uom=None, document_tax_mode=None):
         """ From the price unit and taxes given as parameter, compute a new price unit corresponding to the
         new taxes.
 
@@ -1378,6 +1384,7 @@ class AccountTax(models.Model):
             rounding_method='round_globally',
             product=product,
             product_uom=product_uom,
+            document_tax_mode=document_tax_mode,
         )
         price_unit = taxes_computation['total_excluded']
 
@@ -1389,6 +1396,7 @@ class AccountTax(models.Model):
             product=product,
             product_uom=product_uom,
             special_mode='total_excluded',
+            document_tax_mode=document_tax_mode,
         )
         delta = sum(x['tax_amount'] for x in taxes_computation['taxes_data'] if x['tax'].price_include)
         return price_unit + delta
@@ -1638,6 +1646,12 @@ class AccountTax(models.Model):
             # - total_excluded to force all taxes to be price excluded.
             'special_mode': kwargs.get('special_mode') or False,
 
+            # The document_tax_mode for the taxes computation:
+            # - False for non-document cases.
+            # - tax_included to get price_unit including all taxes.
+            # - tax_excluded to get price_unit excluding all taxes.
+            'document_tax_mode': load('document_tax_mode', False),
+
             # A special typing of base line for some custom behavior:
             # - False for the normal behavior.
             # - early_payment if the base line represent an early payment in mixed mode.
@@ -1774,6 +1788,7 @@ class AccountTax(models.Model):
             product_uom=base_line['product_uom_id'],
             special_mode=base_line['special_mode'],
             filter_tax_function=base_line['filter_tax_function'],
+            document_tax_mode=base_line['document_tax_mode'],
         )
 
         # Only python side for professional with reverse charge
@@ -3532,6 +3547,7 @@ class AccountTax(models.Model):
         computation_key=None,
         grouping_function=None,
         aggregate_function=None,
+        document_tax_mode=None,
     ):
         """
 

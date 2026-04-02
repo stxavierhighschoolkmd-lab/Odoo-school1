@@ -17,6 +17,7 @@
          <field name="inherit_id" ref="product.product_product_view_form_normalized"/>
          <field name="arch" type="xml">
             <field name="list_price" position="after">
+                <field name="is_tax_included" widget="boolean_toggle"/>
                 <label for="taxes_id"/>
                 <div name="tax_info" class="o_row">
                     <field name="taxes_id" widget="many2many_tags"
