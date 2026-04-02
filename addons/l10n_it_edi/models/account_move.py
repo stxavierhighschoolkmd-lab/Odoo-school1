@@ -1326,7 +1326,7 @@ class AccountMove(models.Model):
                 return partner
         return self.env['res.partner']
 
-    def _l10n_it_edi_search_tax_for_import(self, company, percentage, extra_domain=None, l10n_it_exempt_reason=None):
+    def _l10n_it_edi_search_tax_for_import(self, company, percentage, extra_domain=None, l10n_it_exempt_reason=None, account=None):
         """ Returns the VAT, Withholding or Pension Fund tax that suits the conditions given
             and matches the percentage found in the XML for the company. """
 
@@ -1339,11 +1339,16 @@ class AccountMove(models.Model):
         # To retrieve the correct purchase tax, we examine the sale tax's l10n_it_exempt_reason.
         # We determine whether the l10n_it_exempt_reason is specific to reverse charge.
         reversed_tax_tag = self._l10n_it_edi_exempt_reason_tag_mapping().get(l10n_it_exempt_reason, '')
+        taxes = self.env['account.tax']
         if not reversed_tax_tag:
             # Normal VAT taxes have a known percentage and generally have all positive repartition lines
             domain += [('amount', '=', percentage), ('l10n_it_exempt_reason', '=', l10n_it_exempt_reason)]
-            taxes = self.env['account.tax'].search(domain).filtered(
-                lambda tax: all(rep_line.factor_percent >= 0 for rep_line in tax.invoice_repartition_line_ids))
+            repartition_filter = lambda tax: all(rep_line.factor_percent >= 0 for rep_line in tax.invoice_repartition_line_ids)
+            # If the assigned account has a matching default tax, use that.
+            if account and not l10n_it_exempt_reason:
+                taxes = account.tax_ids.filtered_domain(domain).filtered(repartition_filter)
+            if not taxes:
+                taxes = self.env['account.tax'].search(domain).filtered(repartition_filter)
         else:
             # In case of reverse charge, the purchase tax has a negative repartition line.
             domain += [('invoice_repartition_line_ids.tag_ids.name', '=', reversed_tax_tag.lower())]
@@ -1770,7 +1775,13 @@ class AccountMove(models.Model):
                 extra_domain = list(extra_domain)
                 tax_scope = 'service' if move_line.product_id.type == 'service' else 'consu'
                 extra_domain += [('tax_scope', 'in', [tax_scope, False])]
-            if tax := self._l10n_it_edi_search_tax_for_import(company, percentage, extra_domain, l10n_it_exempt_reason=l10n_it_exempt_reason):
+            if tax := self._l10n_it_edi_search_tax_for_import(
+                company,
+                percentage,
+                extra_domain,
+                l10n_it_exempt_reason=l10n_it_exempt_reason,
+                account=move_line.account_id,
+            ):
                 move_line.tax_ids |= tax
             else:
                 message = Markup("<br/>").join((

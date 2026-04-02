@@ -117,6 +117,46 @@ class TestItEdiImport(TestItEdi, TestAccountEdiProxyUser):
             }],
         }])
 
+    def test_receive_vendor_bill_use_account_default_taxes(self):
+        account_tax = self.env['account.tax'].with_company(self.company).create({
+            'name': 'Personalised VAT 22%',
+            'type_tax_use': 'purchase',
+            'amount': 22.0,
+            'amount_type': 'percent',
+        })
+
+        expense_account = self.company_data_2['default_account_expense']
+        expense_account.tax_ids = [Command.set(account_tax.ids)]
+
+        product = self.env['product.product'].create({
+            'name': 'EDI Tax Account Product',
+            'default_code': 'EDIAX',
+            'type': 'consu',
+            'standard_price': 75.0,
+            'property_account_expense_id': expense_account.id,
+        })
+
+        applied_xml = """
+            <xpath expr="//FatturaElettronicaBody/DatiBeniServizi/DettaglioLinee[1]" position="inside">
+                <CodiceArticolo>
+                    <CodiceTipo>INTERNAL</CodiceTipo>
+                    <CodiceValore>EDIAX</CodiceValore>
+                </CodiceArticolo>
+            </xpath>
+        """
+
+        invoice = self._assert_import_invoice('IT01234567890_FPR01.xml', [{
+            'move_type': 'in_invoice',
+            'invoice_date': fields.Date.from_string('2014-12-18'),
+            'amount_untaxed': 5.0,
+            'amount_tax': 1.1,
+        }], applied_xml)
+
+        imported_line = invoice.invoice_line_ids.filtered(lambda line: line.product_id == product)
+        self.assertEqual(len(imported_line), 1)
+        self.assertEqual(imported_line.account_id, expense_account)
+        self.assertEqual(imported_line.tax_ids, account_tax)
+
     def test_receive_negative_vendor_bill(self):
         """ Same vendor bill as test_receive_vendor_bill but negative unit price """
         self._assert_import_invoice('IT01234567890_FPR02.xml', [{
