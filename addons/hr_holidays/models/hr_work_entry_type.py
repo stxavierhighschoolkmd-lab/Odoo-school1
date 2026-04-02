@@ -75,6 +75,7 @@ class HrWorkEntryType(models.Model):
         ('hr', 'By Time Off Officer'),
         ('manager', "By Employee's Approver"),
         ('both', "By Employee's Approver and Time Off Officer")], default='hr', string='Approval',
+        compute='_compute_allocation_validation_type', readonly=False, store=True,
         help="""Select the level of approval needed in case of request by employee
             #     - No validation needed: The employee's request is automatically approved.
             #     - Approved by Time Off Officer: The employee's request need to be manually approved
@@ -107,6 +108,14 @@ class HrWorkEntryType(models.Model):
         'CHECK(NOT allows_negative OR max_allowed_negative > 0)',
         'The maximum excess amount should be greater than 0. If you want to set 0, disable the negative cap instead.'
     )
+
+    @api.depends('requires_allocation')
+    def _compute_allocation_validation_type(self):
+        for record in self:
+            if not record.requires_allocation:
+                record.allocation_validation_type = 'no_validation'
+            else:
+                record.allocation_validation_type = 'hr'
 
     @api.model
     def _search_valid(self, operator, value):

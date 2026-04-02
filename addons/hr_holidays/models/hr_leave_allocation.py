@@ -786,7 +786,7 @@ class HrLeaveAllocation(models.Model):
             allocation.message_subscribe(partner_ids=tuple(partners_to_subscribe))
             if not self.env.context.get('import_file'):
                 allocation.activity_update()
-            if allocation.validation_type == 'no_validation' and allocation.state == 'confirm':
+            if allocation.work_entry_type_id.requires_allocation and allocation.validation_type == 'no_validation' and allocation.state == 'confirm':
                 allocation.action_approve()
         return allocations
 
