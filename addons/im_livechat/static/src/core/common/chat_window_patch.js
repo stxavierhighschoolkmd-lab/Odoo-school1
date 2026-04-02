@@ -17,4 +17,11 @@ patch(ChatWindow.prototype, {
         this.props.chatWindow.actionsDisabled = false;
         this.props.chatWindow.livechatStep = CW_LIVECHAT_STEP.NONE;
     },
+    async onClickLeaveConversation() {
+        if (this.channel.livechatVisitorMember?.persona?.notEq(this.store.self)) {
+            await this.channel.leaveChannelRpc();
+        } else {
+            this.close();
+        }
+    },
 });
