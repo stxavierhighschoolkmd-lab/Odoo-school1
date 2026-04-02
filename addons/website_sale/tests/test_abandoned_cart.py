@@ -15,13 +15,13 @@ class TestWebsiteSaleCartAbandonedCommon(TransactionCaseWithUserPortal):
     def send_mail_patched(self, sale_order_id):
         email_got_sent = False
 
-        def check_send_mail_called(this, res_id, email_values, *_args, **_kwargs):  # noqa: ARG001
+        def check_send_mail_called(this, res_id, email_values=None, *_args, **_kwargs):  # noqa: ARG001
             nonlocal email_got_sent
             if res_id == sale_order_id:
                 email_got_sent = True
 
         with patch.object(MailTemplate, "send_mail", check_send_mail_called):
-            self.env["website"]._send_abandoned_cart_email()
+            self.env["website"]._send_abandoned_cart_followup()
         return email_got_sent
 
 
@@ -145,7 +145,10 @@ class TestWebsiteSaleCartAbandoned(TestWebsiteSaleCartAbandonedCommon):
     def test_website_sale_abandoned_cart_email(self):
         """Make sure the send_abandoned_cart_email method sends the correct emails."""
         website = self.env["website"].get_current_website()
-        website.send_abandoned_cart_email = True
+        website.send_abandoned_cart_followup = True
+        website.cart_recovery_mail_template_id = self.env.ref(
+            "website_sale.mail_template_sale_cart_recovery"
+        )
         website.write({
             "send_abandoned_cart_email_activation_time": (
                 datetime.utcnow() - relativedelta(hours=website.cart_abandoned_delay)

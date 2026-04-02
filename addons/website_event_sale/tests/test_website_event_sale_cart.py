@@ -15,8 +15,11 @@ class TestWebsiteEventSaleCart(TestWebsiteEventSaleCommon, TestWebsiteSaleCartAb
         super().setUpClass()
 
         cls.website.write({
-            'send_abandoned_cart_email': True,
+            'send_abandoned_cart_followup': True,
             'cart_abandoned_delay': 1.0,  # 1 hour
+            'cart_recovery_mail_template_id': cls.env.ref(
+                'website_sale.mail_template_sale_cart_recovery'
+            ).id,
         })
         cls.website.send_abandoned_cart_email_activation_time -= timedelta(weeks=1)
 

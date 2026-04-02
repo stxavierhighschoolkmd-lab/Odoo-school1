@@ -16,6 +16,14 @@ def _post_init_hook(env):  # noqa: RUF067
     for website in existing_websites:
         website._create_checkout_steps()
 
+    recovery_template = env.ref(
+        "website_sale.mail_template_sale_cart_recovery", raise_if_not_found=False
+    )
+    if recovery_template:
+        existing_websites.filtered(
+            lambda website: not website.cart_recovery_mail_template_id
+        ).cart_recovery_mail_template_id = recovery_template.id
+
 
 def uninstall_hook(env):  # noqa: RUF067
     """Need to reenable the `product` pricelist multi-company rule that were

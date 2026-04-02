@@ -96,9 +96,7 @@ class Website(models.Model):
     )
     contact_us_link_url = fields.Char(string="Link URL", translate=True, default="/contactus")
     cart_abandoned_delay = fields.Float(string="Abandoned Delay", default=10.0)
-    send_abandoned_cart_email = fields.Boolean(
-        string="Send email to customers who abandoned their cart."
-    )
+    send_abandoned_cart_followup = fields.Boolean(string="Send Follow-up", default=False)
     send_abandoned_cart_email_activation_time = fields.Datetime(
         string="Time when the 'Send abandoned cart email' feature was activated.",
         compute="_compute_send_abandoned_cart_email_activation_time",
@@ -290,10 +288,10 @@ class Website(models.Model):
                 request and hasattr(request, "pricelist") and request.pricelist.currency_id
             ) or website.company_id.sudo().currency_id
 
-    @api.depends("send_abandoned_cart_email")
+    @api.depends("send_abandoned_cart_followup")
     def _compute_send_abandoned_cart_email_activation_time(self):
         for website in self:
-            if website.send_abandoned_cart_email:
+            if website.send_abandoned_cart_followup:
                 website.send_abandoned_cart_email_activation_time = fields.Datetime.now()
 
     @api.depends("company_id.account_fiscal_country_id")
@@ -945,10 +943,14 @@ class Website(models.Model):
         )
 
     @api.model
-    def _send_abandoned_cart_email(self):
+    def _send_abandoned_cart_followup(self):
         for website in self.search([]):
-            if not website.send_abandoned_cart_email:
+            if not website.send_abandoned_cart_followup:
                 continue
+
+            if not website.cart_recovery_mail_template_id:
+                continue
+
             all_abandoned_carts = self.env["sale.order"].search([
                 ("is_abandoned_cart", "=", True),
                 ("cart_recovery_email_sent", "=", False),
@@ -962,16 +964,7 @@ class Website(models.Model):
             # Mark abandoned carts that failed the filter as sent to avoid rechecking them more than
             # once.
             (all_abandoned_carts - abandoned_carts).cart_recovery_email_sent = True
-            for sale_order in abandoned_carts:
-                template = self.env.ref("website_sale.mail_template_sale_cart_recovery")
-                # fallback email_vals in case partner_to and email_to were emptied
-                email_vals = (
-                    {}
-                    if template.email_to or template.partner_to
-                    else {"email_to": sale_order.partner_id.email_formatted}
-                )
-                template.send_mail(sale_order.id, email_values=email_vals)
-                sale_order.cart_recovery_email_sent = True
+            abandoned_carts._cart_recovery_email_send()
 
     @api.model_create_multi
     def create(self, vals_list):
