@@ -123,8 +123,8 @@ class WebsiteVisitor(models.Model):
         ]
         return super()._merge_visitor(target)
 
-    def _upsert_visitor(self, access_token, force_track_values=None):
-        visitor_id, upsert = super()._upsert_visitor(access_token, force_track_values=force_track_values)
+    def _upsert_visitor(self, token_or_partner_id, website_id, lang_id=None, country_code=None, timezone=None, url=None, **kwargs):
+        visitor_id, upsert = super()._upsert_visitor(token_or_partner_id, website_id, lang_id, country_code, timezone, url, **kwargs)
         if upsert == 'inserted':
             visitor_sudo = self.sudo().browse(visitor_id)
             if guest := self.env["mail.guest"]._get_guest_from_context():

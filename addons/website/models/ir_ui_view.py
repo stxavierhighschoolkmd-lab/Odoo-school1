@@ -237,6 +237,9 @@ class IrUiView(models.Model):
         self.env.registry.clear_cache('templates')
         return result
 
+    def _get_extra_tracking_values(self, **kwargs):
+        return {}
+
     def _create_website_specific_pages_for_view(self, new_view, website):
         for page in self.page_ids:
             # create new pages for this view

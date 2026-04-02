@@ -190,32 +190,36 @@ class WebsiteVisitor(models.Model):
             'context': compose_ctx,
         }
 
-    def _upsert_visitor(self, access_token, force_track_values=None):
+    def _upsert_visitor(self, token_or_partner_id, website_id, lang_id=None, country_code=None, timezone=None, url=None, **kwargs):
         """ Based on the given `access_token`, either create or return the
         related visitor if exists, through a single raw SQL UPSERT Query.
 
         It will also create a tracking record if requested, in the same query.
 
-        :param access_token: token to be used to upsert the visitor
-        :param force_track_values: an optional dict to create a track at the
-            same time.
+        :param token_or_partner_id: token (or partner id) to be used to identify the visitor
+        :param website_id: every visit is typically for a particular website
+        :param lang_id: visitors language id
+        :param country_code: visitors country code
+        :param timezone: visitors time zone
+        :param url: optional url to create a track record at the same time
+        :param kwargs: additional values to include in the track record, including
+            page_id: the id of the page visited
+            (can be extended to include other fields, see: _get_additional_track_query_parts)
         :return: a tuple containing the visitor id and the upsert result (either
             `inserted` or `updated).
         """
         create_values = {
-            'access_token': access_token,
-            'lang_id': request.lang.id,
-            # Note that it's possible for the GEOIP database to return a country
-            # code which is unknown in Odoo
-            'country_code': request.geoip.country_code,
-            'website_id': request.website.id,
-            'timezone': self._get_visitor_timezone() or None,
+            'access_token': token_or_partner_id,
+            'lang_id': lang_id,
+            'country_code': country_code,
+            'website_id': website_id,
+            'timezone': timezone,
             'write_uid': self.env.uid,
             'create_uid': self.env.uid,
             # If the access_token is not a 32 length hexa string, it means that the
             # visitor is linked to a logged in user, in which case its partner_id is
             # used instead as the token.
-            'partner_id': None if len(str(access_token)) == 32 else access_token,
+            'partner_id': None if len(str(token_or_partner_id)) == 32 else token_or_partner_id,
         }
         query = SQL("""
             INSERT INTO website_visitor (
@@ -238,23 +242,36 @@ class WebsiteVisitor(models.Model):
             RETURNING id, CASE WHEN create_date = now() at time zone 'UTC' THEN 'inserted' ELSE 'updated' END AS upsert
         """, **create_values)
 
-        if force_track_values:
+        if url:
+            select_extra, cols_extra, vals_extra = self._get_additional_track_query_parts(**kwargs)
             query = SQL("""
                 WITH visitor AS (
-                    %(query)s, %(url)s AS url, %(page_id)s AS page_id
+                    %(query)s, %(url)s AS url %(select_extra)s
                 ), track AS (
-                    INSERT INTO website_track (visitor_id, url, page_id, visit_datetime)
-                    SELECT id, url, page_id::integer, now() at time zone 'UTC' FROM visitor
+                    INSERT INTO website_track (visitor_id, url, visit_datetime %(cols_extra)s)
+                    SELECT id, url, now() at time zone 'UTC' %(vals_extra)s FROM visitor
                 )
                 SELECT id, upsert from visitor;
                 """,
                 query=query,
-                url=force_track_values['url'],
-                page_id=force_track_values.get('page_id'),
+                url=url,
+                select_extra=select_extra,
+                cols_extra=cols_extra,
+                vals_extra=vals_extra,
             )
 
         [result] = self.env.execute_query(query)
         return result
+
+    def _get_additional_track_query_parts(self, **kwargs):
+        page_id = kwargs.get('page_id')
+        if page_id:
+            return (
+                SQL(", %(page_id)s AS page_id", page_id=page_id),
+                SQL(", page_id"),
+                SQL(", page_id::integer"),
+            )
+        return SQL(), SQL(), SQL()
 
     def _get_visitor_from_request(self, force_create=False, force_track_values=None):
         """ Return the visitor as sudo from the request.
@@ -275,7 +292,15 @@ class WebsiteVisitor(models.Model):
         access_token = self._get_access_token()
 
         if force_create:
-            visitor_id, _ = self._upsert_visitor(access_token, force_track_values)
+            force_track_values = force_track_values or {}
+            visitor_id, _ = self._upsert_visitor(
+                token_or_partner_id=access_token,
+                website_id=request.website.id,
+                lang_id=request.lang.id,
+                country_code=request.geoip.country_code,  # GEOIP might return a country code unknown to odoo
+                timezone=self._get_visitor_timezone(),
+                **force_track_values
+            )
             return self.env['website.visitor'].sudo().browse(visitor_id)
 
         visitor = self.env['website.visitor'].sudo().search_fetch([('access_token', '=', access_token)])
@@ -306,6 +331,8 @@ class WebsiteVisitor(models.Model):
         domain = Domain.AND([domain, Domain('visitor_id', '=', self.id)])
         last_view = self.env['website.track'].sudo().search(domain, limit=1)
         if not last_view or last_view.visit_datetime < datetime.now() - timedelta(minutes=30):
+            # this is used by website_sale and always creates a second website.track record
+            # (why? - because it tracks product.product view from the product_template)
             website_track_values['visitor_id'] = self.id
             self.env['website.track'].create(website_track_values)
         self._update_visitor_last_visit()
