@@ -485,6 +485,8 @@ class ProjectProject(models.Model):
             if project.is_template and not copy_from_template:
                 vals['is_template'] = True
             if copy_from_template:
+                if 'stage_id' not in default and self.env.user.has_group('project.group_project_stages'):
+                    vals['stage_id'] = project.stage_id.id
                 for field in self._get_template_field_blacklist():
                     if field in vals and field not in default:
                         del vals[field]
