@@ -334,6 +334,8 @@ class AccountMoveSend(models.AbstractModel):
         constraints = {}
         if move.state != 'posted':
             constraints['not_posted'] = _("You can't generate invoices that are not posted.")
+        if move.is_purchase_document() and not move.is_self_billing:
+            constraints['not_self_billing'] = _("Purchase documents cannot be sent without Self Billing.")
         if not move.is_sale_document(include_receipts=True):
             constraints['not_sale_document'] = _("You can only generate sales documents.")
         return constraints
