@@ -248,7 +248,8 @@ export class OdooPivotModel extends PivotModel {
         const { cols, rows } = this._getColsRowsValuesFromDomain(domain);
         const group = JSON.stringify([rows, cols]);
         const values = this.data.measurements[group];
-        const measurementId = this._getAggregateSpec(measure);
+        const aggregateSpec = this._getAggregateSpec(measure);
+        const measurementId = Array.isArray(aggregateSpec) ? aggregateSpec[0] : aggregateSpec;
 
         if (values && (values[measurementId] || values[measurementId] === 0)) {
             return values[measurementId];
@@ -719,13 +720,20 @@ export class OdooPivotModel extends PivotModel {
         if (measure.fieldName === "__count") {
             return "__count";
         }
+        const field = this.metaData.fields[measure.fieldName];
         if (measure.aggregator) {
+            if (field.currency_field) {
+                return [
+                    `${measure.fieldName}:${measure.aggregator}`,
+                    field.currency_field + ":array_agg_distinct",
+                    field.name + ":sum_currency",
+                ];
+            }
             return `${measure.fieldName}:${measure.aggregator}`;
         }
         if (measure.type === "many2one") {
             return `${measure.fieldName}:count_distinct`;
         }
-        const field = this.metaData.fields[measure.fieldName];
         if (!field.aggregator) {
             throw new Error(`Field ${measure.fieldName} doesn't have a default aggregator`);
         }
@@ -740,7 +748,8 @@ export class OdooPivotModel extends PivotModel {
     _getMeasureSpecs() {
         return this.getDefinition()
             .measures.filter((measure) => !measure.computedBy)
-            .map(this._getAggregateSpec, this);
+            .map(this._getAggregateSpec, this)
+            .flat();
     }
 
     /**
@@ -782,8 +791,14 @@ export class OdooPivotModel extends PivotModel {
             switch (aggregator) {
                 case "sum":
                 case "count":
+                case "sum_currency":
                     subGroup[measure] = subGroups.reduce((sum, sg) => sum + sg[measure], 0);
                     break;
+                case "array_agg_distinct": {
+                    const allIds = subGroups.flatMap((sg) => sg[measure] || []);
+                    subGroup[measure] = [...new Set(allIds)];
+                    break;
+                }
                 case "min":
                     subGroup[measure] = Math.min(...subGroups.map((sg) => sg[measure]));
                     break;
@@ -1001,16 +1016,26 @@ export class OdooPivotModel extends PivotModel {
         return this.getDefinition()
             .measures.filter((measure) => !measure.computedBy)
             .reduce((measurements, measure) => {
-                const measurementId = this._getAggregateSpec(measure);
-                var measurement = group[measurementId];
-                if (measurement instanceof Array) {
-                    // case field is many2one and used as measure and groupBy simultaneously
-                    measurement = 1;
+                const aggregateSpec = this._getAggregateSpec(measure);
+                if (Array.isArray(aggregateSpec)) {
+                    const [mainSpec, , sumCurrencySpec] = aggregateSpec;
+                    const [fieldName] = mainSpec.split(":");
+                    const field = this.metaData.fields[fieldName];
+                    const currencies = group[field.currency_field + ":array_agg_distinct"];
+                    const hasMultipleCurrencies = currencies && currencies.length > 1;
+                    measurements[mainSpec] = hasMultipleCurrencies
+                        ? group[sumCurrencySpec]
+                        : group[mainSpec];
+                } else {
+                    var measurement = group[aggregateSpec];
+                    if (measurement instanceof Array) {
+                        measurement = 1;
+                    }
+                    if (measure.type === "boolean" && measurement instanceof Boolean) {
+                        measurement = measurement ? 1 : 0;
+                    }
+                    measurements[aggregateSpec] = measurement;
                 }
-                if (measure.type === "boolean" && measurement instanceof Boolean) {
-                    measurement = measurement ? 1 : 0;
-                }
-                measurements[measurementId] = measurement;
                 return measurements;
             }, {});
     }
@@ -1022,7 +1047,8 @@ export class OdooPivotModel extends PivotModel {
      */
     _getCellValue(groupId, measureName, config) {
         const measure = this.getDefinition().measures.find((m) => m.fieldName === measureName);
-        const measurementId = this._getAggregateSpec(measure);
+        const aggregateSpec = this._getAggregateSpec(measure);
+        const measurementId = Array.isArray(aggregateSpec) ? aggregateSpec[0] : aggregateSpec;
         var key = JSON.stringify(groupId);
         if (!config.data.measurements[key]) {
             return;
