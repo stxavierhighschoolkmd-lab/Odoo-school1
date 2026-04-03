@@ -24,6 +24,10 @@
         'web.assets_backend': [
             'marketing_card/static/src/scss/*',
         ],
+        'web.assets_frontend': [
+            'marketing_card/static/src/interactions/*',
+            'marketing_card/static/src/scss/linkedin_share_composer.scss',
+        ],
     },
     'application': True,
     'author': 'Odoo S.A.',
