@@ -248,7 +248,7 @@ class CalendarAlarm_Manager(models.AbstractModel):
         """ Sends through the bus the next alarm of given partners """
         users = self.env['res.users'].search([
             ('partner_id', 'in', tuple(partner_ids)),
-            ('group_ids', 'in', self.env.ref('base.group_user').ids),
+            ('share', '=', False),
         ])
         for user in users:
             notif = self.with_user(user).with_context(allowed_company_ids=user.sudo().company_ids.ids).get_next_notif()
