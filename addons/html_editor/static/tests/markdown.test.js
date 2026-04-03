@@ -97,6 +97,14 @@ describe("inline code", () => {
         });
     });
 
+    test("should not convert text into inline code when space is avaialbe right after first backtick", async () => {
+        await testEditor({
+            contentBefore: "<p>ab` test[]</p>",
+            stepFunction: async (editor) => await insertText(editor, "`"),
+            contentAfter: "<p>ab` test`[]</p>",
+        });
+    });
+
     test("should not convert text into inline code when interrupted by linebreak", async () => {
         await testEditor({
             contentBefore: "<p>ab`c<br>d[]ef</p>",
@@ -342,6 +350,17 @@ describe("inline code", () => {
             contentBefore: "<p>a[b</p><p>cd</p><p>e]f</p>",
             stepFunction: async (editor) => insertText(editor, "`"),
             contentAfter: "<p>a`[]f</p>",
+        });
+    });
+
+    test("should not show placeholder when inline code is available", async () => {
+        await testEditor({
+            contentBefore: '<p><code class="o_inline_code">[] </code></p>',
+            contentBeforeEdit:
+                '<p>\ufeff<code class="o_inline_code">\ufeff[] \ufeff</code>\ufeff</p>',
+            contentAfterEdit:
+                '<p>\ufeff<code class="o_inline_code">\ufeff[] \ufeff</code>\ufeff</p>',
+            contentAfter: '<p><code class="o_inline_code">[]&nbsp;</code></p>',
         });
     });
 });

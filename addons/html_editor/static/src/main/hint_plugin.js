@@ -1,7 +1,7 @@
 import { Plugin } from "@html_editor/plugin";
-import { isEditorTab, isEmptyBlock, isProtected } from "@html_editor/utils/dom_info";
+import { isEmptyBlock, isProtected } from "@html_editor/utils/dom_info";
 import { removeClass } from "@html_editor/utils/dom";
-import { descendants, selectElements } from "@html_editor/utils/dom_traversal";
+import { selectElements } from "@html_editor/utils/dom_traversal";
 import { closestBlock } from "../utils/blocks";
 import { debounce } from "@web/core/utils/timing";
 
@@ -102,7 +102,7 @@ export class HintPlugin extends Plugin {
                         nodeHint &&
                         isEmptyBlock(target) &&
                         !isProtected(target) &&
-                        !descendants(target).some(isEditorTab)
+                        (this.checkPredicates("should_show_hint_predicates", target) ?? true)
                     ) {
                         this.makeHint(target, nodeHint);
                     }

@@ -82,6 +82,9 @@ export class TabulationPlugin extends Plugin {
                 return false;
             }
         },
+        should_show_hint_predicates: (node) => !node.querySelector("span.oe-tabs"),
+        should_show_power_buttons_predicates: ({ anchorNode }) =>
+            !closestBlock(anchorNode).querySelector("span.oe-tabs"),
     };
 
     handleTab() {
