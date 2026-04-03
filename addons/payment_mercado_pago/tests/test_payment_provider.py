@@ -28,3 +28,9 @@ class TestPaymentProvider(MercadoPagoCommon):
             self.company_id, self.partner.id, self.amount, currency_id=self.env.ref("base.AFN").id
         )
         self.assertNotIn(self.provider, compatible_providers)
+
+    def test_mercado_pago_proxy_version_for_access_token(self):
+        """Ensure that Mercado Pago access-token related endpoints are routed
+        through proxy v2."""
+        url = self.provider._build_request_url("/get_access_token", is_proxy_request=True)
+        self.assertIn("/2/get_access_token", url)
