@@ -37,7 +37,7 @@ from odoo.modules.module import (
     initialize_sys_path,
 )
 from odoo.modules.registry import Registry
-from odoo.tools import config, file_path, profiler, real_time
+from odoo.tools import config, file_path, profiler, real_time, thread_time
 from odoo.tools.misc import submap
 
 if typing.TYPE_CHECKING:
@@ -246,7 +246,7 @@ class Application:
         current_thread = threading.current_thread()
         current_thread.query_count = 0
         current_thread.query_time = 0
-        current_thread.perf_t0 = real_time()
+        current_thread.perf_t0 = (thread_time(), real_time())
         current_thread.cursor_mode = None
         if hasattr(current_thread, 'dbname'):
             del current_thread.dbname
