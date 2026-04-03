@@ -83,6 +83,7 @@ test("members should be correctly categorised into online/offline", async () => 
         { name: "Online Partner", im_status: "online" },
         { name: "Idle Partner", im_status: "away" },
     ]);
+    pyEnv["res.users"].create([{ partner_id: onlinePartnerId }, { partner_id: idlePartnerId }]);
     pyEnv["res.partner"].write([serverState.partnerId], { im_status: "im_partner" });
     const channelId = pyEnv["discuss.channel"].create({
         name: "TestChanel",

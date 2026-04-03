@@ -190,6 +190,9 @@ export class ResPartner extends webModels.ResPartner {
     }
 
     compute_im_status(partner) {
+        if (!partner.main_user_id) {
+            return false;
+        }
         if (partner.im_status) {
             return partner.im_status;
         }

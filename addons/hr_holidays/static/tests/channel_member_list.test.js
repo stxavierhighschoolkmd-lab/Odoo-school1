@@ -13,7 +13,8 @@ test("on leave members are categorised correctly in online/offline", async () =>
         { name: "On Leave Online", im_status: "online" },
         { name: "On Leave Idle", im_status: "away" },
     ]);
-    const [userId2, userId3] = pyEnv["res.users"].create([
+    const [, userId2, userId3] = pyEnv["res.users"].create([
+        { partner_id: partnerId1 },
         { partner_id: partnerId2 },
         { partner_id: partnerId3 },
     ]);

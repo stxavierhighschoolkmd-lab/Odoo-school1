@@ -331,6 +331,11 @@ test("sidebar: chat im_status rendering", async () => {
         { im_status: "online", name: "Partner2" },
         { im_status: "away", name: "Partner3" },
     ]);
+    pyEnv["res.users"].create([
+        { partner_id: partnerId_1 },
+        { partner_id: partnerId_2 },
+        { partner_id: partnerId_3 },
+    ]);
     pyEnv["discuss.channel"].create([
         {
             channel_member_ids: [
@@ -1782,6 +1787,12 @@ test("Partner IM status is displayed as thread icon in top bar of channels of ty
         { im_status: "offline", name: "Jacqueline Offline" },
         { im_status: "away", name: "Nabuchodonosor Idle" },
         { im_status: "im_partner", name: "Robert Fired" },
+    ]);
+    pyEnv["res.users"].create([
+        { partner_id: partnerId_1 },
+        { partner_id: partnerId_2 },
+        { partner_id: partnerId_3 },
+        { partner_id: partnerId_4 },
     ]);
     pyEnv["discuss.channel"].create([
         {
