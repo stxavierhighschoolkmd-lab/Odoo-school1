@@ -289,3 +289,20 @@ class TestPaymentProvider(PaymentCommon):
         )._get_validation_currency()
         self.assertIn(validation_currency, self.provider.available_currency_ids)
         self.assertIn(validation_currency, self.payment_method.supported_currency_ids)
+
+    def test_parent_provider_ignored_when_duplicated_in_branch(self):
+        """ Test that only the branch provider is available in the branch company if the provider
+        is duplicated in both branch and the parent company. """
+        branch_company = self.env['res.company'].create({
+            'name': "Provider Branch Company",
+            'parent_id': self.provider.company_id.id,
+        })
+        branch_provider = self.provider.copy({
+            'company_id': branch_company.id,
+            'state': 'enabled',
+        })
+        compatible_providers = self.provider._get_compatible_providers(
+            branch_company.id, self.partner.id, self.amount,
+        )
+        self.assertNotIn(self.provider, compatible_providers)
+        self.assertIn(branch_provider, compatible_providers)

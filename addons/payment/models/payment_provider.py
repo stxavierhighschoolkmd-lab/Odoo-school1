@@ -574,6 +574,15 @@ class PaymentProvider(models.Model):
 
         # Search the providers matching the compatibility criteria.
         compatible_providers = self.env['payment.provider'].search(domain)
+
+        # In case of duplicate providers, keeping the one from the current company over parent.
+        current_company_providers = compatible_providers.filtered(lambda p: p.company_id.id == company_id)
+        parent_company_providers = compatible_providers - current_company_providers
+        existing_codes = current_company_providers.mapped('code')
+        compatible_providers = current_company_providers | parent_company_providers.filtered(
+            lambda p: p.code not in existing_codes
+        )
+
         return compatible_providers
 
     def _get_supported_currencies(self):
