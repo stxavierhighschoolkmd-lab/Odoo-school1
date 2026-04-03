@@ -13,10 +13,6 @@ class ResCompany(models.Model):
     def _default_company_token(self):
         return str(uuid.uuid4())
 
-    # TODO: Remove in master
-    overtime_company_threshold = fields.Integer(string="Tolerance Time In Favor Of Company", default=0)
-    # TODO: Remove in master
-    overtime_employee_threshold = fields.Integer(string="Tolerance Time In Favor Of Employee", default=0)
     hr_attendance_display_overtime = fields.Boolean(string="Display Extra Hours")
     attendance_kiosk_mode = fields.Selection([
         ('barcode', 'Barcode / RFID'),
@@ -70,24 +66,6 @@ class ResCompany(models.Model):
                 WHERE {table}.id = vals.id
             """.format(table=self._table)
             self.env.cr.execute_values(query, values_args)
-
-    def write(self, vals):
-        search_domain = Domain.FALSE  # Overtime to generate
-        # Also recompute if the threshold have changed
-        if 'overtime_company_threshold' in vals or 'overtime_employee_threshold' in vals:
-            # If we modify the thresholds only
-            search_domain = Domain.OR(
-                Domain('employee_id.company_id', '=', company.id)
-                for company in self
-                if (vals.get('overtime_company_threshold') != company.overtime_company_threshold)
-                or (vals.get('overtime_employee_threshold') != company.overtime_employee_threshold)
-            )
-
-        res = super().write(vals)
-        if not search_domain.is_false():
-            self.env['hr.attendance'].search(search_domain)._update_overtime()
-
-        return res
 
     def _regenerate_attendance_kiosk_key(self):
         self.ensure_one()

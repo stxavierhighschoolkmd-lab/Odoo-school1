@@ -17,19 +17,27 @@ class TestHrAttendanceOvertime(HttpCase):
         super().setUpClass()
         cls.ruleset = cls.env['hr.attendance.overtime.ruleset'].create({
             'name': 'Ruleset schedule quantity',
-            'rule_ids': [Command.create({
-                    'name': 'Rule schedule quantity',
+            'rule_ids': [
+                Command.create({
+                    'name': 'Overtime Rule',
                     'base_off': 'quantity',
                     'expected_hours_from_contract': True,
                     'quantity_period': 'day',
-                })],
+                    'overtime_condition': 'greater',
+                }),
+                Command.create({
+                    'name': 'Undertime Rule',
+                    'base_off': 'quantity',
+                    'expected_hours_from_contract': True,
+                    'quantity_period': 'day',
+                    'overtime_condition': 'lower',
+                }),
+            ],
         })
 
         cls.company = cls.env['res.company'].create({
             'name': 'SweatChipChop Inc.',
             'attendance_overtime_validation': 'no_validation',
-            # 'overtime_company_threshold': 10,
-            # 'overtime_employee_threshold': 10,
         })
         cls.company.tz = 'Europe/Brussels'
         cls.company_1 = cls.env['res.company'].create({
@@ -333,30 +341,6 @@ class TestHrAttendanceOvertime(HttpCase):
         overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id)])
         self.assertTrue(overtime, 'An overtime entry should have been created.')
         self.assertEqual(overtime.duration, 3, 'User should have 3 hours of overtime.')
-
-    def test_overtime_company_threshold(self):
-        self.ruleset.rule_ids[0].employer_tolerance = 10 / 60  # 10 minutes
-        self.env['hr.attendance'].create([
-            {
-                'employee_id': self.employee.id,
-                'check_in': datetime(2021, 1, 4, 7, 55),
-                'check_out': datetime(2021, 1, 4, 12, 0),
-            },
-            {
-                'employee_id': self.employee.id,
-                'check_in': datetime(2021, 1, 4, 13, 0),
-                'check_out': datetime(2021, 1, 4, 17, 5),
-            }
-        ])
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id)])
-        self.assertFalse(overtime, 'No overtime should be counted because of the threshold.')
-
-        self.ruleset.rule_ids[0].employer_tolerance = 4 / 60  # 4 minutes
-        self.ruleset.action_regenerate_overtimes()
-
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id)])
-        self.assertTrue(overtime, 'Overtime entry should exist since the threshold has been lowered.')
-        self.assertAlmostEqual(overtime.duration, 10 / 60, places=2, msg='Overtime should be equal to 10 minutes.')
 
     def test_overtime_lunch(self):
         attendance = self.env['hr.attendance'].create({
