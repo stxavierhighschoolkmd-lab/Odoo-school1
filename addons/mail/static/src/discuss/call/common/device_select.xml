@@ -9,7 +9,7 @@
         >
             <button
                 t-if="this.isPermissionGranted(this.props.kind)"
-                t-attf-class="o-mail-DeviceSelect-button btn btn-secondary o-dropdown-caret {{ this.env.inDialog ? 'w-50' : 'w-100' }}"
+                t-attf-class="o-mail-DeviceSelect-button btn btn-secondary o-dropdown-caret w-100"
                 t-att-data-kind="this.props.kind"
              >
                 <i t-if="this.props.icon" t-att-class="this.props.icon"/>
@@ -20,7 +20,7 @@
             </button>
             <button
                 t-else=""
-                t-attf-class="o-mail-DeviceSelect-button btn btn-secondary d-flex align-items-center {{ this.env.inDialog ? 'w-50' : 'w-100' }}"
+                t-attf-class="o-mail-DeviceSelect-button btn btn-secondary d-flex align-items-center w-100"
                 t-att-data-kind="this.props.kind"
                 t-on-pointerdown.prevent="() => this.showPermissionDialog(this.props.kind)"
                 t-on-keydown.prevent="() => this.showPermissionDialog(this.props.kind)"
@@ -36,7 +36,7 @@
                     <t t-out="this.BROWSER_DEFAULT"/>
                 </DropdownItem>
                 <t t-foreach="this.state.userDevices" t-as="device" t-key="device_index">
-                    <DropdownItem t-if="device.kind === this.props.kind" class="{ 'active': this.isSelected(device.deviceId) }" onSelected="this.onSelectAudioDevice.bind(this, device)" closingMode="'closest'">
+                    <DropdownItem t-if="device.kind === this.props.kind" class="{ 'active pe-5': this.isSelected(device.deviceId), 'text-truncate': true }" onSelected="this.onSelectAudioDevice.bind(this, device)" closingMode="'closest'">
                         <t t-out="device.label || 'device ' + device_index"/>
                     </DropdownItem>
                 </t>
