@@ -413,6 +413,11 @@ class MetaKeywords extends Component {
 
         this.maxKeywords = 10;
 
+        this.translatedStrings = {
+            keywordsTooltip: _t("You should use max 10 unique keywords, keeping them highly relevant to the content. Too many or irrelevant keywords can hurt your SEO."),
+            removeAllKeywordsButton: _t("Remove all keywords"),
+        };
+
         onWillStart(async () => {
             this.languages = await rpc("/website/get_languages");
             this.state.language = this.getLanguage();
@@ -442,7 +447,7 @@ class MetaKeywords extends Component {
 
     addKeyword(keyword) {
         keyword = keyword.replaceAll(/,\s*/gi, " ").trim();
-        if (keyword && !this.isFull && !this.seoContext.keywords.includes(keyword)) {
+        if (keyword && !this.seoContext.keywords.includes(keyword)) {
             this.seoContext.keywords.push(keyword);
             this.state.keyword = "";
         }
@@ -450,6 +455,10 @@ class MetaKeywords extends Component {
 
     removeKeyword(keyword) {
         this.seoContext.keywords = this.seoContext.keywords.filter((kw) => kw !== keyword);
+    }
+
+    removeAllKeywords() {
+        this.seoContext.keywords = [];
     }
 }
 
