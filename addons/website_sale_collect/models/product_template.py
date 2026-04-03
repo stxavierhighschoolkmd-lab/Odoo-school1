@@ -21,7 +21,7 @@ class ProductTemplate(models.Model):
             and product_or_template.is_product_variant
         ):
             product_sudo = product_or_template.sudo()  # To read the stock values when public user.
-            order_sudo = request.cart
+            order_sudo = request.cart if (request and hasattr(request, 'cart')) else self.env['sale.order'].sudo()
             cart_qty = order_sudo._get_cart_qty(product_sudo.id)
             # Enable the Click & Collect Availability widget.
             res["show_click_and_collect_availability"] = True

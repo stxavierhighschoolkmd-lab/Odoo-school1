@@ -350,13 +350,34 @@ class ProductTemplate(models.Model):
                     }
         return res
 
+    def _get_sales_website(self):
+        if 'website_id' in self.env.context:
+            return self.env['website'].browse(
+                self.env.context['website_id']
+            )
+        return request.website
+
+    def _get_sales_pricelist(self):
+        if 'website_sale_pricelist_id' in self.env.context:
+            return self.env['product.pricelist'].browse(
+                self.env.context['website_sale_pricelist_id']
+            ).sudo()
+        return request.pricelist
+
+    def _get_sales_fiscal_position(self):
+        if 'website_sale_fiscal_position_id' in self.env.context:
+            return self.env['account.fiscal.position'].browse(
+                self.env.context['website_sale_fiscal_position_id']
+            ).sudo()
+        return request.fiscal_position
+
     def _get_sales_prices(self, website):
         if not self:
             return {}
 
-        pricelist = request.pricelist.with_context(self.env.context)
+        pricelist = self._get_sales_pricelist().with_context(self.env.context)
         currency = website.currency_id
-        fiscal_position_sudo = request.fiscal_position
+        fiscal_position_sudo = self._get_sales_fiscal_position()
         date = fields.Date.context_today(self)
 
         pricelist_prices = pricelist._compute_price_rule(self, 1.0)
@@ -469,8 +490,8 @@ class ProductTemplate(models.Model):
         self.ensure_one()
 
         combination = combination or self.env["product.template.attribute.value"]
-        website = request.website.with_context(self.env.context)
-        uom = self.env["uom.uom"].browse(uom_id) or self.uom_id
+        website = self._get_sales_website().with_context(self.env.context)
+        uom = self.env['uom.uom'].browse(uom_id) or self.uom_id
 
         if not product_id and not combination and not only_template:
             combination = self._get_first_possible_combination()
@@ -544,7 +565,7 @@ class ProductTemplate(models.Model):
         :returns: additional product/template information
         :rtype: dict
         """
-        pricelist = request.pricelist.with_context(self.env.context)
+        pricelist = self._get_sales_pricelist().with_context(self.env.context)
         currency = website.currency_id.with_context(self.env.context)
 
         # Pricelist price doesn't have to be converted
@@ -595,7 +616,7 @@ class ProductTemplate(models.Model):
         )
         taxes = self.env["account.tax"]
         if product_taxes:
-            taxes = request.fiscal_position.map_tax(product_taxes)
+            taxes = self._get_sales_fiscal_position().map_tax(product_taxes)
             # We do not apply taxes on the compare_list_price value because it's meant to be
             # a strict value displayed as is.
             for price_key in ("price", "list_price"):
@@ -1048,7 +1069,7 @@ class ProductTemplate(models.Model):
                 self.env.company
             )
             if product_taxes:
-                taxes = request.fiscal_position.map_tax(product_taxes)
+                taxes = self._get_sales_fiscal_position().map_tax(product_taxes)
                 return self._apply_taxes_to_price(
                     price, currency, product_taxes, taxes, product_or_template, website=website
                 ), pricelist_rule_id

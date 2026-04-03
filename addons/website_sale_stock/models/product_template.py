@@ -43,6 +43,7 @@ class ProductTemplate(models.Model):
         if not self.env.context.get("website_sale_product_page"):
             return res
 
+        cart = request.cart if (request and hasattr(request, 'cart')) else self.env['sale.order'].sudo()
         if product_or_template.type == "combo":
             # The max quantity of a combo product is the max quantity of its combo with the lowest
             # max quantity. If none of the combos has a max quantity, then the combo product also
@@ -50,7 +51,7 @@ class ProductTemplate(models.Model):
             max_quantities = [
                 max_quantity
                 for combo in product_or_template.sudo().combo_ids
-                if (max_quantity := combo._get_max_quantity(website, request.cart)) is not None
+                if (max_quantity := combo._get_max_quantity(website, cart)) is not None
             ]
             if max_quantities:
                 # No uom conversion: combo are not supposed to be sold with other uoms.
@@ -83,7 +84,7 @@ class ProductTemplate(models.Model):
             cart_quantity = 0.0
             if not product_sudo.allow_out_of_stock_order:
                 cart_quantity = product_sudo.uom_id._compute_quantity(
-                    request.cart._get_cart_qty(product_sudo.id), to_unit=uom
+                    cart._get_cart_qty(product_sudo.id), to_unit=uom,
                 )
             digits = self.env["decimal.precision"].precision_get("Product Unit")
             rounding = 10**-digits
@@ -127,7 +128,8 @@ class ProductTemplate(models.Model):
         )
 
         if (website := ir_http.get_request_website()) and product_or_template.is_product_variant:
-            max_quantity = product_or_template._get_max_quantity(website, request.cart, **kwargs)
+            cart = request.cart if (request and hasattr(request, 'cart')) else self.env['sale.order'].sudo()
+            max_quantity = product_or_template._get_max_quantity(website, cart, **kwargs)
             if max_quantity is not None:
                 if uom:
                     max_quantity = product_or_template.uom_id._compute_quantity(
