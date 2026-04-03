@@ -898,9 +898,19 @@ class StockMoveLine(models.Model):
             if kwargs.get('except_package') and move_line.result_package_id:
                 continue
             aggregated_properties = self._get_aggregated_properties(move_line=move_line)
+<<<<<<< 2e4ebcbcde87ff8fe0d48e4034897f433876a848
             line_key, uom = aggregated_properties['line_key'], aggregated_properties['uom_id']
             quantity = move_line.uom_id._compute_quantity(move_line.quantity, uom)
             packaging_quantity = move_line.uom_id._compute_quantity(quantity, move_line.move_id.packaging_uom_id)
+||||||| 38b6e90e21bc8bb2781224372e040634962b28c3
+            line_key, uom = aggregated_properties['line_key'], aggregated_properties['product_uom']
+            quantity = move_line.product_uom_id._compute_quantity(move_line.quantity, uom)
+            packaging_quantity = move_line.product_uom_id._compute_quantity(quantity, move_line.move_id.packaging_uom_id)
+=======
+            line_key, uom = aggregated_properties['line_key'], aggregated_properties['product_uom']
+            quantity = move_line.product_uom_id._compute_quantity(move_line.quantity, uom)
+            packaging_quantity = uom._compute_quantity(quantity, move_line.move_id.packaging_uom_id)
+>>>>>>> dbb295b20ae8b33ecd5b80ca5b278c58e6fa90fa
             if line_key not in aggregated_move_lines:
                 qty_ordered = None
                 packaging_qty_ordered = None
