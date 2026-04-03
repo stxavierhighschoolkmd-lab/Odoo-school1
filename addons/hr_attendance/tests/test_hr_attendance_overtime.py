@@ -1,5 +1,5 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-from datetime import date, datetime
+from datetime import date, datetime, time
 from freezegun import freeze_time
 
 from odoo import Command
@@ -28,8 +28,6 @@ class TestHrAttendanceOvertime(HttpCase):
         cls.company = cls.env['res.company'].create({
             'name': 'SweatChipChop Inc.',
             'attendance_overtime_validation': 'no_validation',
-            # 'overtime_company_threshold': 10,
-            # 'overtime_employee_threshold': 10,
         })
         cls.company.tz = 'Europe/Brussels'
         cls.company_1 = cls.env['res.company'].create({
@@ -155,18 +153,18 @@ class TestHrAttendanceOvertime(HttpCase):
         self.assertEqual(afternoon_att.overtime_status, 'to_approve')
         self.assertAlmostEqual(morning_att.validated_overtime_hours, 0, 2)
         self.assertAlmostEqual(afternoon_att.validated_overtime_hours, 0, 2)
-        self.assertEqual(morning_att.employee_id.total_overtime, 0)
+        self.assertEqual(morning_att.employee_id._get_total_overtime(), 0)
 
         afternoon_att.action_approve_overtime()
 
         self.assertEqual(afternoon_att.overtime_status, 'approved')
         self.assertAlmostEqual(morning_att.validated_overtime_hours, 0, 2)
         self.assertAlmostEqual(afternoon_att.validated_overtime_hours, 3, 2)
-        self.assertAlmostEqual(morning_att.employee_id.total_overtime, 3, 2)
+        self.assertAlmostEqual(morning_att.employee_id._get_total_overtime(), 3, 2)
 
         afternoon_att.action_refuse_overtime()
-        self.assertEqual(morning_att.employee_id.total_overtime, 0, 0)
-        self.assertEqual(afternoon_att.employee_id.total_overtime, 0, 0)
+        self.assertEqual(morning_att.employee_id._get_total_overtime(), 0, 0)
+        self.assertEqual(afternoon_att.employee_id._get_total_overtime(), 0, 0)
 
     def test_simple_overtime(self):
         checkin_am = self.env['hr.attendance'].create({
@@ -179,7 +177,7 @@ class TestHrAttendanceOvertime(HttpCase):
             'check_out': datetime(2021, 1, 4, 22, 0)
         })
 
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id), ('date', '=', date(2021, 1, 4))])
+        overtime = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id), ('date', '=', date(2021, 1, 4))])
         self.assertFalse(overtime, 'No overtime record should exist for that employee')
 
         checkin_am.write({'check_out': datetime(2021, 1, 4, 12, 0)})
@@ -191,9 +189,9 @@ class TestHrAttendanceOvertime(HttpCase):
         self.assertEqual(overtime.duration, 0, 'Overtime duration should be 0 when an attendance has not been checked out.')
         checkin_pm.write({'check_out': datetime(2021, 1, 4, 18, 0)})
         # self.assertTrue(overtime.exists(), 'Overtime should not be deleted')
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id), ('date', '=', date(2021, 1, 4))])
+        overtime = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id), ('date', '=', date(2021, 1, 4))])
         self.assertAlmostEqual(overtime.duration, 1)
-        self.assertAlmostEqual(self.employee.total_overtime, 1)
+        self.assertAlmostEqual(self.employee._get_total_overtime(), 1)
 
     def test_overtime_weekend(self):
         self.env['hr.attendance.overtime.rule'].create({
@@ -209,10 +207,10 @@ class TestHrAttendanceOvertime(HttpCase):
             'check_out': datetime(2021, 1, 2, 11, 0)
         })
 
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id), ('date', '=', date(2021, 1, 2))])
+        overtime = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id), ('date', '=', date(2021, 1, 2))])
         self.assertTrue(overtime, 'Overtime should be created')
         self.assertEqual(overtime.duration, 3, 'Should have 3 hours of overtime')
-        self.assertEqual(self.employee.total_overtime, 3, 'Should still have 3 hours of overtime')
+        self.assertEqual(self.employee._get_total_overtime(), 3, 'Should still have 3 hours of overtime')
 
     def test_overtime_multiple(self):
         self.env['hr.attendance.overtime.rule'].create({
@@ -226,7 +224,7 @@ class TestHrAttendanceOvertime(HttpCase):
             'check_in': datetime(2021, 1, 2, 8, 0),
             'check_out': datetime(2021, 1, 2, 19, 0)
         })
-        self.assertEqual(self.employee.total_overtime, 11)
+        self.assertEqual(self.employee._get_total_overtime(), 11)
 
         self.env['hr.attendance'].create([
             {
@@ -240,10 +238,10 @@ class TestHrAttendanceOvertime(HttpCase):
                 'check_out': datetime(2021, 1, 4, 17, 0),
             },
         ])
-        self.assertEqual(self.employee.total_overtime, 12)
+        self.assertEqual(self.employee._get_total_overtime(), 12)
 
         attendance.unlink()
-        self.assertAlmostEqual(self.employee.total_overtime, 1, 2)
+        self.assertAlmostEqual(self.employee._get_total_overtime(), 1, 2)
 
     def test_overtime_change_employee(self):
         Attendance = self.env['hr.attendance']
@@ -260,8 +258,8 @@ class TestHrAttendanceOvertime(HttpCase):
             }
         ])
 
-        self.assertEqual(self.employee.total_overtime, 2)
-        self.assertEqual(self.other_employee.total_overtime, 0)
+        self.assertEqual(self.employee._get_total_overtime(), 2)
+        self.assertEqual(self.other_employee._get_total_overtime(), 0)
 
         self.other_employee.ruleset_id = self.ruleset
         Attendance.create([
@@ -277,8 +275,8 @@ class TestHrAttendanceOvertime(HttpCase):
             }
         ])
         attendance.unlink()
-        self.assertEqual(self.other_employee.total_overtime, 2)
-        self.assertEqual(self.employee.total_overtime, 0)
+        self.assertEqual(self.other_employee._get_total_overtime(), 2)
+        self.assertEqual(self.employee._get_total_overtime(), 0)
 
     def test_overtime_far_timezones(self):
         (self.jpn_employee | self.honolulu_employee).ruleset_id = self.ruleset
@@ -309,8 +307,8 @@ class TestHrAttendanceOvertime(HttpCase):
                 'check_out': datetime(2021, 1, 5, 4, 0),
             }
         ])
-        self.assertAlmostEqual(self.jpn_employee.total_overtime, 2, 2)
-        self.assertAlmostEqual(self.honolulu_employee.total_overtime, 2, 2)
+        self.assertAlmostEqual(self.jpn_employee._get_total_overtime(), 2, 2)
+        self.assertAlmostEqual(self.honolulu_employee._get_total_overtime(), 2, 2)
 
     def test_overtime_unclosed(self):
         _, attendance = self.env['hr.attendance'].create([
@@ -324,13 +322,13 @@ class TestHrAttendanceOvertime(HttpCase):
                 'check_in': datetime(2021, 1, 4, 13, 0),
             }
         ])
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id)])
+        overtime = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id)])
         self.assertFalse(overtime, 'Overtime entry should not exist at this point.')
         # Employees goes to eat
         attendance.write({
             'check_out': datetime(2021, 1, 4, 20, 0),
         })
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id)])
+        overtime = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id)])
         self.assertTrue(overtime, 'An overtime entry should have been created.')
         self.assertEqual(overtime.duration, 3, 'User should have 3 hours of overtime.')
 
@@ -348,33 +346,15 @@ class TestHrAttendanceOvertime(HttpCase):
                 'check_out': datetime(2021, 1, 4, 17, 5),
             }
         ])
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id)])
+        overtime = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id)])
         self.assertFalse(overtime, 'No overtime should be counted because of the threshold.')
 
         self.ruleset.rule_ids[0].employer_tolerance = 4 / 60  # 4 minutes
         self.ruleset.action_regenerate_overtimes()
 
-        overtime = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id)])
+        overtime = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id)])
         self.assertTrue(overtime, 'Overtime entry should exist since the threshold has been lowered.')
         self.assertAlmostEqual(overtime.duration, 10 / 60, places=2, msg='Overtime should be equal to 10 minutes.')
-
-    def test_overtime_lunch(self):
-        attendance = self.env['hr.attendance'].create({
-            'employee_id': self.employee.id,
-            'check_in': datetime(2021, 1, 4, 8, 0),
-            'check_out': datetime(2021, 1, 4, 17, 0),
-        })
-        self.assertEqual(self.employee.total_overtime, 1, 'There should be overtime since the employee did not check out during the lunch period.')
-
-        # check that no overtime is created when employee starts and finishes 1 hour earlier but works through lunch period
-        attendance.check_in = datetime(2021, 1, 4, 7, 0)
-        attendance.check_out = datetime(2021, 1, 4, 16, 0)
-        self.assertEqual(self.employee.total_overtime, 1, 'There should be overtime since the employee worked through the lunch period.')
-
-        # same but for 1 hour later
-        attendance.check_in = datetime(2021, 1, 4, 9, 0)
-        attendance.check_out = datetime(2021, 1, 4, 18, 0)
-        self.assertEqual(self.employee.total_overtime, 1, 'There should be overtime since the employee worked through the lunch period.')
 
     def test_overtime_hours_inside_attendance(self):
         # 1 Attendance case
@@ -395,7 +375,7 @@ class TestHrAttendanceOvertime(HttpCase):
         self.assertAlmostEqual(attendance.overtime_hours, 4, 2)
 
         # Total overtime for that day : 4 hours
-        overtime_1 = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id),
+        overtime_1 = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id),
                                                               ('date', '=', datetime(2023, 1, 2))])
         self.assertAlmostEqual(overtime_1.duration, 4, 2)
 
@@ -432,7 +412,7 @@ class TestHrAttendanceOvertime(HttpCase):
         # 21:00 -> 23:00 should contain 2 hours of overtime
         self.assertAlmostEqual(m_attendance_3.overtime_hours, 2, 2)
 
-        overtime_2 = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.employee.id),
+        overtime_2 = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.employee.id),
                                                                 ('date', '=', datetime(2023, 1, 3))])
         # Total overtime for that day : 5 hours
         self.assertEqual(sum(overtime_2.mapped('duration')), 5)
@@ -474,7 +454,7 @@ class TestHrAttendanceOvertime(HttpCase):
         self.assertAlmostEqual(early_attendance.overtime_hours, 5)
 
         # Total overtime for that day : 5 hours
-        overtime_record = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.europe_employee.id),
+        overtime_record = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.europe_employee.id),
                                                               ('date', '=', datetime(2024, 5, 28))])
         self.assertAlmostEqual(overtime_record.duration, 5)
 
@@ -489,7 +469,7 @@ class TestHrAttendanceOvertime(HttpCase):
         # and from 0h to 12h the 30th -> so he did 4h of overtime for this day
 
         self.assertAlmostEqual(early_attendance2.overtime_hours, 4)
-        overtime_record2 = self.env['hr.attendance.overtime.line'].search([('employee_id', '=', self.europe_employee.id),
+        overtime_record2 = self.env['hr.attendance.overtime.line'].search([('attendance_id.employee_id', '=', self.europe_employee.id),
                                                               ('date', '=', datetime(2024, 5, 30))])
         self.assertAlmostEqual(overtime_record2.duration, 4)
 
@@ -549,7 +529,7 @@ class TestHrAttendanceOvertime(HttpCase):
         self.assertEqual(attendance_utc_pending.check_out, datetime(2024, 2, 1, 18, 0))
         self.assertEqual(attendance_utc_pending_within_allotted_hours.check_out, False)
         self.assertEqual(attendance_utc_done.check_out, datetime(2024, 2, 1, 17, 0))
-        self.assertEqual(attendance_jpn_pending.check_out, datetime(2024, 2, 1, 21, 0))
+        self.assertEqual(attendance_jpn_pending.check_out, datetime(2024, 2, 1, 14, 59, 59, 999999))  # We don't want to go further than the employee's midnight
 
         # Employee with flexible working schedule should not be checked out
         self.assertEqual(attendance_flexible_pending.check_out, False)
@@ -636,83 +616,6 @@ class TestHrAttendanceOvertime(HttpCase):
             Attendance._cron_auto_check_out()
             self.assertEqual(morning.worked_hours + afternoon.worked_hours, 9)  # 8 hours from calendar's attendances + 1 hour of tolerance
             self.assertEqual(afternoon.check_out, datetime(2024, 1, 1, 18, 0))
-
-    # @freeze_time("2024-02-01 14:00:00")
-    # def test_absence_management(self):
-    # TODO no more absence management
-    #     self.company.write({
-    #         'absence_management': True,
-    #     })
-
-    #     self.env['hr.attendance'].create({
-    #         'employee_id': self.employee.id,
-    #         'check_in': datetime(2024, 1, 31, 8, 0),
-    #         'check_out': datetime(2024, 1, 31, 17, 0)
-    #     })
-
-    #     self.env['hr.attendance'].create({
-    #         'employee_id': self.employee.id,
-    #         'check_in': datetime(2024, 2, 1, 8, 0),
-    #         'check_out': datetime(2024, 2, 1, 17, 0)
-    #     })
-
-    #     self.env['hr.attendance'].create({
-    #         'employee_id': self.other_employee.id,
-    #         'check_in': datetime(2024, 2, 1, 8, 0),
-    #         'check_out': datetime(2024, 2, 1, 17, 0)
-    #     })
-
-    #     self.env['hr.attendance'].create({
-    #         'employee_id': self.jpn_employee.id,
-    #         'check_in': datetime(2024, 2, 1, 1, 0),
-    #         'check_out': datetime(2024, 2, 1, 10, 0)
-
-    #     })
-
-    #     self.env['hr.attendance'].create({
-    #         'employee_id': self.honolulu_employee.id,
-    #         'check_in': datetime(2024, 2, 1, 17, 0),
-    #         'check_out': datetime(2024, 2, 2, 2, 0)
-    #     })
-
-    #     self.env['hr.attendance'].create({
-    #         'employee_id': self.europe_employee.id,
-    #         'check_in': datetime(2024, 2, 1, 8, 0),
-    #         'check_out': datetime(2024, 2, 1, 17, 0)
-    #     })
-
-    #     self.env['hr.attendance'].create({
-    #         'employee_id': self.flexible_employee.id,
-    #         'check_in': datetime(2024, 2, 1, 8, 0),
-    #         'check_out': datetime(2024, 2, 1, 16, 0)
-    #     })
-
-    #     self.assertAlmostEqual(self.employee.total_overtime, 0, 2)
-    #     self.assertAlmostEqual(self.other_employee.total_overtime, 0, 2)
-    #     self.assertAlmostEqual(self.jpn_employee.total_overtime, 0, 2)
-    #     self.assertAlmostEqual(self.honolulu_employee.total_overtime, 0, 2)
-    #     self.assertAlmostEqual(self.europe_employee.total_overtime, 0, 2)
-    #     self.assertAlmostEqual(self.flexible_employee.total_overtime, 0, 2)
-
-    #     self.env['hr.attendance']._cron_absence_detection()
-
-    #     # Check that absences were correctly attributed
-    #     self.assertAlmostEqual(self.other_employee.total_overtime, -8, 2)
-    #     self.assertAlmostEqual(self.jpn_employee.total_overtime, -8, 2)
-    #     self.assertAlmostEqual(self.honolulu_employee.total_overtime, -8, 2)
-
-    #     # Employee Checked in yesterday, no absence found
-    #     self.assertAlmostEqual(self.employee.total_overtime, 0, 2)
-
-    #     # Flexible schedule employee, no absence found
-    #     self.assertAlmostEqual(self.flexible_employee.total_overtime, 0, 2)
-
-    #     # Other company with setting disabled
-    #     self.assertAlmostEqual(self.europe_employee.total_overtime, 0, 2)
-
-    #     # Employee with no contract or future contract
-    #     # self.assertAlmostEqual(self.no_contract_employee.total_overtime, 0, 2)
-    #     # self.assertAlmostEqual(self.future_contract_employee.total_overtime, 0, 2)
 
     def test_overtime_hours_flexible_resource(self):
         """ Test the computation of overtime hours for a single flexible resource with 8 hours_per_day.
@@ -834,7 +737,7 @@ class TestHrAttendanceOvertime(HttpCase):
         # 13 - 8 = 5h of overtime
         # so he should have 12 hours of overtime this day
         overtime = self.env['hr.attendance.overtime.line'].search([
-            ('employee_id', '=', self.employee.id),
+            ('attendance_id.employee_id', '=', self.employee.id),
         ])
         self.assertItemsEqual(overtime.mapped('duration'), [7, 5])
         self.assertEqual(attendance.validated_overtime_hours, 0)
@@ -858,7 +761,7 @@ class TestHrAttendanceOvertime(HttpCase):
             },
         ])
         overtimes = self.env['hr.attendance.overtime.line'].search([
-            ('employee_id', '=', self.employee.id),
+            ('attendance_id.employee_id', '=', self.employee.id),
             ('date', '>=', datetime(2025, 12, 18).date())
         ])
         self.assertItemsEqual(overtimes.mapped('duration'), [6, 4])
@@ -946,8 +849,8 @@ class TestHrAttendanceOvertime(HttpCase):
             'check_out': datetime(2025, 8, 20, 16, 0),
         })
         overtimes_by_employee = self.env['hr.attendance.overtime.line'].search([
-            ('employee_id', 'in', [self.employee.id, self.europe_employee.id]),
-        ]).grouped('employee_id')
+            ('attendance_id.employee_id', 'in', [self.employee.id, self.europe_employee.id]),
+        ]).grouped(lambda o: o.attendance_id.employee_id)
         self._check_overtimes(overtimes_by_employee.get(self.employee), [
             {  # 7:00 -> 8:00 & 12:00 -> 13:00 (no check out during lunch)
                 'date': date(2025, 8, 20),
@@ -1024,7 +927,7 @@ class TestHrAttendanceOvertime(HttpCase):
         ])
 
         overtimes = self.env['hr.attendance.overtime.line'].search([
-            ('employee_id', '=', self.employee.id),
+            ('attendance_id.employee_id', '=', self.employee.id),
         ])
 
         self.assertAlmostEqual(sum(ot.duration for ot in overtimes), 5.0, 2)
@@ -1119,20 +1022,24 @@ class TestHrAttendanceOvertime(HttpCase):
         """Validate that multiple overtime lines for today are summed correctly
         and that the entire attendance_employee_data response is consistent.
         """
-        for _ in range(2):
-            self.env['hr.attendance.overtime.line'].create({
-                'employee_id': self.employee.id,
-                'date': date.today(),
-                'duration': 5,
-            })
+        attendance_id = self.env['hr.attendance'].create({
+            'employee_id': self.employee.id,
+            'check_in': datetime.combine(date.today(), time(7, 0)),
+            'check_out': datetime.combine(date.today(), time(12, 0)),
+        })
+        self.env['hr.attendance.overtime.line'].create([{
+            'attendance_id': attendance_id.id,
+            'date': date.today(),
+            'duration': 5,
+        } for _ in range(2)])
         token = self.employee.company_id.attendance_kiosk_key
         response = self.make_jsonrpc_request(
             '/hr_attendance/attendance_employee_data',
             {'token': token, 'employee_id': self.employee.id},
         )
         self.assertEqual(response.get('hours_previously_today'), 0)
-        self.assertEqual(response.get('hours_today'), 0)
-        self.assertEqual(response.get('last_attendance_worked_hours'), 0)
+        self.assertEqual(response.get('hours_today'), 5)
+        self.assertEqual(response.get('last_attendance_worked_hours'), 5)
         self.assertEqual(response.get('overtime_today'), 10)
         self.assertEqual(response.get('total_overtime'), 10)
 
@@ -1413,7 +1320,7 @@ class TestHrAttendanceOvertime(HttpCase):
         # The overtime line is linked to the afternoon attendance
         self.assertTrue(afternoon_att.linked_overtime_ids)
         # Should be the same as it's the reverse checking
-        self.assertEqual(overtime_lines._linked_attendances(), afternoon_att)
+        self.assertEqual(overtime_lines.attendance_id, afternoon_att)
 
     def test_overtime_across_midnight_in_utc_timezone(self):
         self.europe_employee.tz = 'UTC'

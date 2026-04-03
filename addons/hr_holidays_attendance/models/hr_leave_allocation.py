@@ -5,6 +5,8 @@ from datetime import datetime
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 from odoo.fields import Domain
+from odoo.tools.date_utils import sum_intervals
+from odoo.tools.intervals import Intervals
 
 
 class HrLeaveAllocation(models.Model):
@@ -23,27 +25,19 @@ class HrLeaveAllocation(models.Model):
         return res
 
     overtime_deductible = fields.Boolean(compute='_compute_overtime_deductible')
-    employee_overtime = fields.Float(compute='_compute_employee_overtime', groups='base.group_user')
+    employee_overtime = fields.Float(related='employee_id.deductible_overtime', groups='base.group_user')
 
     @api.depends('work_entry_type_id')
     def _compute_overtime_deductible(self):
         for allocation in self:
             allocation.overtime_deductible = allocation.work_entry_type_id.overtime_deductible
 
-    @api.depends('employee_id')
-    def _compute_employee_overtime(self):
-        diff_by_employee = self.employee_id._get_deductible_employee_overtime()
-        for allocation in self:
-            allocation.employee_overtime = diff_by_employee.get(allocation.employee_id, 0)
-
     @api.model_create_multi
     def create(self, vals_list):
         res = super().create(vals_list)
-        deductible = res.employee_id._get_deductible_employee_overtime()
         for allocation in res:
-            if allocation.overtime_deductible:
-                if deductible[allocation.employee_id] < 0:
-                    raise ValidationError(_('The employee does not have enough overtime hours to request this leave.'))
+            if allocation.overtime_deductible and allocation.employee_overtime < 0:
+                raise ValidationError(_('The employee does not have enough overtime hours to request this leave.'))
         return res
 
     def write(self, vals):
@@ -52,14 +46,9 @@ class HrLeaveAllocation(models.Model):
             return res
         if not self.env.user.has_group("hr_holidays.group_hr_holidays_user") and any(allocation.state not in ('draft', 'confirm') for allocation in self):
             raise ValidationError(_('Only an Officer or Administrator is allowed to edit the allocation duration in this status.'))
-        deductible = self.employee_id._get_deductible_employee_overtime()
         for allocation in self.sudo().filtered('overtime_deductible'):
-            if deductible[allocation.employee_id] < 0:
+            if allocation.employee_overtime < 0:
                 raise ValidationError(_('The employee does not have enough overtime hours to request this leave.'))
-        return res
-
-    def action_refuse(self):
-        res = super().action_refuse()
         return res
 
     def _get_accrual_plan_level_work_entry_prorata(self, level, start_period, start_date, end_period, end_date):
@@ -70,6 +59,9 @@ class HrLeaveAllocation(models.Model):
         start_dt = datetime.combine(start_date, datetime_min_time)
         end_dt = datetime.combine(end_date, datetime_min_time)
 
+        if start_dt >= end_dt:
+            return 0.0
+
         # Search for any attendance overlapping the window
         attendances = self.env['hr.attendance'].sudo().search([
             ('employee_id', '=', self.employee_id.id),
@@ -77,8 +69,5 @@ class HrLeaveAllocation(models.Model):
             ('check_out', '>', start_dt),
         ])
 
-        total_worked_hours = 0.0
-        for attendance in attendances:
-            total_worked_hours += attendance._get_worked_hours_in_range(start_dt, end_dt)
-
-        return total_worked_hours
+        attendance_intervals = Intervals([(att.check_in, att.check_out, att) for att in attendances])
+        return sum_intervals(attendance_intervals & Intervals([(start_dt, end_dt, self.env['hr.attendance'])]))
