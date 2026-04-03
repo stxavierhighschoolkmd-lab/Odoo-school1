@@ -12,10 +12,10 @@
                         <img class="o-mail-MessageInReply-avatar me-2 rounded object-fit-cover" t-att-src="this.authorAvatarUrl" t-att-title="this.props.message.parent_id.authorName" alt="Avatar"/>
                         <span class="o-mail-MessageInReply-content overflow-hidden smaller">
                             <b class="o-mail-MessageInReply-author o-fw-600"><t t-out="this.props.message.parent_id.authorName"/></b>:
-                            <span class="o-mail-MessageInReply-message ms-1 text-break">
+                            <span class="o-mail-MessageInReply-message o-mail-messagePreview ms-1 text-break">
                                 <i t-if="this.props.message.parent_id.hasAttachments" class="fa fa-fw me-1" t-att-class="this.props.message.parent_id.previewIcon" />
-                                <t t-if="this.props.message.parent_id.inlineBody">
-                                    <t t-out="this.props.message.parent_id.inlineBody"/>
+                                <t t-if="this.props.message.parent_id.inlineRichBody">
+                                    <t t-out="this.props.message.parent_id.inlineRichBody"/>
                                     <em t-if="this.props.message.parent_id.edited" class="smaller fw-bold text-500"> (edited)</em>
                                 </t>
                                 <span t-else="" class="fst-italic">

@@ -198,7 +198,7 @@ test("Replying to a message containing line breaks should be correctly inlined",
     const pyEnv = await startServer();
     const channelId = pyEnv["discuss.channel"].create({ name: "general" });
     const messageId = pyEnv["mail.message"].create({
-        body: "<p>Message first line.<br>Message second line.<br>Message third line.</p>",
+        body: "<p>Message first line.<br>Message second line.<br>Message third line.</p><p>Message Content in new line</p>",
         message_type: "comment",
         model: "discuss.channel",
         res_id: channelId,
@@ -214,9 +214,9 @@ test("Replying to a message containing line breaks should be correctly inlined",
     });
     await start();
     await openDiscuss(channelId);
-    await contains(
-        ".o-mail-MessageInReply-message:text('Message first line. Message second line. Message third line.')"
-    );
+    await contains(".o-mail-MessageInReply-message", {
+        text: "Message first line.\u00a0Message second line.\u00a0Message third line.\u00a0Message Content in new line",
+    });
 });
 
 test("Replying to a message containing attachments should display an attachment icon", async () => {
@@ -318,4 +318,27 @@ test("click on message in reply in inbox navigates to the parent message", async
     await contains(
         ".o-mail-DiscussContent:has(.o-mail-DiscussContent-threadName[title='General']) .o-mail-Message.o-highlighted .o-mail-Message-content:has(:text('Parent message'))"
     );
+});
+
+test("Reply message preview preserves formatting from the original message", async () => {
+    const pyEnv = await startServer();
+    const channelId = pyEnv["discuss.channel"].create({ name: "General" });
+    const messageId = pyEnv["mail.message"].create({
+        body: "<p><strong><em>Formatted Text</em></strong></p>",
+        message_type: "comment",
+        model: "discuss.channel",
+        res_id: channelId,
+    });
+    const partnerId = pyEnv["res.partner"].create({ name: "PartnerOne" });
+    pyEnv["mail.message"].create({
+        body: "Reply",
+        message_type: "comment",
+        model: "discuss.channel",
+        author_id: partnerId,
+        parent_id: messageId,
+        res_id: channelId,
+    });
+    await start();
+    await openDiscuss(channelId);
+    await contains(".o-mail-MessageInReply-message p strong em:text('Formatted Text')");
 });

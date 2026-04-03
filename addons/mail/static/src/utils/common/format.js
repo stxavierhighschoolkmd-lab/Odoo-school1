@@ -10,6 +10,7 @@ import { getInnerHtml, getOuterHtml } from "@mail/utils/common/html";
 
 import { htmlEscape, markup } from "@odoo/owl";
 
+import { blockTagNames } from "@html_editor/utils/blocks";
 import { router } from "@web/core/browser/router";
 import { emojiLoader } from "@web/core/emoji_picker/emoji_loader";
 import { formatList, normalize } from "@web/core/l10n/utils";
@@ -376,6 +377,30 @@ export function convertBrToLineBreak(str) {
 
 export function convertLineBreakToBr(str) {
     return htmlReplace(str, /(\r|\n)/g, () => markup`<br/>`);
+}
+
+/**
+ * @param {string|ReturnType<markup>} richbody
+ * @returns {ReturnType<markup>}
+ */
+export function htmlToHtmlInline(richbody) {
+    const doc = createDocumentFragmentFromContent(richbody);
+    const body = doc.body;
+    const lineBreaks = body.querySelectorAll("br");
+    const blockChildren = Array.from(body.children);
+    if (lineBreaks.length || blockChildren.length > 1) {
+        for (const br of lineBreaks) {
+            br.replaceWith(body.ownerDocument.createTextNode("\u00A0"));
+        }
+        for (let i = blockChildren.length - 1; i > 0; i--) {
+            const prev = blockChildren[i - 1];
+            const curr = blockChildren[i];
+            if (blockTagNames.includes(prev.tagName) && blockTagNames.includes(curr.tagName)) {
+                body.insertBefore(body.ownerDocument.createTextNode("\u00A0"), curr);
+            }
+        }
+    }
+    return htmlTrim(getInnerHtml(body)) ?? "";
 }
 
 export function cleanTerm(term) {

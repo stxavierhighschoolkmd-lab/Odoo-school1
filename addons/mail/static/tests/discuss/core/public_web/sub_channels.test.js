@@ -423,3 +423,24 @@ test("should temporarily repin unpinned thread while it is being viewed", async 
     await contains(".o-mail-DiscussSidebarChannel-subChannel:eq(0):text('Sub Channel 1')");
     await contains(".o-mail-DiscussSidebarChannel-subChannel:eq(1):text('Sub Channel 2').o-active");
 });
+
+test("Subchannel last-message preview should preserve text formatting", async () => {
+    const pyEnv = await startServer();
+    const channelId = pyEnv["discuss.channel"].create({ name: "General" });
+    const subChannel = pyEnv["discuss.channel"].create({
+        name: "New Thread",
+        parent_channel_id: channelId,
+        channel_member_ids: [Command.create({ partner_id: serverState.partnerId })],
+    });
+    pyEnv["mail.message"].create({
+        body: "<p><strong><em>Formatted Text</em></strong></p>",
+        message_type: "comment",
+        model: "discuss.channel",
+        res_id: subChannel,
+    });
+    await start();
+    await openDiscuss(channelId);
+    await contains(".o-discuss-ChannelMemberList"); // wait for auto-open of this panel
+    await click("button[title='Threads']");
+    await contains(".o-mail-SubChannelPreview-lastMessage p strong em:text('Formatted Text')");
+});
