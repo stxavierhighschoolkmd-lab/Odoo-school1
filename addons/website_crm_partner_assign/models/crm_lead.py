@@ -352,9 +352,18 @@ class CrmLead(models.Model):
         # Allow readonly posting for assigned users, to avoid ACLs issue in frontend
         # as they do not have write access anymore on the lead itself, just specific
         # controllers and UI
-        assigned = self.filtered(
-            lambda lead: lead.partner_assigned_id == self.env.user.partner_id
-        ) if message_operation == "create" else self.browse()
+        if message_operation == "create":
+            if self.env.user._is_portal():
+                assigned = self.filtered_domain([
+                    ('partner_assigned_id', 'child_of', self.env.user.commercial_partner_id.id),
+                ])
+            else:
+                # TODO: remove in master, left here to avoid modifying access behavior in stable
+                assigned = self.filtered(
+                    lambda lead: lead.partner_assigned_id == self.env.user.partner_id,
+                )
+        else:
+            assigned = self.browse()
         result = super()._mail_get_operation_for_mail_message_operation(message_operation)
         result.update(dict.fromkeys(assigned, 'read'))
         return result
