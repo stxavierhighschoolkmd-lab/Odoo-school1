@@ -33,13 +33,51 @@ IGNORED_IN_EXPRESSION = {
     'current_date',
     'today',
     'now',
-    'abs',
-    'len',
-    'bool',
-    'float',
-    'str',
     'unicode',
+    # builtins
+    'abs',
+    'all',
+    'any',
+    'ascii',
+    'bin',
+    'bool',
+    'bytearray',
+    'bytes',
+    'callable',
+    'chr',
+    'complex',
+    'dict',
+    'divmod',
+    'enumerate',
+    'filter',
+    'float',
+    'frozenset',
+    'hash',
+    'hex',
+    'id',
+    'int',
+    'iter',
+    'len',
+    'list',
+    'map',
+    'max',
+    'memoryview',
+    'min',
+    'next',
+    'oct',
+    'ord',
+    'pow',
+    'range',
+    'repr',
+    'reversed',
+    'round',
     'set',
+    'slice',
+    'sorted',
+    'str',
+    'sum',
+    'tuple',
+    'zip',
 }
 DOMAIN_OPERATORS = {
     domains.DomainNot.OPERATOR,
@@ -167,6 +205,20 @@ def _get_expression_contextual_values(item_ast):
     :return: set(str)
     """
 
+    def get_named_expr_bindings(ast_node) -> set[str]:
+        """Recursively collect all names bound by walrus operators (:=) in an expression."""
+        walrus_bindings = set()
+        if isinstance(ast_node, ast.NamedExpr):
+            walrus_bindings.add(ast_node.target.id)
+            walrus_bindings |= get_named_expr_bindings(ast_node.value)
+        else:
+            for child in ast.iter_child_nodes(ast_node):
+                walrus_bindings |= get_named_expr_bindings(child)
+        return walrus_bindings
+
+    def filter_out_bindings(values: set[str], bindings: set[str]) -> set[str]:
+        return {v for v in values if v.split('.')[0] not in bindings}
+
     if isinstance(item_ast, ast.Constant):
         return set()
     if isinstance(item_ast, (ast.List, ast.Tuple)):
@@ -189,6 +241,12 @@ def _get_expression_contextual_values(item_ast):
         values = _get_expression_contextual_values(item_ast.value)
         values |= _get_expression_contextual_values(item_ast.slice)
         return values
+    if isinstance(item_ast, ast.Slice):
+        values = set()
+        for part in (item_ast.lower, item_ast.upper, item_ast.step):
+            if part is not None:
+                values |= _get_expression_contextual_values(part)
+        return values
     if isinstance(item_ast, ast.Compare):
         values = _get_expression_contextual_values(item_ast.left)
         for sub_ast in item_ast.comparators:
@@ -200,8 +258,14 @@ def _get_expression_contextual_values(item_ast):
         return values
     if isinstance(item_ast, ast.BoolOp):
         values = set()
+        named_bindings = set()
         for ast_value in item_ast.values:
-            values |= _get_expression_contextual_values(ast_value)
+            values |= filter_out_bindings(_get_expression_contextual_values(ast_value), named_bindings)
+            # assigned *after* getting the values, in case of a shadowing
+            # e.g. `(x := x + 1) and x + 6`
+            # -> `x` is a valid contextual name from outer scope (in `x + 1`),
+            # even if it gets shadowed by the walrus name after that.
+            named_bindings |= get_named_expr_bindings(ast_value)
         return values
     if isinstance(item_ast, ast.UnaryOp):
         return _get_expression_contextual_values(item_ast.operand)
@@ -211,9 +275,10 @@ def _get_expression_contextual_values(item_ast):
             values |= _get_expression_contextual_values(ast_arg)
         return values
     if isinstance(item_ast, ast.IfExp):
+        named_bindings = get_named_expr_bindings(item_ast.test)
         values = _get_expression_contextual_values(item_ast.test)
-        values |= _get_expression_contextual_values(item_ast.body)
-        values |= _get_expression_contextual_values(item_ast.orelse)
+        values |= filter_out_bindings(_get_expression_contextual_values(item_ast.body), named_bindings)
+        values |= filter_out_bindings(_get_expression_contextual_values(item_ast.orelse), named_bindings)
         return values
     if isinstance(item_ast, ast.Dict):
         values = set()
@@ -221,6 +286,29 @@ def _get_expression_contextual_values(item_ast):
             values |= _get_expression_contextual_values(item)
         for item in item_ast.values:
             values |= _get_expression_contextual_values(item)
+        return values
+    if isinstance(item_ast, ast.JoinedStr):
+        values = set()
+        for value in item_ast.values:
+            values |= _get_expression_contextual_values(value)
+        return values
+    if isinstance(item_ast, ast.FormattedValue):
+        return _get_expression_contextual_values(item_ast.value)
+    if isinstance(item_ast, ast.NamedExpr):
+        return _get_expression_contextual_values(item_ast.value)
+    if isinstance(item_ast, (ast.GeneratorExp, ast.ListComp, ast.SetComp, ast.DictComp)):
+        if isinstance(item_ast, ast.DictComp):
+            values = _get_expression_contextual_values(item_ast.key)
+            values |= _get_expression_contextual_values(item_ast.value)
+        else:
+            values = _get_expression_contextual_values(item_ast.elt)
+        for generator in reversed(item_ast.generators):
+            values |= _get_expression_contextual_values(generator.iter)
+            for if_clause in generator.ifs:
+                values |= _get_expression_contextual_values(if_clause)
+            # Remove loop variable names - they are local bindings, not external references
+            bindings = _get_expression_contextual_values(generator.target)
+            values = filter_out_bindings(values, bindings)
         return values
 
     raise ValueError(f"Undefined item {item_ast!r}.")

@@ -90,7 +90,7 @@ def retrying[T](func: Callable[[], T], env: Environment) -> T:
                 if isinstance(exc, PG_CONCURRENCY_EXCEPTIONS_TO_RETRY):
                     error = psycopg2.errorcodes.lookup(exc.pgcode)
                 elif isinstance(exc, ConcurrencyError):
-                    error = repr(exc)
+                    error = str(exc)
                 else:
                     raise
                 if not tryleft:

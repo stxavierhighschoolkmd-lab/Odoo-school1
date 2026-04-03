@@ -61,6 +61,7 @@ __all__ = [
     'OrderedSet',
     'Reverse',
     'babel_locale_parse',
+    'find_circular_dependency',
     'clean_context',
     'consteq',
     'discardattr',
@@ -370,6 +371,43 @@ def topological_sort[T](elems: Mapping[T, Collection[T]]) -> list[T]:
         visit(el)
 
     return result
+
+
+def find_circular_dependency[T](elems: Mapping[T, Collection[T]]) -> list[T]:
+    """
+    Check for circular dependencies in the given mapping.
+
+    :param elems: Mapping of elements to their dependencies. See also :func:`topological_sort`.
+    :return: List representing the circular dependency chain if found, empty list otherwise
+    """
+    visited = set()
+    path = []
+
+    def visit(node: T) -> list[T]:
+        if node in path:
+            # Found a cycle - build the chain from the cycle point
+            cycle_start = path.index(node)
+            return path[cycle_start:] + [node]
+
+        if node in visited:
+            return []
+
+        visited.add(node)
+        path.append(node)
+
+        if node in elems:
+            for dep in elems[node]:
+                if result := visit(dep):
+                    return result
+
+        path.pop()
+        return []
+
+    for elem in elems:
+        if result := visit(elem):
+            return result
+
+    return []
 
 
 def merge_sequences[T](*iterables: Iterable[T]) -> list[T]:

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- A Populate demo for the Sale module -->
+    <record id="fake_sale_demo" model="populate.blueprint">
+        <field name="name">Sale - Populate Demo</field>
+        <field name="definition_xml" type="xml">
+            <model name="res.partner" count="1000" id="sale_customers">
+                <field name="name" generator="fake.company" null_frac="0"/>
+                <field name="email" generator="fake.company_email"/>
+                <field name="phone" generator="fake.phone_number"/>
+                <field name="is_company" eval="True"/>
+                <field name="active" eval="True"/>
+                <field name="street" generator="fake.street_address"/>
+                <field name="city" generator="fake.city"/>
+                <field name="zip" generator="fake.postcode"/>
+                <field
+                    name="country_id"
+                    generator="relation.one"
+                    domain="[('code', 'in', ['US', 'CA', 'GB', 'DE', 'FR'])]"
+                    null_frac="0.1"
+                />
+            </model>
+
+            <model
+                name="res.users"
+                count="200"
+                id="sale_users"
+                context="{'tracking_disable': True, 'install_mode': True}"
+            >
+                <field name="name" generator="fake.name" null_frac="0"/>
+                <field name="v_user_name" virtual="True" generator="fake.user_name" null_frac="0"/>
+                <field name="v_rng_digits" virtual="True" generator="scalar.integer" start="10" end="99"/>
+                <field name="login" eval="f'{v_user_name}{v_rng_digits if v_rng_digits else ''}'" unique="True"/>
+                <field name="email" generator="fake.email"/>
+                <field name="group_ids" eval="[Command.set([env.ref('sales_team.group_sale_salesman').id])]"/>
+            </model>
+
+            <model name="crm.team" count="10" id="sale_teams" scale="False">
+                <field name="v_counter" virtual="True" generator="misc.counter" start="1"/>
+                <field name="name" eval="f'Sales Team {v_counter}'" null_frac="0"/>
+                <field name="member_ids" generator="relation.many" ref="sale_users" count="20" std="5" null_frac="0"/>
+            </model>
+
+            <model
+                name="sale.order"
+                count="2000"
+                id="sale_orders"
+                context="{'mail_auto_subscribe_no_notify': True}"
+            >
+                <field name="partner_id" generator="relation.one" ref="sale_customers" null_frac="0"/>
+                <field name="user_id" generator="relation.one" ref="sale_users" null_frac="0.1"/>
+                <field name="team_id" generator="relation.one" ref="sale_teams" null_frac="0.1"/>
+                <field
+                    name="state"
+                    generator="choice.selection"
+                    values="{'draft': 4, 'sent': 2, 'sale': 6, 'cancel': 1}"
+                    null_frac="0"
+                />
+                <field
+                    name="date_order"
+                    generator="temporal.datetime"
+                    start="now -2y"
+                    end="now"
+                    distribution="exponential(rate=0.003)"
+                    null_frac="0"
+                />
+                <field name="validity_date" generator="temporal.date" start="today" end="today +30d" null_frac="0.5"/>
+                <field name="client_order_ref" generator="fake.bothify" text="PO-####-????" null_frac="0.6"/>
+                <field name="note" generator="fake.paragraph" null_frac="0.7"/>
+            </model>
+
+            <model
+                name="sale.order.line"
+                count="8000"
+                id="sale_order_lines"
+                context="{'mail_auto_subscribe_no_notify': True}"
+            >
+                <field name="order_id" generator="relation.one" ref="sale_orders" null_frac="0" partition="True"/>
+                <field
+                    name="product_id"
+                    generator="relation.one"
+                    domain="[('sale_ok', '=', True), ('type', '!=', 'combo')]"
+                    null_frac="0"
+                />
+                <field name="product_uom_qty" generator="scalar.float" start="1" end="50"
+                       distribution="exponential(rate=0.1)" null_frac="0"/>
+                <field name="price_unit" generator="scalar.float" start="5.0" end="5000.0"
+                       distribution="exponential(rate=0.001)" null_frac="0"/>
+                <field name="discount" generator="scalar.float" start="0" end="30" distribution="exponential(rate=0.2)"
+                       null_frac="0.7"/>
+                <field
+                    name="v_qty_delivered_ratio"
+                    virtual="True"
+                    generator="scalar.float"
+                    start="0"
+                    end="1"
+                    distribution="beta(alpha=2, beta=2)"
+                />
+                <field
+                    name="qty_delivered"
+                    eval="product_uom_qty * v_qty_delivered_ratio if v_qty_delivered_ratio else 0"
+                    null_frac="0.4"
+                />
+                <field name="sequence" generator="scalar.integer" start="1" end="100" null_frac="0"/>
+            </model>
+        </field>
+    </record>
+</odoo>

@@ -4776,6 +4776,87 @@ class TestValidationTools(common.BaseCase):
             view_validation.get_expression_field_names("set(field).intersection([1, 2])"),
             {'field'},
         )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[x for row in matrix for x in row]"),
+            {'matrix'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[x for x in items]"),
+            {'items'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[x * factor for x in items]"),
+            {'items', 'factor'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("{x for x in items}"),
+            {'items'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("{k: v for k, v in pairs}"),
+            {'pairs'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("{k: v * scale for k, v in pairs}"),
+            {'pairs', 'scale'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("sum(x for x in values)"),
+            {'values'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[x for x in items if x > threshold]"),
+            {'items', 'threshold'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[x for x in items if x]"),
+            {'items'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[x.name for x in items]"),
+            {'items'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[x.upper() for x in items]"),
+            {'items'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[x.name for x in obj.records]"),
+            {'obj'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("{x.id: x.name for x in items}"),
+            {'items'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("(x := field_a)"),
+            {'field_a'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("(x := field_a) and x + 1"),
+            {'field_a'},
+        )
+        # `x` on the RHS of the walrus is an outer-scope name, not the binding
+        self.assertEqual(
+            view_validation.get_expression_field_names("(x := x + 1) and x + 6"),
+            {'x'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("field_b if (y := field_a) else y"),
+            {'field_a', 'field_b'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("y if (y := source_field) else 0"),
+            {'source_field'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("(a := field_a) and (b := field_b) and a and b"),
+            {'field_a', 'field_b'},
+        )
+        self.assertEqual(
+            view_validation.get_expression_field_names("[y := f(x) for x in items]"),
+            {'items', 'f'},
+        )
 
 
 @tagged('at_install', '-post_install')  # LEGACY at_install
