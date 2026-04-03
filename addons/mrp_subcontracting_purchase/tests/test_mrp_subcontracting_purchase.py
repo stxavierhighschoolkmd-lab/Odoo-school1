@@ -90,11 +90,14 @@ class MrpSubcontractingPurchaseTest(TestAccountSubcontractingFlows):
             self.assertEqual(component['availability_state'], 'estimated')
 
     def test_count_smart_buttons(self):
+        """
+        Test the source PO smart button both when the Resupply subcontractor rule is MTO and MTSO
+        """
         resupply_sub_on_order_route = self.env['stock.route'].search([('name', '=', 'Resupply Subcontractor on Order')])
         (self.comp1 + self.comp2).write({'route_ids': [Command.link(resupply_sub_on_order_route.id)]})
 
-        # I create a draft Purchase Order for first in move for 10 kg at 50 euro
-        po = self.env['purchase.order'].create({
+        # Create 2 subcontracted PO's, one to be resupplied in MTO the other in MTSO
+        po, po_mtso_resupply = self.env['purchase.order'].create([{
             'partner_id': self.subcontractor_partner1.id,
             'order_line': [Command.create({
                 'name': 'finished',
@@ -103,10 +106,10 @@ class MrpSubcontractingPurchaseTest(TestAccountSubcontractingFlows):
                 'product_uom_id': self.finished.uom_id.id,
                 'price_unit': 50.0}
             )],
-        })
+        } for _ in range(2)])
 
+        # Flow in MTO
         po.button_confirm()
-
         self.assertEqual(po.subcontracting_resupply_picking_count, 1)
         action1 = po.action_view_subcontracting_resupply()
         picking = self.env[action1['res_model']].browse(action1['res_id'])
@@ -114,6 +117,17 @@ class MrpSubcontractingPurchaseTest(TestAccountSubcontractingFlows):
         action2 = picking.action_view_subcontracting_source_purchase()
         po_action2 = self.env[action2['res_model']].browse(action2['res_id'])
         self.assertEqual(po_action2, po)
+
+        # Flow in MTSO
+        resupply_sub_on_order_route.rule_ids.procure_method = 'mts_else_mto'
+        po_mtso_resupply.button_confirm()
+        self.assertEqual(po_mtso_resupply.subcontracting_resupply_picking_count, 1)
+        action3 = po_mtso_resupply.action_view_subcontracting_resupply()
+        mtso_resupply = self.env[action1['res_model']].browse(action3['res_id'])
+        self.assertEqual(mtso_resupply.subcontracting_source_purchase_count, 1)
+        action4 = mtso_resupply.action_view_subcontracting_source_purchase()
+        po_action4 = self.env[action4['res_model']].browse(action4['res_id'])
+        self.assertEqual(po_action4, po_mtso_resupply)
 
     def test_decrease_qty(self):
         """ Tests when a PO for a subcontracted product has its qty decreased after confirmation
