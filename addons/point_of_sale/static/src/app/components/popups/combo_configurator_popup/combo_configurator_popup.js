@@ -142,6 +142,13 @@ export class ComboConfiguratorPopup extends Component {
                 });
         });
 
+        const sequenceMap = Object.fromEntries(
+            this.props.productTemplate.combo_ids.map((c, i) => [c.id, i])
+        );
+        const sortBySequence = (a, b) =>
+            sequenceMap[a.combo_item_id.combo_id.id] - sequenceMap[b.combo_item_id.combo_id.id];
+        itemsIncluded.sort(sortBySequence);
+        itemsExtra.sort(sortBySequence);
         return [itemsIncluded, itemsExtra];
     }
 
