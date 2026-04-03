@@ -3,12 +3,14 @@
 
 from datetime import date, datetime, timedelta
 from freezegun import freeze_time
+import json
 
 from odoo import Command
 from odoo.addons.event.tests.common import EventCase
 from odoo import exceptions
 from odoo.fields import Datetime as FieldsDatetime
 from odoo.tests import Form, users, tagged
+from odoo.tests.common import HttpCase
 from odoo.tools import mute_logger
 
 
@@ -1110,3 +1112,24 @@ class TestEventTypeData(TestEventInternalsCommon):
         event_type.write({'has_seats_limitation': False})
         self.assertFalse(event_type.has_seats_limitation)
         self.assertEqual(event_type.seats_max, 0)
+
+
+class TestEventController(HttpCase):
+    def test_tickets_not_found_for_deleted_attendee(self):
+        event = self.env['event.event'].create({
+                'name': 'Community Event',
+                'date_begin': FieldsDatetime.to_string(datetime.today() + timedelta(days=1)),
+                'date_end': FieldsDatetime.to_string(datetime.today() + timedelta(days=5)),
+        })
+        event_customer = self.env['res.partner'].create({
+            'name': 'Magic Customer',
+            'email': 'magic@attendee.com',
+        })
+        registration = self.env["event.registration"].create(
+            {'event_id': event.id, 'partner_id': event_customer.id}
+        )
+        tickets_hash = event._get_tickets_access_hash(registration.ids)
+        registration.unlink()
+        url = f"/event/{event.id}/my_tickets?registration_ids={json.dumps([registration.id])}&tickets_hash={tickets_hash}"
+        response = self.url_open(url)
+        self.assertEqual(response.status_code, 404)
