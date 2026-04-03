@@ -5,10 +5,10 @@
     <BuilderComponent>
         <div class="w-100 p-2 py-0">
             <t t-set="isMany2X" t-value="this.allRecords and this.allRecords.length"/>
-            <t t-if="this.state.value?.length > 2">
+            <t t-if="this.domState.value?.length > 2">
                 <div class="o_we_table_wrapper">
                     <table t-custom-ref="table">
-                        <t t-set="items" t-value="this.formatRawValue(this.state.value)"/>
+                        <t t-set="items" t-value="this.cappedItems"/>
                         <t t-foreach="items" t-as="item" t-key="item._id">
                             <tr class="o_row_draggable" t-att-data-id="item._id">
                                 <td t-if="this.props.sortable" class="o_handle_cell w-0">
@@ -52,6 +52,12 @@
                                 </td>
                             </tr>
                         </t>
+                        <tr t-custom-ref="sentinel" t-if="this.hasMoreItems">
+                            <td t-if="this.state.isLoadingMore" colspan="99" class="text-center py-1">
+                                <i class="fa fa-spinner fa-spin me-2"/>
+                                Loading more items...
+                            </td>
+                        </tr>
                     </table>
                 </div>
             </t>

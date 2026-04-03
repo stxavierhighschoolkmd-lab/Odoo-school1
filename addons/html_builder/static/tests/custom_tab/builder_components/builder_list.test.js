@@ -5,10 +5,10 @@ import {
 } from "@html_builder/../tests/helpers";
 import { BuilderAction } from "@html_builder/core/builder_action";
 import { BaseOptionComponent } from "@html_builder/core/base_option_component";
-import { expect, test, describe } from "@odoo/hoot";
+import { expect, test, describe, animationFrame } from "@odoo/hoot";
 import { onError, xml } from "@odoo/owl";
 import { contains } from "@web/../tests/web_test_helpers";
-import { press } from "@odoo/hoot-dom";
+import { press, advanceTime } from "@odoo/hoot-dom";
 
 describe.current.tags("desktop");
 
@@ -462,4 +462,42 @@ test("drops blank textual entries", async () => {
     await contains(".we-bg-options-container input").clear();
     await press("enter");
     expect(".we-bg-options-container input").toHaveCount(1);
+});
+
+test("loads more items when the last row intersects", async () => {
+    addBuilderAction({
+        customAction: class extends BuilderAction {
+            static id = "customAction";
+            getValue({ editingElement: fieldEl }) {
+                const list = [];
+                for (let i = 0; i < 60; i++) {
+                    list.push({ value: `item ${i + 1}` });
+                }
+                return JSON.stringify(list);
+            }
+        },
+    });
+    addBuilderOption(
+        class extends BaseOptionComponent {
+            static selector = ".test-options-target";
+            static template = xml`<BuilderList action="'customAction'" itemShape="{ value: 'text' }"/>`;
+        }
+    );
+    async function loadNextBatch(step) {
+        await contains(".we-bg-options-container .o_we_table_wrapper").scroll({ top: 9999 });
+        await animationFrame();
+        expect(".we-bg-options-container .fa-spinner").toHaveCount(1);
+        // To skip the debounce delay
+        await advanceTime(300);
+        expect(".we-bg-options-container .o_row_draggable").toHaveCount(20 + step * 20);
+        expect(".we-bg-options-container .fa-spinner").toHaveCount(0);
+    }
+    await setupHTMLBuilder(`<div class="test-options-target">content</div>`);
+
+    await contains(":iframe .test-options-target").click();
+    expect(".we-bg-options-container .o_row_draggable").toHaveCount(20);
+    expect(".we-bg-options-container .fa-spinner").toHaveCount(0);
+
+    await loadNextBatch(1);
+    await loadNextBatch(2);
 });

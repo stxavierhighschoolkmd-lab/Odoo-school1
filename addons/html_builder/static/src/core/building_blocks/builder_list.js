@@ -1,4 +1,4 @@
-import { useRef } from "@web/owl2/utils";
+import { useRef, useState } from "@web/owl2/utils";
 import { BuilderComponent } from "@html_builder/core/building_blocks/builder_component";
 import { BuilderListDialog } from "@html_builder/core/building_blocks/builder_list_dialog";
 import {
@@ -7,11 +7,12 @@ import {
     useInputBuilderComponent,
 } from "@html_builder/core/utils";
 import { isSmallInteger } from "@html_builder/utils/utils";
-import { Component, onWillUpdateProps } from "@odoo/owl";
+import { Component, onMounted, onWillUnmount, onWillUpdateProps } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { SelectMenu } from "@web/core/select_menu/select_menu";
 import { useSortable } from "@web/core/utils/sortable_owl";
 import { useService } from "@web/core/utils/hooks";
+import { useDebounced } from "@web/core/utils/timing";
 
 export class BuilderList extends Component {
     static template = "html_builder.BuilderList";
@@ -40,6 +41,7 @@ export class BuilderList extends Component {
         columnWidth: { optional: true },
         forbidLastItemRemoval: { type: Boolean, optional: true },
         isEditable: { type: Boolean, optional: true },
+        limit: { type: Number, optional: true },
     };
     static defaultProps = {
         addItemTitle: _t("Add"),
@@ -51,6 +53,7 @@ export class BuilderList extends Component {
         columnWidth: {},
         forbidLastItemRemoval: false,
         isEditable: true,
+        limit: 20,
     };
     static components = { BuilderComponent, SelectMenu };
 
@@ -66,10 +69,43 @@ export class BuilderList extends Component {
             parseDisplayValue: this.parseDisplayValue,
             formatRawValue: this.formatRawValue.bind(this),
         });
-        this.state = state;
+        this.domState = state;
         this.commit = commit;
         this.preview = preview;
         this.allRecords = this.formatRawValue(this.props.records);
+        this.state = useState({
+            limit: this.props.limit,
+            isLoadingMore: false,
+        });
+        this.tableRef = useRef("table");
+        this.sentinelRef = useRef("sentinel");
+        this.debouncedLoadMore = useDebounced(() => {
+            this.state.limit += this.props.limit;
+            this.state.isLoadingMore = false;
+        }, 250);
+
+        onMounted(() => {
+            if (this.sentinelRef.el) {
+                this.observer = new IntersectionObserver(
+                    ([entry]) => {
+                        if (entry.isIntersecting) {
+                            this.state.isLoadingMore = true;
+                            this.debouncedLoadMore();
+                        }
+                    },
+                    {
+                        root: this.tableRef.el.parentElement,
+                        threshold: 1.0,
+                        rootMargin: "100px",
+                    }
+                );
+                this.observer.observe(this.sentinelRef.el);
+            }
+        });
+
+        onWillUnmount(() => {
+            this.observer?.disconnect();
+        });
 
         onWillUpdateProps((props) => {
             this.allRecords = this.formatRawValue(props.records);
@@ -78,7 +114,7 @@ export class BuilderList extends Component {
         if (this.props.sortable) {
             useSortable({
                 enable: () => this.props.sortable,
-                ref: useRef("table"),
+                ref: this.tableRef,
                 elements: ".o_row_draggable",
                 handle: ".o_handle_cell",
                 cursor: "grabbing",
@@ -89,6 +125,14 @@ export class BuilderList extends Component {
                 },
             });
         }
+    }
+
+    get cappedItems() {
+        return this.getIncludedRecords().slice(0, this.state.limit);
+    }
+
+    get hasMoreItems() {
+        return this.cappedItems.length < this.getIncludedRecords().length;
     }
 
     validateProps() {
@@ -102,7 +146,7 @@ export class BuilderList extends Component {
     }
 
     getIncludedRecords() {
-        return this.formatRawValue(this.state.value);
+        return this.formatRawValue(this.domState.value);
     }
 
     getExcludedRecords() {
@@ -184,7 +228,7 @@ export class BuilderList extends Component {
     }
 
     getNextAvailableItemId(items) {
-        items = items || this.formatRawValue(this.state?.value);
+        items = items || this.formatRawValue(this.domState?.value);
         const biggestId = items
             .map((item) => parseInt(item._id))
             .reduce((acc, id) => (id > acc ? id : acc), -1);
@@ -207,7 +251,7 @@ export class BuilderList extends Component {
         const isText = targetInputEl.type === "text";
         const value = isCheckbox ? targetInputEl.checked : targetInputEl.value;
 
-        let items = this.formatRawValue(this.state.value);
+        let items = this.formatRawValue(this.domState.value);
 
         if (value === true && this.props.itemShape[propertyName] === "exclusive_boolean") {
             for (const item of items) {
