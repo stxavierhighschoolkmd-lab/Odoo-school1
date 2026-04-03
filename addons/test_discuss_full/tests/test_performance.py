@@ -459,12 +459,14 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
             "res.users": self._filter_users_fields(
                 {
                     "employee_ids": [],
+                    "has_active_call": False,
                     "id": self.user_root.id,
                     "partner_id": self.partner_root.id,
                     "share": False,
                     "active": False,
                 },
                 {
+                    "has_active_call": False,
                     "id": user_0.id,
                     "employee_ids": [self.employees[0].id],
                     "is_admin": False,
@@ -2003,6 +2005,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "active": True,
                 "id": user.id,
                 "employee_ids": user.employee_ids.ids,
+                "has_active_call": False,
                 "partner_id": partner.id,
                 "share": False,
             }
@@ -2010,6 +2013,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
             return {
                 "id": user.id,
                 "employee_ids": user.employee_ids.ids,
+                "has_active_call": False,
                 "partner_id": partner.id,
                 "share": False,
             }
@@ -2018,12 +2022,14 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 return {
                     "id": user.id,
                     "employee_ids": user.employee_ids.ids,
+                    "has_active_call": False,
                     "partner_id": partner.id,
                 }
             return {
                 "active": True,
                 "id": user.id,
                 "employee_ids": user.employee_ids.ids,
+                "has_active_call": False,
                 "partner_id": partner.id,
                 "share": False,
             }
@@ -2032,6 +2038,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "active": True,
                 "id": user.id,
                 "employee_ids": user.employee_ids.ids,
+                "has_active_call": False,
                 "partner_id": partner.id,
                 "share": False,
             }
@@ -2040,6 +2047,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "active": True,
                 "id": user.id,
                 "employee_ids": user.employee_ids.ids,
+                "has_active_call": False,
                 "partner_id": partner.id,
                 "share": False,
             }
@@ -2048,6 +2056,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "active": True,
                 "id": user.id,
                 "employee_ids": user.employee_ids.ids,
+                "has_active_call": False,
                 "partner_id": partner.id,
                 "share": False,
             }
@@ -2056,6 +2065,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "active": True,
                 "id": user.id,
                 "employee_ids": user.employee_ids.ids,
+                "has_active_call": False,
                 "partner_id": partner.id,
                 "share": False,
             }

@@ -80,14 +80,22 @@ class TestMailPresence(WebsocketCase, MailCommon):
     def test_manual_im_status(self):
         bob = new_test_user(self.env, login="bob_user", groups="base.group_user")
         session = self.authenticate(bob.login, bob.login)
-        with self.assertBus(
-            BusResult(
-                (bob, "presence"),
-                "mail.record/insert",
+        expected_payload = {
+            "res.partner": [{"id": bob.partner_id.id, "im_status": "offline"}],
+        }
+        if "has_active_call" in self.env["res.users"]._fields:
+            expected_payload["res.users"] = [
                 {
-                    "res.partner": [{"id": bob.partner_id.id, "im_status": "offline"}],
-                },
-            ),
+                    "has_active_call": False,
+                    "id": bob.id,
+                    "partner_id": bob.partner_id.id,
+                }
+            ]
+        else:
+            expected_payload["res.users"] = [{"id": bob.id, "partner_id": bob.partner_id.id}]
+
+        with self.assertBus(
+            BusResult((bob, "presence"), "mail.record/insert", expected_payload),
         ):
             self.make_jsonrpc_request(
                 "/mail/set_manual_im_status",

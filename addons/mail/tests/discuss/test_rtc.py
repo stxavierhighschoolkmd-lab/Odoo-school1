@@ -112,6 +112,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.partner": self._filter_partners_fields(partner_data),
                         "res.users": self._filter_users_fields(
                             {
+                                "has_active_call": False,
                                 "id": self.user_employee.id,
                                 "employee_ids": [],
                                 "partner_id": self.partner_employee.id,
@@ -144,6 +145,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                 "res.partner": self._filter_partners_fields(partner_data),
                 "res.users": self._filter_users_fields(
                     {
+                        "has_active_call": False,
                         "id": self.user_employee.id,
                         "employee_ids": [],
                         "partner_id": self.partner_employee.id,
@@ -252,6 +254,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": self.user_employee.id,
                                 "partner_id": self.partner_employee.id,
                             },
@@ -303,6 +306,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": self.user_employee.id,
                                 "partner_id": self.user_employee.partner_id.id,
                             },
@@ -354,6 +358,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": test_user.id,
                                 "partner_id": test_user.partner_id.id,
                             },
@@ -466,6 +471,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": self.user_employee.id,
                                 "partner_id": self.partner_employee.id,
                             },
@@ -517,6 +523,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": self.user_employee.id,
                                 "partner_id": self.user_employee.partner_id.id,
                             },
@@ -636,6 +643,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": test_user.id,
                                 "partner_id": test_user.partner_id.id,
                             },
@@ -722,6 +730,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": test_user.id,
                                 "partner_id": test_user.partner_id.id,
                             },
@@ -779,6 +788,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": test_user.id,
                                 "partner_id": test_user.partner_id.id,
                             },
@@ -973,6 +983,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": test_user.id,
                                 "partner_id": test_user.partner_id.id,
                             },
@@ -1162,6 +1173,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": test_user.id,
                                 "partner_id": test_user.partner_id.id,
                             },
@@ -1268,6 +1280,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                             {
                                 "id": self.user_employee.id,
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "partner_id": self.partner_employee.id,
                             },
                         ),
@@ -1385,6 +1398,7 @@ class TestChannelRTC(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "employee_ids": [],
+                                "has_active_call": False,
                                 "id": test_user.id,
                                 "partner_id": test_user.partner_id.id,
                             },

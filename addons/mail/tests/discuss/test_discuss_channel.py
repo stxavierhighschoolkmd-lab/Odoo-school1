@@ -215,6 +215,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                         ),
                         "res.users": self._filter_users_fields(
                             {
+                                "has_active_call": False,
                                 "employee_ids": [],
                                 "id": self.test_user.id,
                                 "partner_id": self.test_partner.id,
@@ -265,6 +266,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                         "res.users": self._filter_users_fields(
                             {
                                 "active": True,
+                                "has_active_call": False,
                                 "id": self.test_user.id,
                                 "employee_ids": [],
                                 "partner_id": self.test_partner.id,
@@ -511,6 +513,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                         ),
                         "res.users": self._filter_users_fields(
                             {
+                                "has_active_call": False,
                                 "employee_ids": [],
                                 "id": self.test_user.id,
                                 "partner_id": self.test_partner.id,
@@ -565,6 +568,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                         ),
                         "res.users": self._filter_users_fields(
                             {
+                                "has_active_call": False,
                                 "employee_ids": [],
                                 "id": self.test_user.id,
                                 "partner_id": self.test_partner.id,
