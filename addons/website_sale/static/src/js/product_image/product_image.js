@@ -1,13 +1,13 @@
-import { Component, useState } from '@odoo/owl';
-import { Dropdown } from '@web/core/dropdown/dropdown';
-import { useDropdownState } from '@web/core/dropdown/dropdown_hooks';
-import { DropdownItem } from '@web/core/dropdown/dropdown_item';
+import { Component, useState } from "@odoo/owl";
+import { Dropdown } from "@web/core/dropdown/dropdown";
+import { useDropdownState } from "@web/core/dropdown/dropdown_hooks";
+import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { x2ManyCommands } from "@web/core/orm_service";
-import { registry } from '@web/core/registry';
-import { useService } from '@web/core/utils/hooks';
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
 
 export class ProductImage extends Component {
-    static template = 'variant_image_assignment';
+    static template = "website_sale.variant_image_assignment";
     static components = { Dropdown, DropdownItem };
     static props = {
         id: String,
@@ -17,8 +17,7 @@ export class ProductImage extends Component {
     };
 
     setup() {
-        this.orm = useService('orm');
-        this.record = this.props.record;
+        this.orm = useService("orm");
         this.state = useState({
             attributes: [],
             checkedIds: new Set(),
@@ -27,8 +26,17 @@ export class ProductImage extends Component {
         this.dropdownState = useDropdownState();
     }
 
+    get badgeLabel() {
+        const field = this.props.record.fields.is_primary_or_secondary;
+        const formatter = registry.category("formatters").get(field.type);
+        return formatter(
+            this.props.record.data.is_primary_or_secondary,
+            { selection: field.selection }
+        );
+    }
+
     get showDropdown() {
-        const parent = this.record._parentRecord;
+        const parent = this.props.record._parentRecord;
         if (!parent.resId) {
             return false;
         }
@@ -36,19 +44,19 @@ export class ProductImage extends Component {
     }
 
     get selectedCount() {
-        return this.record.data[this.props.name].count || 0;
+        return this.props.record.data[this.props.name].count || 0;
     }
 
     async beforeOpen() {
-        const productTmplId = this.record.data.product_tmpl_id.id || this.record.context.active_id;
+        const productTmplId = this.props.record.data.product_tmpl_id.id || this.props.record.context.active_id;
 
         this.state.attributes = await this.orm.call(
-            'product.template',
-            'get_attribute_values_for_image_assignment',
+            "product.template",
+            "get_attribute_values_for_image_assignment",
             [productTmplId],
         );
 
-        this.state.checkedIds = new Set(this.record.data[this.props.name].currentIds);
+        this.state.checkedIds = new Set(this.props.record.data[this.props.name].currentIds);
     }
 
     async toggleValue(valueId) {
@@ -57,7 +65,7 @@ export class ProductImage extends Component {
 
         isChecked ? checkedIds.delete(valueId) : checkedIds.add(valueId);
 
-        this.record.update({
+        this.props.record.update({
           [this.props.name]: [
             isChecked
               ? x2ManyCommands.unlink(valueId)
@@ -69,4 +77,4 @@ export class ProductImage extends Component {
 
 const productImage = { component: ProductImage };
 
-registry.category('fields').add('variant_image_assignment', productImage);
+registry.category("fields").add("variant_image_assignment", productImage);

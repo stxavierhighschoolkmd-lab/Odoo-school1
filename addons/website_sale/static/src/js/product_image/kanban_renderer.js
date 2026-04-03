@@ -1,8 +1,8 @@
-import { patch } from "@web/core/utils/patch";
+console.log("KANBAN LOADED");
 import { KanbanRenderer } from "@web/views/kanban/kanban_renderer";
 
-patch(KanbanRenderer.prototype, {
-    get resequenceOrderIndex() {
-        return this.props.list.resModel === 'product.image' ? 1 : super.resequenceOrderIndex;
+export class ProductImageKanbanRenderer extends KanbanRenderer {
+    getResequenceOrderIndex() {
+        return 1;
     }
-});
+}
