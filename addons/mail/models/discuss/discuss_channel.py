@@ -705,6 +705,31 @@ class DiscussChannel(models.Model):
             if new_members:
                 stores[channel].add(channel, ["member_count"])
                 stores[channel].add(new_members, "_store_member_fields")
+                if channel.channel_type == "channel":
+                    devices, private_key, public_key = channel._web_push_get_partners_parameters(new_members.partner_id.ids)
+                    if devices:
+                        icon = f"/web/image/discuss.channel/{channel.id}/avatar_128"
+                        languages = [partner.lang for partner in devices.partner_id]
+                        payload_by_lang = {}
+                        for lang in languages:
+                            env_lang = channel.with_context(lang=lang).env
+                            payload_by_lang[lang] = {
+                                "title": channel.with_env(env_lang).display_name,
+                                "options": {
+                                    "body": env_lang._(
+                                        "%s invited you to join this channel",
+                                        self.env.user.partner_id.with_env(env_lang).display_name,
+                                    ),
+                                    "data": {
+                                        "action": "mail.action_discuss",
+                                        "model": "discuss.channel",
+                                        "res_id": channel.id,
+                                    },
+                                    "icon": icon,
+                                    "tag": f"channel_invite_{channel.id}",
+                                },
+                            }
+                        channel._web_push_send_notification(devices, private_key, public_key, payload_by_lang=payload_by_lang)
             if existing_members and (bus_channel := current_user or current_guest):
                 # If the current user invited these members but they are already present, notify the current user about their existence as well.
                 # In particular this fixes issues where the current user is not aware of its own member in the following case:
