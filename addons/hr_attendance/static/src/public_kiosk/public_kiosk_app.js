@@ -16,6 +16,7 @@ import { browser } from "@web/core/browser/browser";
 import { isIosApp } from "@web/core/browser/feature_detection";
 import { DocumentationLink } from "@web/views/widgets/documentation_link/documentation_link";
 import { NewEmployeeDialog } from "@hr_attendance/components/new_employee_dialog/new_employee_dialog";
+import { BreakDurationDialog } from "@hr_attendance/components/break_duration_dialog/break_duration_dialog";
 import { session } from "@web/session";
 
 class kioskAttendanceApp extends Component{
@@ -29,6 +30,7 @@ class kioskAttendanceApp extends Component{
         barcodeSource: { type: String },
         fromTrialMode: { type: Boolean },
         deviceTrackingEnabled: { type: Boolean },
+        breakManagementEnabled: { type: Boolean },
     };
     static components = {
         KioskBarcodeScanner,
@@ -51,6 +53,9 @@ class kioskAttendanceApp extends Component{
         this.state = useState({
             active_display: "settings",
             displayDemoMessage: browser.localStorage.getItem("hr_attendance.ShowDemoMessage") !== "false",
+            employeeData: null,
+            showGreetingCheckoutActions: false,
+            savingGreetingAction: false,
         });
         this.lockScanner = false;
         if (this.props.kioskMode === 'settings' || this.props.fromTrialMode){
@@ -104,8 +109,8 @@ class kioskAttendanceApp extends Component{
                 'employee_id': employeeId
             })
         if (employee && employee.employee_name){
+            this.state.employeeData = employee;
             if (employee.use_pin){
-                this.employeeData = employee
                 this.switchDisplay('pin')
             }else{
                 await this.onManualSelection(employeeId, false)
@@ -124,10 +129,24 @@ class kioskAttendanceApp extends Component{
         ) {
             this.switchDisplay("settings");
         } else if (this.props.kioskMode === 'manual') {
+            this.clearGreetingCheckoutActions();
             this.switchDisplay("manual");
         } else {
+            this.clearGreetingCheckoutActions();
             this.switchDisplay("main");
         }
+    }
+
+    clearGreetingCheckoutActions() {
+        this.state.showGreetingCheckoutActions = false;
+        this.state.savingGreetingAction = false;
+    }
+
+    shouldShowGreetingCheckoutActions(employeeData) {
+        return Boolean(
+            employeeData?.break_management_enabled
+            && employeeData.attendance_state === "checked_in"
+        );
     }
 
     displayNotification(text){
@@ -162,18 +181,24 @@ class kioskAttendanceApp extends Component{
     }
 
     async onManualSelection(employeeId, enteredPin) {
+        const pendingEmployee = this.state.employeeData;
+        const showGreetingCheckoutActions =
+            this.shouldShowGreetingCheckoutActions(pendingEmployee);
         const result = await this.makeRpcWithGeolocation('manual_selection',
             {
                 'token': this.props.token,
                 'employee_id': employeeId,
-                'pin_code': enteredPin
+                'pin_code': enteredPin,
+                'break_duration': showGreetingCheckoutActions ? 0 : null,
             })
         if (result && result.attendance) {
-            this.employeeData = result
-            this.switchDisplay('greet')
+            this.state.employeeData = result;
+            this.state.showGreetingCheckoutActions = showGreetingCheckoutActions;
+            this.state.savingGreetingAction = false;
+            this.switchDisplay('greet');
         }else{
             if (enteredPin){
-                this.displayNotification(_t("Wrong Pin"))
+                this.displayNotification(_t("Wrong Pin"));
             }
         }
     }
@@ -185,15 +210,35 @@ class kioskAttendanceApp extends Component{
         this.lockScanner = true;
         this.ui.block();
 
-        let result;
         try {
-            result = await rpc("attendance_barcode_scanned", {
+            let showGreetingCheckoutActions = false;
+            if (this.props.breakManagementEnabled) {
+                const employeeInfo = await rpc("attendance_barcode_preview", {
+                    barcode: barcode,
+                    token: this.props.token,
+                });
+
+                if (!(employeeInfo && employeeInfo.employee_name)) {
+                    this.displayNotification(
+                        _t("No employee corresponding to Badge ID '%(barcode)s.'", { barcode })
+                    );
+                    return;
+                }
+
+                showGreetingCheckoutActions =
+                    this.shouldShowGreetingCheckoutActions(employeeInfo);
+            }
+
+            const result = await rpc("attendance_barcode_scanned", {
                 barcode: barcode,
                 token: this.props.token,
+                break_duration: showGreetingCheckoutActions ? 0 : null,
             });
 
             if (result && result.employee_name) {
-                this.employeeData = result;
+                this.state.employeeData = result;
+                this.state.showGreetingCheckoutActions = showGreetingCheckoutActions;
+                this.state.savingGreetingAction = false;
                 this.switchDisplay("greet");
             } else {
                 this.displayNotification(
@@ -205,6 +250,61 @@ class kioskAttendanceApp extends Component{
         } finally {
             this.lockScanner = false;
             this.ui.unblock();
+        }
+    }
+
+    async requestBreakDuration(employeeName) {
+        return new Promise((resolve) => {
+            let settled = false;
+            const finalize = (value) => {
+                if (!settled) {
+                    settled = true;
+                    resolve(value);
+                }
+            };
+            this.dialogService.add(BreakDurationDialog, {
+                employeeName,
+                defaultMinutes: 0,
+                onConfirm: (minutes) => finalize(minutes),
+                onCancel: () => finalize(null),
+            });
+        });
+    }
+
+    async onGreetingBreakTime() {
+        if (!this.state.employeeData) {
+            return;
+        }
+        const minutes = await this.requestBreakDuration(
+            this.state.employeeData.employee_name
+        );
+        if (minutes === null) {
+            return;
+        }
+        await this.updateGreetingBreakDuration((Number(minutes) || 0) / 60);
+    }
+
+    onGreetingOutOfOffice() {
+        this.clearGreetingCheckoutActions();
+    }
+
+    async updateGreetingBreakDuration(breakDurationHours) {
+        if (!this.state.employeeData) {
+            return;
+        }
+        this.state.savingGreetingAction = true;
+        try {
+            const result = await rpc("attendance_kiosk_break_duration", {
+                token: this.props.token,
+                employee_id: this.state.employeeData.id,
+                break_duration: breakDurationHours,
+            });
+            if (result && result.attendance) {
+                this.state.employeeData = result;
+                this.clearGreetingCheckoutActions();
+            }
+        } finally {
+            this.state.savingGreetingAction = false;
         }
     }
 
@@ -233,6 +333,7 @@ export async function createPublicKioskAttendance(document, kiosk_backend_info) 
                 barcodeSource: kiosk_backend_info.barcode_source,
                 fromTrialMode: kiosk_backend_info.from_trial_mode,
                 deviceTrackingEnabled: kiosk_backend_info.device_tracking_enabled,
+                breakManagementEnabled: kiosk_backend_info.break_management_enabled,
             },
         dev: env.debug,
         translateFn: appTranslateFn,

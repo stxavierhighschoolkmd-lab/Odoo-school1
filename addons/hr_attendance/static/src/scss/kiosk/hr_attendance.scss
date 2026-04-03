@@ -75,6 +75,95 @@
     @include media-breakpoint-up(xl) {
         min-width: 35%;
     }
+
+    .o_hr_kiosk_greeting_header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .o_hr_kiosk_greeting_title {
+        font-size: clamp(2.4rem, 3.6vw, 3.35rem);
+        line-height: 1;
+        font-weight: 500;
+        color: $body-color;
+    }
+
+    .o_hr_kiosk_greeting_name {
+        font-size: clamp(1.4rem, 2vw, 2rem);
+        line-height: 1.15;
+        color: $gray-700;
+    }
+
+    .o_hr_kiosk_status_alert,
+    .o_hr_kiosk_info_alert {
+        border-radius: 0.85rem;
+        border-width: 1px;
+    }
+
+    .o_hr_kiosk_status_alert.alert-success {
+        background-color: tint-color($success, 82%);
+        border-color: tint-color($success, 68%);
+        color: shade-color($success, 38%);
+    }
+
+    .o_hr_kiosk_status_alert.alert-danger {
+        background-color: tint-color($danger, 86%);
+        border-color: tint-color($danger, 72%);
+        color: shade-color($danger, 30%);
+    }
+
+    .o_hr_kiosk_info_alert {
+        background-color: tint-color($info, 84%);
+        border-color: tint-color($info, 70%);
+        color: $body-color;
+    }
+}
+
+.o_hr_kiosk_checkout_actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.875rem 1rem 1rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: var(--#{$prefix}border-radius-xl);
+    background: var(--#{$prefix}tertiary-bg);
+    color: var(--#{$prefix}secondary-color);
+
+    .o_hr_kiosk_checkout_actions_label {
+        font-size: 1rem;
+        line-height: 1;
+    }
+
+    .o_hr_kiosk_checkout_actions_buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .o_hr_kiosk_checkout_action_button {
+        min-width: 10rem;
+        padding: 0.6rem 1.25rem;
+        border: 1px solid var(--#{$prefix}warning-border-subtle, #{$warning});
+        border-radius: $border-radius-xl;
+        color: var(--#{$prefix}warning-text-emphasis, #{$warning});
+        background: var(--#{$prefix}warning-bg-subtle, rgba($warning, 0.12));
+
+        &:hover,
+        &:focus {
+            color: var(--#{$prefix}warning-text-emphasis, #{$warning});
+            background: var(--#{$prefix}warning-bg-subtle, rgba($warning, 0.18));
+            border-color: var(--#{$prefix}warning-border-subtle, #{$warning});
+        }
+    }
+}
+
+.o_hr_kiosk_next_button {
+    min-width: 9rem;
 }
 
 .o_hr_attendance_kiosk_mode {
