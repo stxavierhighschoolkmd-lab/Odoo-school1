@@ -72,6 +72,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
                     "is_company": False,
                     "main_user_id": self.user_root.id,
                     "name": "OdooBot",
+                    "partner_share": False,
                     "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
                 },
                 {
@@ -130,6 +131,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
                     "is_company": False,
                     "main_user_id": self.user_root.id,
                     "name": "OdooBot",
+                    "partner_share": False,
                     "tz": "Europe/Brussels",
                     "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
                 },
@@ -254,6 +256,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
                     "is_company": False,
                     "main_user_id": self.user_root.id,
                     "name": "OdooBot",
+                    "partner_share": False,
                     "tz": "Europe/Brussels",
                     "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
                 },

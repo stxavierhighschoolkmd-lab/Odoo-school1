@@ -187,6 +187,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                                 "mention_token": self.test_partner._get_mention_token(),
                                 "name": "Test Partner",
                                 "write_date": test_partner_write_date,
+                                "partner_share": False,
                             },
                         ),
                         "res.users": self._filter_users_fields(
@@ -258,6 +259,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                                 "main_user_id": self.test_user.id,
                                 "mention_token": self.test_partner._get_mention_token(),
                                 "name": "Test Partner",
+                                "partner_share": False,
                                 "tz": False,
                                 "write_date": test_partner_write_date,
                             },

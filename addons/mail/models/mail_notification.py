@@ -136,7 +136,7 @@ class MailNotification(models.Model):
         res.one(
             "res_partner_id",
             lambda res: (
-                res.extend(["name", "email"]),
+                res.extend(["name", "email", "partner_share"]),
                 res.attr("display_name", predicate=lambda p: not p.name),
             ),
         )

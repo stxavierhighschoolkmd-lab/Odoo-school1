@@ -441,6 +441,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                     "is_company": False,
                     "main_user_id": self.user_root.id,
                     "name": "OdooBot",
+                    "partner_share": False,
                     "tz": "Europe/Brussels",
                     "write_date": fields.Datetime.to_string(self.partner_root.write_date),
                 },
@@ -1813,6 +1814,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "main_user_id": user.id,
                 "mention_token": user.partner_id._get_mention_token(),
                 "name": "Ernest Employee",
+                "partner_share": False,
                 "tz": "Europe/Brussels",
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
             }
@@ -1870,6 +1872,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "main_user_id": user.id,
                 "mention_token": user.partner_id._get_mention_token(),
                 "name": "test2",
+                "partner_share": False,
                 "tz": False,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
             }
@@ -1885,6 +1888,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "main_user_id": user.id,
                 "mention_token": user.partner_id._get_mention_token(),
                 "name": "test3",
+                "partner_share": False,
                 "tz": False,
                 "write_date": fields.Datetime.to_string(self.users[3].partner_id.write_date),
             }
@@ -1900,6 +1904,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "main_user_id": user.id,
                 "mention_token": user.partner_id._get_mention_token(),
                 "name": "test12",
+                "partner_share": False,
                 "tz": False,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
             }
@@ -1915,6 +1920,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "main_user_id": user.id,
                 "mention_token": user.partner_id._get_mention_token(),
                 "name": "test14",
+                "partner_share": False,
                 "tz": False,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
             }
@@ -1930,6 +1936,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "main_user_id": user.id,
                 "mention_token": user.partner_id._get_mention_token(),
                 "name": "test15",
+                "partner_share": False,
                 "tz": False,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
             }

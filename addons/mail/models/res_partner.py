@@ -269,7 +269,7 @@ class ResPartner(models.Model):
             res.extend(["email", "phone", "tz"])
 
     def _store_partner_fields(self, res: Store.FieldList):
-        res.extend(["active", "is_company", "name"])
+        res.extend(["active", "is_company", "name", "partner_share"])
         self._store_avatar_fields(res)
         res.from_method("_store_im_status_fields", internal=True)
         # sudo: to access portal user of another company in chatter

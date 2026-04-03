@@ -13,6 +13,8 @@ export class ResPartner extends ImStatusMixin {
     country_id = fields.One("res.country");
     /** @type {string} */
     email;
+    /** @type {boolean} */
+    partner_share;
     /**
      * function = job position (Frenchism)
      *

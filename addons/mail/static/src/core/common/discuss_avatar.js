@@ -55,7 +55,11 @@ export class DiscussAvatar extends Component {
         if (this.channel) {
             return this.channel.showThreadIcon({ ignoreTyping: !this.props.typing });
         }
-        if (this.props.member || this.persona) {
+        const avatarPersona = this.props.member || this.persona;
+        if (avatarPersona) {
+            if (avatarPersona?.partner_share) {
+                return false;
+            }
             return true;
         }
         return false;

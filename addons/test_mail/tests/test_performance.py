@@ -1738,11 +1738,13 @@ class TestMessageToStorePerformance(BaseMailPerformance):
                                     "email": self.user_emp_inbox.partner_id.email,
                                     "id": self.user_emp_inbox.partner_id.id,
                                     "name": "Ignasse Inbox",
+                                    "partner_share": False,
                                 },
                                 {
                                     "email": self.user_follower_emp_inbox.partner_id.email,
                                     "id": self.user_follower_emp_inbox.partner_id.id,
                                     "name": "Isabelle Follower Inbox",
+                                    "partner_share": False,
                                 },
                             ),
                             "res.users": self._filter_users_fields(
@@ -1856,11 +1858,13 @@ class TestMessageToStorePerformance(BaseMailPerformance):
                                     "email": self.user_emp_inbox.partner_id.email,
                                     "id": self.user_emp_inbox.partner_id.id,
                                     "name": "Ignasse Inbox",
+                                    "partner_share": False,
                                 },
                                 {
                                     "email": self.user_follower_emp_inbox.partner_id.email,
                                     "id": self.user_follower_emp_inbox.partner_id.id,
                                     "name": "Isabelle Follower Inbox",
+                                    "partner_share": False,
                                 },
                             ),
                             "res.users": self._filter_users_fields(
