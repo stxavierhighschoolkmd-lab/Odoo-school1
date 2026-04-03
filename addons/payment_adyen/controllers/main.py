@@ -6,8 +6,6 @@ import hashlib
 import hmac
 import pprint
 
-from werkzeug.exceptions import Forbidden
-
 from odoo import _, http, release
 from odoo.exceptions import ValidationError
 from odoo.http import request
@@ -159,7 +157,8 @@ class AdyenController(http.Controller):
         response_content = provider_sudo._send_api_request(
             "POST", "/payments", json=data, idempotency_key=idempotency_key
         )
-        tx_sudo._process("adyen", dict(response_content, merchantReference=reference))
+        tx_sudo._process("adyen",
+            dict(response_content, merchantReference=reference))
         return response_content
 
     @http.route("/payment/adyen/payments/details", type="jsonrpc", auth="public")
@@ -194,7 +193,8 @@ class AdyenController(http.Controller):
 
         # Process the payment data request response.
         request.env["payment.transaction"].sudo()._process(
-            "adyen", dict(response_content, merchantReference=reference)
+            "adyen",
+            dict(response_content, merchantReference=reference)
         )
 
         return response_content
@@ -294,18 +294,10 @@ class AdyenController(http.Controller):
         :return: None
         :raise Forbidden: If the signatures don't match.
         """
-        # Retrieve the received signature from the payload
-        received_signature = payment_data.get("additionalData", {}).get("hmacSignature")
-        if not received_signature:
-            _logger.warning("received payment data with missing signature")
-            raise Forbidden
-
-        # Compare the received signature with the expected signature computed from the payload
         hmac_key = tx_sudo.provider_id.adyen_hmac_key
+        received_signature = payment_data.get("additionalData", {}).get("hmacSignature")
         expected_signature = AdyenController._compute_signature(payment_data, hmac_key)
-        if not hmac.compare_digest(received_signature, expected_signature):
-            _logger.warning("received payment data with invalid signature")
-            raise Forbidden
+        payment_utils.verify_signature(received_signature, expected_signature)
 
     @staticmethod
     def _compute_signature(payload, hmac_key):
