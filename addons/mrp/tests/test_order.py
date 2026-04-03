@@ -780,7 +780,9 @@ class TestMrpOrder(TestMrpCommon, MailCase):
         self.assertEqual(sum(ml_to_shelf_2.mapped('quantity')), 3.0, '3 units should be took from shelf2 as reserved.')
         self.assertEqual(move_1.quantity, 13, 'You should have used the tem units.')
 
-        mo.button_mark_done()
+        action = mo.button_mark_done()
+        warning = Form(self.env['mrp.consumption.warning'].with_context(**action['context'])).save()
+        warning.action_confirm()
         self.assertEqual(mo.state, 'done', "Production order should be in done state.")
 
     def test_product_produce_4(self):
@@ -907,7 +909,6 @@ class TestMrpOrder(TestMrpCommon, MailCase):
         details_operation_form = Form(mo.move_raw_ids[-1], view=self.env.ref('stock.view_stock_move_operations'))
         with details_operation_form.move_line_ids.new() as ml:
             ml.quantity = 1
-            ml.picked = True
         details_operation_form.save()
 
         # Won't accept to be done, instead return a wizard
@@ -2315,6 +2316,7 @@ class TestMrpOrder(TestMrpCommon, MailCase):
         mo = mo_form.save()
         mo.move_raw_ids[0].quantity = 90
         mo.move_raw_ids[1].quantity = 70
+        mo.move_raw_ids.picked = True
         action = mo.button_mark_done()
         warning = Form(self.env['mrp.consumption.warning'].with_context(**action['context'])).save()
         self.assertRecordValues(warning.mrp_consumption_warning_line_ids, [
