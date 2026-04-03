@@ -1,7 +1,11 @@
 import { Plugin } from "@html_editor/plugin";
 import { baseContainerGlobalSelector } from "@html_editor/utils/base_container";
 import { closestBlock } from "@html_editor/utils/blocks";
-import { isEditorTab, isEmptyBlock } from "@html_editor/utils/dom_info";
+import {
+    isEditorTab,
+    isElementOverlappingAnyFloatingImage,
+    isEmptyBlock,
+} from "@html_editor/utils/dom_info";
 import { closestElement, descendants } from "@html_editor/utils/dom_traversal";
 import { omit, pick } from "@web/core/utils/objects";
 import { debounce } from "@web/core/utils/timing";
@@ -157,7 +161,8 @@ export class PowerButtonsPlugin extends Plugin {
             !closestElement(documentSelection.anchorNode, "td, th, li") &&
             !block.style.textAlign &&
             (this.checkPredicates("should_show_power_buttons_predicates", documentSelection) ??
-                true)
+                true) &&
+            !isElementOverlappingAnyFloatingImage(block)
         ) {
             const direction = closestElement(block, "[dir]")?.getAttribute("dir");
             // Hide/show buttons based on their availability.

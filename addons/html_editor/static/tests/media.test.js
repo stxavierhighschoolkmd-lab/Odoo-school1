@@ -326,9 +326,6 @@ test("cropper should not open for external image", async () => {
     await setupEditor(
         `<p>[<img src="https://download.odoocdn.com/icons/website/static/description/icon.png">]</p>`
     );
-    const imageTransform = await waitFor('button[name="image_transform"]');
-    imageTransform.click();
-
     const imageCrop = await waitFor('.btn[name="image_crop"]');
     imageCrop.click();
 

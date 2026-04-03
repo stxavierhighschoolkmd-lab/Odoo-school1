@@ -1,5 +1,5 @@
 import { BaseOptionComponent } from "@html_builder/core/base_option_component";
-import { useImageTransform } from "@html_editor/main/media/image_transform_button";
+import { useImageTransform } from "@html_builder/utils/hooks";
 import { onWillDestroy } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 
