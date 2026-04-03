@@ -1,11 +1,17 @@
 import base64
+import logging
 import uuid
-from markupsafe import Markup
+from json import JSONDecodeError
 from urllib.parse import quote, urlencode, urlparse
 
-from odoo import Command, _, api, fields, models
-from odoo.exceptions import UserError
+from markupsafe import Markup
+
+from odoo import _, Command, api, fields, models
+from odoo.exceptions import UserError, ValidationError
+
 from odoo.addons.l10n_tr_nilvera.lib.nilvera_client import _get_nilvera_client
+
+_logger = logging.getLogger(__name__)
 
 MOVE_TYPE_CATEGORY_MAP = {
     "out_invoice": {
@@ -62,6 +68,7 @@ class AccountMove(models.Model):
         selection=[
             ('TEMELFATURA', "Basic"),
             ('KAMU', "Public Sector"),
+            ('TICARIFATURA', "Commercial"),
         ],
         default='TEMELFATURA',
         string="Invoice Scenario",
@@ -134,6 +141,27 @@ class AccountMove(models.Model):
         string="Partner Nilvera Status",
         related='partner_id.l10n_tr_nilvera_customer_status',
         help="Shows the Nilvera status of the customer. ",
+    )
+    l10n_tr_ticarifatura_status = fields.Selection(
+        selection=[
+            ('pending', "Waiting Response"),
+            ('approved', "Approved"),
+            ('documentAnsweredAutomatically', "Approved Automatically"),
+            ('rejected', "Rejected"),
+        ],
+        string="Commercial Response",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    l10n_tr_ticarifatura_response_note = fields.Text(
+        string="Commercial Response Note",
+        readonly=True,
+        copy=False,
+    )
+    l10n_tr_ticarifatura_status_check_priority = fields.Integer(
+        string="Commercial Status Check Priority",
+        copy=False,
     )
     l10n_tr_nilvera_pdf_file = fields.Binary(
         attachment=True,
@@ -213,7 +241,7 @@ class AccountMove(models.Model):
         for move in self.filtered(lambda move: move.l10n_tr_nilvera_uuid and move.move_type == 'out_invoice'):
             if move.l10n_tr_nilvera_send_status == 'error':
                 move.message_post(body=_("To preserve accounting integrity and comply with legal requirements, invoices cannot be reused once an error occurs. Please create a new invoice to continue."))
-            elif move.l10n_tr_nilvera_send_status != 'not_sent':
+            elif move.l10n_tr_nilvera_send_status != 'not_sent' and move.l10n_tr_ticarifatura_status != 'rejected':
                 raise UserError(_("You cannot reset to draft an entry that has been sent to Nilvera."))
         super().button_draft()
 
@@ -350,6 +378,12 @@ class AccountMove(models.Model):
                                     response.get('InvoiceStatus', {}).get('DetailDescription') or response.get('ReportStatus'),
                                 )
                             )
+                        elif nilvera_status == 'succeed' and invoice.move_type == 'out_invoice' and invoice.l10n_tr_gib_invoice_scenario == "TICARIFATURA":
+                            if response.get('Answer') is None:
+                                invoice.l10n_tr_ticarifatura_status = 'pending'
+                            elif response['Answer'].get('AnswerCode') in {'approved', 'rejected', 'documentAnsweredAutomatically'}:
+                                invoice.l10n_tr_ticarifatura_status = response['Answer']['AnswerCode']
+                                invoice.l10n_tr_ticarifatura_response_note = response['Answer']['Description']
                     else:
                         invoice.message_post(body=_("The invoice status couldn't be retrieved from Nilvera."))
 
@@ -498,7 +532,7 @@ class AccountMove(models.Model):
                         invoice.l10n_tr_nilvera_customer_status not in {'einvoice', 'earchive'}
                         or invoice.l10n_tr_nilvera_pdf_id
                         or invoice.l10n_tr_nilvera_send_status != 'succeed'
-                ):
+                ) and invoice.l10n_tr_ticarifatura_status != 'rejected':
                     continue
                 self._l10n_tr_nilvera_add_pdf_to_invoice(
                     client,
@@ -622,3 +656,225 @@ class AccountMove(models.Model):
             )
 
         return super()._reverse_moves(default_values_list, cancel=cancel)
+
+    def _l10n_tr_handle_409_error_for_send_answer(self, response):
+        self.ensure_one()
+        for error in response["Errors"]:
+            if error.get("Code") in {1003, 1007, 1008, 1011}:
+                self.l10n_tr_action_fetch_ticafatura_response()
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "message": self.env._(
+                            "Nilvera has already received a response for this invoice."
+                            "\nThe latest response has been fetched and updated on the invoice.",
+                        ),
+                        "type": "warning",
+                        # Reload the page to show the updated response.
+                        "next": {"type": "ir.actions.client", "tag": "reload"},
+                    },
+                }
+        errors = [f"{error.get('Code')}: {error.get('Description')}" for error in response["Errors"]]
+        raise ValidationError(self.env._("Error sending request:\n%s", "\n".join(errors)))
+
+    def l10n_tr_action_send_ticarifatura_response(self, answer_code="approved", rejection_note=""):
+        """
+        Send the Ticarifatura response to Nilvera.
+        Applicable only for Commercial bills.
+
+        :param str answer_code: 'approved' or 'rejected'
+        :param str rejection_note: Note for rejection, if applicable.
+        """
+        self.ensure_one()
+        if self.move_type != 'in_invoice' or self.l10n_tr_gib_invoice_scenario != 'TICARIFATURA':
+            raise UserError(self.env._("This action is only available for commercial bills."))
+        if self.l10n_tr_ticarifatura_status != 'pending':
+            raise UserError(self.env._("The response has already been sent for this bill."))
+
+        with _get_nilvera_client(self.env._, self.env.company) as client:
+            response = client.request(
+                method="POST",
+                endpoint="/einvoice/Purchase/SendAnswer",
+                json={
+                    "UUID": self.l10n_tr_nilvera_uuid,
+                    "AnswerCode": answer_code,
+                    "RejectNote": rejection_note,
+                },
+                handle_response=False,
+            )
+
+            if response.status_code == 200:
+                self.l10n_tr_ticarifatura_status = answer_code
+                self.l10n_tr_ticarifatura_response_note = rejection_note
+            elif response.status_code in {401, 403}:
+                raise UserError(self.env._("Oops, seems like you're unauthorised to do this. Try another API key with more rights or contact Nilvera."))
+            elif 403 < response.status_code < 600 and response.status_code != 409:
+                raise UserError(
+                    self.env._(
+                        "Odoo could not perform this action at the moment, try again later.\n"
+                        "%(reason)s - %(status)s",
+                        reason=response.reason,
+                        status=response.status_code,
+                    ),
+                )
+            elif response.status_code == 409:
+                try:
+                    decoded_response = response.json()
+                except JSONDecodeError:
+                    _logger.exception("Invalid JSON response: %s", response.text)
+                    raise UserError(self.env._("An error occurred. Try again later."))
+                return self._l10n_tr_handle_409_error_for_send_answer(decoded_response)
+            return True
+
+    def l10n_tr_action_fetch_ticafatura_response(self):
+        """
+        Fetch the Ticarifatura response status from Nilvera for the given UUID.
+        Applicable only for Commercial Invoice.
+
+        :param str uuid: The NILVERA UUID of the Commercial Invoice.
+        """
+        self.ensure_one()
+
+        if self.move_type not in {'out_invoice', 'in_invoice'} or self.l10n_tr_gib_invoice_scenario != 'TICARIFATURA':
+            raise UserError(self.env._("This action is only available for Commercial Invoices/Bills."))
+        if self.l10n_tr_ticarifatura_status != 'pending':
+            if self.l10n_tr_nilvera_send_status != 'succeed':
+                raise UserError(self.env._("The invoice is not approved by Nilvera yet."))
+            raise UserError(self.env._("The response has already been received for this invoice."))
+
+        with _get_nilvera_client(self.env._, self.env.company) as client:
+            response = client.request(
+                method="GET",
+                endpoint=f"/einvoice/Purchase/{self.l10n_tr_nilvera_uuid}/Status",
+            )
+            if response.get("Answer") is not None:
+                self.l10n_tr_ticarifatura_status = response["Answer"]["AnswerCode"]
+                if response["Answer"].get("AnswerCode") == "rejected":
+                    self.l10n_tr_ticarifatura_response_note = response["Answer"].get("Description")
+                    self.l10n_tr_nilvera_get_pdf()
+                    self.button_draft()
+                    self.button_cancel()
+
+    def l10n_tr_action_approve_ticarifatura(self):
+        self.ensure_one()
+        return {
+            'name': self.env._('Accept Bill'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'l10n_tr.ticafatura.response.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_move_id': self.id,
+                'default_response_code': 'approved',
+            },
+        }
+
+    def l10n_tr_action_reject_ticarifatura(self):
+        self.ensure_one()
+        return {
+            'name': self.env._('Reject Bill'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'l10n_tr.ticafatura.response.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_move_id': self.id,
+                'default_response_code': 'rejected',
+            },
+        }
+
+    def _l10n_tr_nilvera_company_sync_ticarifatura_response(self, ratio=None, batch_size=20):
+        for company in self.env.companies:
+            if company.country_code != "TR" or not company.l10n_tr_nilvera_api_key:
+                continue
+            self.with_company(company)._cron_l10n_tr_nilvera_sync_ticarifatura_response(ratio, batch_size)
+
+    def _cron_l10n_tr_nilvera_sync_ticarifatura_response(self, ratio=None, batch_size=20):
+        """
+        Sync the TICARIFATURA response status from Nilvera for Commercial Invoices in pending customer response.
+        The sync will happen based on ratio of checked to unchecked invoices.
+        If an invoice has been checked before, it will have a lower priority(Higher number) to be checked again.
+
+        :param tuple ratio: A tuple of two integers representing the ratio of never checked and previously checked moves.
+        :param int batch_size: The number of invoices to process in each batch.
+        """
+        _logger.info("Nilvera TICARIFATURA response sync started.")
+        BASE_DOMAIN = [
+                    ('move_type', 'in', ['out_invoice', 'in_invoice']),
+                    ('l10n_tr_gib_invoice_scenario', '=', 'TICARIFATURA'),
+                    ('l10n_tr_ticarifatura_status', '=', 'pending'),
+                ]
+        invoices_count = dict(
+            self.env['account.move']._read_group(
+                domain=BASE_DOMAIN,
+                groupby=['l10n_tr_ticarifatura_status_check_priority'],
+                aggregates=['id:count'],
+            ),
+        )
+        never_checked_moves_count = invoices_count.get(0, 0)
+        checked_moves_count = sum(count for priority, count in invoices_count.items() if priority > 0)
+
+        if never_checked_moves_count + checked_moves_count == 0:
+            _logger.info("No Commercial Invoices found for TICARIFATURA response sync.")
+            return
+
+        if ratio and sum(ratio) != 100:
+            _logger.error("Invalid ratio value: %s. The sum of the two values must be 100.", ratio)
+            ratio = None
+
+        if not ratio:
+            # Calculation the ratio to process data based on the count of checked and never checked moves.
+            ratio = [0, 0]
+            total = never_checked_moves_count + checked_moves_count
+            ratio[0] = int((never_checked_moves_count * 100) / total)
+            ratio[1] = int((checked_moves_count * 100) / total)
+
+            diff = 100 - sum(ratio)
+            if diff != 0:
+                ratio[0] += diff
+
+        # Calculate the total records to process of each type
+        # Fetch the record and process
+        # Avoiding fetching all records at once to prevent memory issues
+        while never_checked_moves_count or checked_moves_count:
+            # get invoices to check based on ratio and batch size
+            never_checked_move_to_process_count = min(((batch_size * ratio[0]) // 100), never_checked_moves_count)
+            checked_move_to_process_count = min(((batch_size * ratio[1]) // 100), checked_moves_count)
+
+            # If total move count is less than batch size, adjust the counts
+            if never_checked_move_to_process_count + checked_move_to_process_count < batch_size:
+                remaining = batch_size - (never_checked_move_to_process_count + checked_move_to_process_count)
+
+                max_take_from_checked = min(remaining, checked_moves_count - checked_move_to_process_count)
+                checked_move_to_process_count += max_take_from_checked
+                remaining -= max_take_from_checked
+
+                # if still remaining, take from recently added moves
+                max_take_from_unchecked = min(remaining, never_checked_moves_count - never_checked_move_to_process_count)
+                never_checked_move_to_process_count += max_take_from_unchecked
+
+            # Fetch and process new records first
+            if never_checked_move_to_process_count:
+                records = self.env['account.move'].search(
+                    domain=BASE_DOMAIN + [('l10n_tr_ticarifatura_status_check_priority', '=', 0)],
+                    order="create_date desc",
+                    limit=never_checked_move_to_process_count,
+                )
+                for record in records:
+                    record.l10n_tr_action_fetch_ticafatura_response()
+                    record.write({"l10n_tr_ticarifatura_status_check_priority": record.l10n_tr_ticarifatura_status_check_priority + 1})
+                    never_checked_moves_count -= 1
+
+            # Fetch and process older records
+            if checked_move_to_process_count:
+                records = self.env['account.move'].search(
+                    domain=BASE_DOMAIN + [('l10n_tr_ticarifatura_status_check_priority', '>', 0)],
+                    order='l10n_tr_ticarifatura_status_check_priority asc, create_date desc',
+                    limit=checked_move_to_process_count,
+                )
+                for record in records:
+                    record.l10n_tr_action_fetch_ticafatura_response()
+                    record.write({"l10n_tr_ticarifatura_status_check_priority": record.l10n_tr_ticarifatura_status_check_priority + 1})
+                    checked_moves_count -= 1
+        _logger.info("Nilvera TICARIFATURA response sync completed.")
