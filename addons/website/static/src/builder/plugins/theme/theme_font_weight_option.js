@@ -169,11 +169,20 @@ export class ThemeFontWeightOption extends BaseOptionComponent {
 export class CustomizeWebsiteFontWeightAction extends CustomizeWebsiteVariableAction {
     static id = "customizeWebsiteFontWeight";
 
+    normalizeValue(value) {
+        if (value === undefined || value === null || value === "" || value === "null") {
+            return null;
+        }
+        const parsedValue = getParsedWeight(value);
+        return parsedValue === null ? null : `${parsedValue}`;
+    }
+
     getValue({ params }) {
-        return super.getValue({ params }) || null;
+        const rawValue = getCSSVariableValue(params.mainParam, getHtmlStyle(this.document));
+        return this.normalizeValue(rawValue);
     }
 
     isApplied({ params, value }) {
-        return this.getValue({ params }) === value;
+        return this.getValue({ params }) === this.normalizeValue(value);
     }
 }
