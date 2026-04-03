@@ -1398,6 +1398,52 @@ test("Clear message body should not open message delete dialog if it has attachm
     );
 });
 
+test("Can remove saved attachments while editing a message", async () => {
+    const pyEnv = await startServer();
+    const channelId = pyEnv["discuss.channel"].create({
+        name: "general",
+        channel_type: "channel",
+    });
+    const [rickId, mortyId] = pyEnv["ir.attachment"].create([
+        {
+            name: "rick.txt",
+            mimetype: "text/plain",
+        },
+        {
+            name: "morty.txt",
+            mimetype: "text/plain",
+        },
+    ]);
+    pyEnv["mail.message"].create({
+        attachment_ids: [rickId, mortyId],
+        body: "<p>Hello</p>",
+        model: "discuss.channel",
+        res_id: channelId,
+        message_type: "comment",
+    });
+    onRpcBefore("/mail/attachment/delete", ({ attachment_id }) =>
+        expect.step(`${attachment_id}`)
+    );
+    await start();
+    await openDiscuss(channelId);
+    await click(".o-mail-Message [title='Edit']");
+    await contains(".o-mail-Message.o-editing .o-mail-AttachmentContainer:has(:text('rick.txt'))");
+    await contains(".o-mail-Message.o-editing .o-mail-AttachmentContainer:has(:text('morty.txt'))");
+    await click(".o-mail-Message.o-editing .o-mail-Attachment-unlink", {
+        parent: [".o-mail-Message.o-editing .o-mail-AttachmentContainer:has(:text('rick.txt'))"],
+    });
+    await contains(".o-mail-Message.o-editing .o-mail-AttachmentContainer:has(:text('rick.txt'))", {
+        count: 0,
+    });
+    await contains(".o-mail-Message.o-editing .o-mail-AttachmentContainer:has(:text('morty.txt'))");
+    await click(".o-mail-Message button:text('save')");
+    await expect.waitForSteps([`${rickId}`]);
+    await contains(".o-mail-Message .o-mail-AttachmentContainer:has(:text('morty.txt'))");
+    await contains(".o-mail-Message .o-mail-AttachmentContainer:has(:text('rick.txt'))", {
+        count: 0,
+    });
+});
+
 test("highlight the message mentioning the current user inside the channel", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({ display_name: "Test Partner" });
@@ -2073,6 +2119,38 @@ test("Can edit a message only containing an attachment", async () => {
     await openDiscuss(channelId);
     await click(".o-mail-Message [title='Edit']");
     await contains(".o-mail-Message.o-editing .o-mail-Composer-input");
+});
+
+test("Existing attachments are shown in composer when editing", async () => {
+    const pyEnv = await startServer();
+    const channelId = pyEnv["discuss.channel"].create({
+        name: "general",
+        channel_type: "channel",
+    });
+    const attachmentIds = pyEnv["ir.attachment"].create([
+        {
+            name: "oggy.txt",
+            mimetype: "text/plain",
+        },
+        {
+            name: "jack.txt",
+            mimetype: "text/plain",
+        },
+    ]);
+    pyEnv["mail.message"].create({
+        attachment_ids: attachmentIds,
+        author_id: serverState.partnerId,
+        body: "",
+        model: "discuss.channel",
+        res_id: channelId,
+        message_type: "comment",
+    });
+    await start();
+    await openDiscuss(channelId);
+    await click(".o-mail-Message [title='Edit']");
+    await contains(".o-mail-Message.o-editing .o-mail-AttachmentContainer", { count: 2 });
+    await contains(".o-mail-Message.o-editing .o-mail-AttachmentContainer:has(:text('oggy.txt'))");
+    await contains(".o-mail-Message.o-editing .o-mail-AttachmentContainer:has(:text('jack.txt'))");
 });
 
 test("Click on view reactions shows the reactions on the message", async () => {

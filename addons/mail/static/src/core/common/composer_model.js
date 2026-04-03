@@ -12,6 +12,7 @@ export class Composer extends Record {
 
     clear() {
         this.attachments.length = 0;
+        this.savedAttachmentsToRemove.length = 0;
         this.replyToMessage = undefined;
         this.restoredFromFullComposer = false;
         this.composerHtml = markup("<div class='o-paragraph'><br></div>");
@@ -41,6 +42,7 @@ export class Composer extends Record {
     }
 
     attachments = fields.Many("ir.attachment");
+    savedAttachmentsToRemove = fields.Many("ir.attachment");
     /** @type {boolean} */
     emailAddSignature = true;
     message = fields.One("mail.message");

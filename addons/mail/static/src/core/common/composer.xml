@@ -104,7 +104,7 @@
                 <AttachmentList
                     t-if="this.props.composer.attachments.length > 0"
                     attachments="this.props.composer.attachments"
-                    unlinkAttachment.bind="(...args) => this.attachmentUploader.unlink(...args)"/>
+                    unlinkAttachment.bind="this.unlinkAttachment"/>
                 <div t-if="!this.extended and !this.props.composer.message" class="o-mail-Composer-pickerContainer" t-att-class="{ 'o-active': this.composerActions.activePicker and this.ui.isSmall }" t-custom-ref="picker-container">
                     <div t-if="partitionedActions.pickers.length > 1 and this.composerActions.activePicker and this.ui.isSmall" class="o-mail-Composer-pickerSelection btn-group w-100">
                         <button t-foreach="partitionedActions.pickers" t-as="pickerAction" t-key="'PICKER_' + pickerAction.id" class="btn btn-secondary" t-out="pickerAction.pickerName" t-on-click="(ev) => pickerAction.onSelected(ev)" t-att-class="{

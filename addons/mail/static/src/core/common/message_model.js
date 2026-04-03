@@ -665,13 +665,10 @@ export class Message extends Record {
             thread: this.thread,
         });
         const hadLink = this.hasLink; // to remove old previews if message no longer contains any link
+        const allAttachments = [...attachments, ...this.attachment_ids];
         const updateData = {
-            attachment_ids: attachments
-                .concat(this.attachment_ids)
-                .map((attachment) => attachment.id),
-            attachment_tokens: attachments
-                .concat(this.attachment_ids)
-                .map((attachment) => attachment.ownership_token),
+            attachment_ids: allAttachments.map((attachment) => attachment.id),
+            attachment_tokens: allAttachments.map((attachment) => attachment.ownership_token),
             body: await generateEmojisOnHtml(body),
             partner_ids: validMentions?.partners?.map((partner) => partner.id),
             role_ids: validMentions?.roles?.map((role) => role.id),
@@ -707,10 +704,12 @@ export class Message extends Record {
             thread.messageInEdition.composer = undefined;
         }
         this.composer = {
+            attachments: [...this.attachment_ids],
             composerHtml: getNonEditableMentions(this.body),
             mentionedChannels: validChannels,
             mentionedPartners: this.partner_ids,
             mentionedRoles: validRoles,
+            savedAttachmentsToRemove: [],
             selection: {
                 start: text.length,
                 end: text.length,

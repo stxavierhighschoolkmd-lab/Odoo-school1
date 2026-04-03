@@ -482,6 +482,15 @@ export class Composer extends Component {
         );
     }
 
+    async unlinkAttachment(attachment) {
+        if (this.message && attachment.in(this.message.attachment_ids)) {
+            this.props.composer.savedAttachmentsToRemove.add(attachment);
+            this.props.composer.attachments.delete(attachment);
+            return;
+        }
+        await this.attachmentUploader.unlink(attachment);
+    }
+
     get hasSuggestions() {
         return Boolean(this.suggestion?.state.items);
     }
@@ -830,6 +839,18 @@ export class Composer extends Component {
         );
     }
 
+    getUnsavedAttachments() {
+        return this.props.composer.attachments.filter(
+            (attachment) => !attachment.message || attachment.message.notEq(this.message)
+        );
+    }
+
+    async removeEditedMessageAttachments() {
+        for (const attachment of this.props.composer.savedAttachmentsToRemove) {
+            await attachment.remove();
+        }
+    }
+
     async sendMessage() {
         const composer = toRaw(this.props.composer);
         this.composerActions.activePicker?.close?.();
@@ -937,23 +958,24 @@ export class Composer extends Component {
 
     async editMessage() {
         const composer = toRaw(this.props.composer);
-        if (!this.askDeleteFromEdit) {
-            await this.processMessage(async (value) =>
-                composer.message.edit(value, composer.attachments, {
+        if (this.askDeleteFromEdit) {
+            composer.message.showDeleteConfirm(this);
+        } else {
+            await this.processMessage(async (value) => {
+                await this.removeEditedMessageAttachments();
+                await composer.message.edit(value, this.getUnsavedAttachments(), {
                     mentionedChannels: composer.mentionedChannels,
                     mentionedPartners: composer.mentionedPartners,
                     mentionedRoles: composer.mentionedRoles,
-                })
-            );
-        } else {
-            composer.message.showDeleteConfirm(this);
+                });
+            });
         }
         this.suggestion?.clearRawMentions();
     }
 
     get askDeleteFromEdit() {
         const composer = toRaw(this.props.composer);
-        return !composer.composerText && composer.message.attachment_ids.length === 0;
+        return !composer.composerText && composer.attachments.length === 0;
     }
 
     onClickInsertCannedResponse(ev) {
