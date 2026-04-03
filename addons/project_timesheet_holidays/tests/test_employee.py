@@ -120,3 +120,39 @@ class TestEmployee(TransactionCase):
         self.assertEqual(len(timesheet), 1, 'A timesheet should have been created for the global leave of the employee')
         self.assertEqual(str(timesheet.date), '2020-01-01', 'The timesheet should be created for the correct date')
         self.assertEqual(timesheet.unit_amount, 8, 'The timesheet should be created for the correct duration')
+
+    @freeze_time('2020-01-01')
+    def test_timesheet_inactif_employee(self):
+        """ Test the timesheets representing the time off of this employee
+            is correctly generated once the employee is set to inactif
+        """
+        self.employee = self.env['hr.employee'].create({
+            'name': 'Test Employee',
+            'resource_calendar_id': self.company.resource_calendar_id.id,
+            'company_id': self.company.id,
+        })
+        old_timesheet_count = len(self.env['account.analytic.line'].search([
+            ('employee_id', '=', self.employee.id)]))
+        self.generic_time_off_type = self.env['hr.leave.type'].create({
+            'name': 'Generic Time Off',
+            'requires_allocation': 'no',
+            'leave_validation_type': 'both',
+            'company_id': self.company.id,
+        })
+        leave = self.env['hr.leave'].create({
+            'employee_id': self.employee.id,
+            'state': 'draft',
+            'holiday_type': 'employee',
+            'holiday_status_id': self.generic_time_off_type.id,
+            'request_date_from': '2020-01-02 08:00:00',
+            'request_date_to': '2020-01-07 17:00:00',
+        })
+        leave.action_confirm()
+        leave.action_validate()
+        timesheets = self.env['account.analytic.line'].search([
+            ('employee_id', '=', self.employee.id)])
+        self.assertGreater(len(timesheets), old_timesheet_count, "Timesheet should be generated for timeoff of active employees")
+        self.employee.write({'active': False})
+        leave._generate_timesheets()
+        self.assertTrue(timesheets, "Timesheet should not have been regenerated and therefore old timesheet shouldn't be deleted")
+        self.assertNotEqual(len(timesheets), 0, "Timesheet should not have been regenerated and therefore old timesheet shouldn't be deleted")
