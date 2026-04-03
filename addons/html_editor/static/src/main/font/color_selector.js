@@ -18,6 +18,7 @@ export class ColorSelector extends Component {
         ...toolbarButtonProps,
         mode: { type: String },
         type: { type: String },
+        customIconClass: { type: String, optional: true },
         getSelectedColors: Function,
         applyColor: Function,
         applyColorPreview: Function,
