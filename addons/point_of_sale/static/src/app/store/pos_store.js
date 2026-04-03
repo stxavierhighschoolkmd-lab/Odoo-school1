@@ -157,7 +157,7 @@ export class PosStore extends Reactive {
         this.closeOtherTabs();
         this.syncAllOrdersDebounced = debounce(this.syncAllOrders, 100);
 
-        window.addEventListener("online", () => {
+        window.addEventListener("pos-network-online", () => {
             // Sync should be done before websocket connection when going online
             this.syncAllOrdersDebounced();
         });
@@ -327,6 +327,8 @@ export class PosStore extends Reactive {
             const PaymentInterface = this.electronic_payment_interfaces[pm.use_payment_terminal];
             if (PaymentInterface) {
                 pm.payment_terminal = new PaymentInterface(this, pm);
+                // Extend request timeout to 60 sec for payment terminals
+                this.data.requestTimeoutMs = 60000;
             }
         }
 
@@ -360,6 +362,7 @@ export class PosStore extends Reactive {
         }
         this.computeProductPricelistCache();
         await this.processProductAttributes();
+        await this.company.cacheReceiptLogo();
     }
     cashMove() {
         this.hardwareProxy.openCashbox(_t("Cash in / out"));
