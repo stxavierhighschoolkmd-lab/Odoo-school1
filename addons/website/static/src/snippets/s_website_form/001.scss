@@ -90,6 +90,9 @@
     }
 
     .s_website_form_m2m_dropdown {
+        // .s_website_form_m2m_pills_container {
+        //     min-height: calc(#{$input-height} - 2 * #{$input-border-width});
+        // }
         .dropdown-item {
             cursor: pointer;
         }

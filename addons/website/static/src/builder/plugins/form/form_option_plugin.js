@@ -119,13 +119,13 @@ export class FormOptionPlugin extends Plugin {
                 const model = models?.find((model) => model.model === modelName);
                 const fieldName = getFieldName(el);
                 return model
-                        ? _t(
-                              'The field "%(fieldName)s" is mandatory for the action "%(actionName)s".',
-                              { fieldName, actionName: model.website_form_label }
-                          )
-                        : _t("The field “%(fieldName)s” is mandatory for the selected action.", {
-                              fieldName,
-                          });
+                    ? _t(
+                          'The field "%(fieldName)s" is mandatory for the action "%(actionName)s".',
+                          { fieldName, actionName: model.website_form_label }
+                      )
+                    : _t("The field “%(fieldName)s” is mandatory for the selected action.", {
+                          fieldName,
+                      });
             }
         },
         builder_actions: {
@@ -708,14 +708,13 @@ export class FormOptionPlugin extends Plugin {
             const field = Object.assign({}, fields[getFieldName(fieldEl)]);
             const type = getFieldType(fieldEl);
 
-            const isMultiDropdown = type === "many2many_dropdown";
             const [optionText, checkType] =
-                selectEl && !isMultiDropdown
+                type === "many2many_dropdown"
+                    ? [_t("Option List"), "boolean"]
+                    : selectEl
                     ? [_t("Option List"), "exclusive_boolean"]
                     : type === "selection"
                     ? [_t("Radio Button List"), "exclusive_boolean"]
-                    : isMultiDropdown
-                    ? [_t("Option List"), "boolean"]
                     : [_t("Checkbox List"), "boolean"];
             const defaults = [...fieldEl.querySelectorAll("[checked], [selected]")].map((el) =>
                 isSmallInteger(el.value) ? parseInt(el.value) : el.value

@@ -249,9 +249,6 @@ export function setActiveProperties(fieldEl, field) {
     } else if (fileInputEl) {
         field.maxFilesNumber = fileInputEl.dataset.maxFilesNumber;
         field.maxFileSize = fileInputEl.dataset.maxFileSize;
-    } else if (field.type === "many2many_dropdown" && selectInputEl) {
-        const placeholderEl = fieldEl.querySelector(".s_website_form_m2m_placeholder");
-        field.placeholder = placeholderEl?.textContent || _t("Select options...");
     } else if (selectInputEl) {
         const emptyOptionEl = selectInputEl.querySelector(".s_website_form_empty_option");
         field.allowEmpty = !!emptyOptionEl;

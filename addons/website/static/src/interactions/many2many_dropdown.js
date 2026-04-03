@@ -14,8 +14,8 @@ export class Many2ManyDropdownInteraction extends Interaction {
         this.pillsContainer = this.el.querySelector(".s_website_form_m2m_pills_container");
         this.pillsContainer.dataset.bsToggle = "dropdown";
         this.pillsContainer.dataset.bsAutoClose = "outside";
-        this.bsDropdown = window.Dropdown.getOrCreateInstance(this.pillsContainer);
-        this.resizeObserver = new ResizeObserver(() => this.refreshOpenDropdownPosition());
+        this.bsDropdown = Dropdown.getOrCreateInstance(this.pillsContainer);
+        this.resizeObserver = new ResizeObserver(() => this.onPillsContainerResize());
         this.resizeObserver.observe(this.pillsContainer);
         this.registerCleanup(() => {
             this.resizeObserver.disconnect();
@@ -25,81 +25,106 @@ export class Many2ManyDropdownInteraction extends Interaction {
         });
     }
 
-    queryOptionByValue(value) {
-        return this.selectEl.querySelector(`option[value="${CSS.escape(String(value))}"]`);
+    /**
+     * Toggles the selected state of an option and updates the corresponding
+     * pill in the pills container. Dispatches a change event on the hidden
+     * select element to notify the form of the value change.
+     *
+     * @param {string} value
+     * @param {boolean} selected
+     */
+    toggleValue(value, selected) {
+        const optionEl = this.selectEl.querySelector(
+            `option[value="${CSS.escape(String(value))}"]`
+        );
+        const checkboxEl = this.el.querySelector(
+            `.dropdown-item[data-value="${CSS.escape(String(value))}"] input[type=checkbox]`
+        );
+        optionEl.selected = selected;
+        checkboxEl.checked = selected;
+        if (selected) {
+            this.addPill(optionEl);
+        } else {
+            this.removePill(value);
+        }
+        // this.updatePlaceholder();
+        this.selectEl.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    refreshOpenDropdownPosition() {
-        requestAnimationFrame(() => {
-            if (!this.isDestroyed && this.bsDropdown) {
-                this.bsDropdown.update();
-            }
-        });
-    }
-
-    toggleOption(optionEl, checkboxEl) {
-        optionEl.selected = !optionEl.selected;
-        checkboxEl.checked = optionEl.selected;
-    }
-
+    /**
+     * Shows or hides the placeholder text depending on whether any pills
+     * are present in the container.
+     */
     updatePlaceholder() {
         const placeholderEl = this.pillsContainer.querySelector(".s_website_form_m2m_placeholder");
         const hasPills = !!this.pillsContainer.querySelector(".s_website_form_m2m_pill");
         placeholderEl.classList.toggle("d-none", hasPills);
     }
 
+    /**
+     * Handles clicking on a dropdown item to toggle its selection state.
+     *
+     * @param {Event} ev
+     */
     onOptionClick(ev) {
         ev.preventDefault();
-        const dropdownEl = ev.currentTarget;
-        const value = dropdownEl.dataset.value;
-        const option = this.queryOptionByValue(value);
-        const checkboxEl = dropdownEl.querySelector("input[type='checkbox']");
-        this.toggleOption(option, checkboxEl);
-        if (option.selected) {
-            this.addPill(option);
-        } else {
-            this.removePill(option.value);
-        }
-        this.updatePlaceholder();
-        this.refreshOpenDropdownPosition();
-        this.selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+        const dropdownItemEl = ev.currentTarget;
+        const checkboxEl = dropdownItemEl.querySelector("input[type=checkbox]");
+        this.toggleValue(dropdownItemEl.dataset.value, !checkboxEl.checked);
     }
 
+    /**
+     * Handles clicking the remove button on a pill to deselect the
+     * corresponding option.
+     *
+     * @param {Event} ev
+     */
     onPillRemove(ev) {
         ev.stopPropagation();
-        const pill = ev.currentTarget.closest(".s_website_form_m2m_pill");
-        const value = pill.dataset.value;
-        if (value) {
-            const option = this.queryOptionByValue(value);
-            const checkboxEl = this.el.querySelector(
-                `.dropdown-item[data-value="${CSS.escape(String(value))}"] input[type=checkbox]`
-            );
-            this.toggleOption(option, checkboxEl);
-            this.removePill(value);
-            this.updatePlaceholder();
-            this.refreshOpenDropdownPosition();
-            this.selectEl.dispatchEvent(new Event("change", { bubbles: true }));
-        }
+        const pillEl = ev.currentTarget.closest(".s_website_form_m2m_pill");
+        this.toggleValue(pillEl.dataset.value, false);
     }
 
-    addPill(option) {
-        const spanEl = document.createElement("span");
-        spanEl.className = "s_website_form_m2m_pill badge rounded-pill text-bg-primary";
-        spanEl.dataset.value = option.value;
+    /**
+     * Inserts a pill element for the given option before the placeholder.
+     *
+     * @param {HTMLOptionElement} optionEl
+     */
+    addPill(optionEl) {
+        const pillEl = document.createElement("span");
+        pillEl.className = "s_website_form_m2m_pill badge rounded-pill text-bg-primary";
+        pillEl.dataset.value = optionEl.value;
         const textEl = document.createElement("span");
-        textEl.textContent = option.text;
-        spanEl.appendChild(textEl);
+        textEl.textContent = optionEl.text;
+        pillEl.appendChild(textEl);
         const removeBtnEl = document.createElement("i");
         removeBtnEl.className = "s_website_form_m2m_pill_remove fa fa-times ms-1 cursor-pointer";
-        spanEl.appendChild(removeBtnEl);
+        pillEl.appendChild(removeBtnEl);
         const placeholderEl = this.pillsContainer.querySelector(".s_website_form_m2m_placeholder");
-        placeholderEl.insertAdjacentElement("beforebegin", spanEl);
+        placeholderEl.insertAdjacentElement("beforebegin", pillEl);
     }
 
+    /**
+     * Removes the pill element matching the given value from the container.
+     *
+     * @param {string} value
+     */
     removePill(value) {
         this.pillsContainer
             .querySelector(`.s_website_form_m2m_pill[data-value="${CSS.escape(String(value))}"]`)
             .remove();
+    }
+
+    /**
+     * Updates the Bootstrap dropdown position when the pills container
+     * changes size (e.g. after adding/removing pills).
+     */
+    onPillsContainerResize() {
+        requestAnimationFrame(() => {
+            if (!this.isDestroyed && this.bsDropdown) {
+                this.bsDropdown.update();
+            }
+        });
     }
 }
 

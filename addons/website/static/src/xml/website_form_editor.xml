@@ -272,7 +272,17 @@
 
     <t t-name="website.form_field_many2many_dropdown">
         <t t-call="website.form_field">
-            <div class="s_website_form_m2m_dropdown dropdown">
+            <t t-if="!field.records">
+                <input
+                    class="form-control s_website_form_input"
+                    t-att-name="field.name"
+                    t-att-value="undefined"
+                    t-att-required="field.required || field.modelRequired || None"
+                    placeholder="No matching record!"
+                    disabled=""
+                />
+            </t>
+            <div t-else="" class="s_website_form_m2m_dropdown dropdown">
                 <select multiple="multiple" class="s_website_form_input d-none" t-att-id="field.id" t-att-name="field.name" t-att-required="field.required || field.modelRequired || None">
                     <t t-foreach="field.records" t-as="record" t-key="record_index">
                         <option t-out="record.display_name" t-att-id="field.id + record_index" t-att-value="record.id"
@@ -290,7 +300,7 @@
                             <i class="s_website_form_m2m_pill_remove fa fa-times ms-1 cursor-pointer"/>
                         </span>
                     </t>
-                    <span t-att-class="'s_website_form_m2m_placeholder text-muted' + (hasSelected ? ' d-none' : '')" t-out="field.placeholder || 'Select options...'"/>
+                    <span t-att-class="'s_website_form_m2m_placeholder text-muted' + (hasSelected ? ' d-none' : '')" t-out="field.placeholder"/>
                 </div>
                 <div class="dropdown-menu w-100 py-0">
                     <t t-foreach="field.records" t-as="record" t-key="record_index">
