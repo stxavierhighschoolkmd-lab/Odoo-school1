@@ -1,3 +1,4 @@
+import { registry } from "@web/core/registry";
 import {
     changeOptionInPopover,
     clickOnEditAndWaitEditMode,
@@ -5,8 +6,8 @@ import {
     clickOnSnippet,
     insertSnippet,
     goBackToBlocks,
-    registerWebsitePreviewTour,
     unfoldOptionsGroup,
+    waitForEditMode,
 } from "@website/js/tours/tour_utils";
 
 const snippets = [
@@ -53,12 +54,9 @@ function checkEyesIconAfterSave(footerIsHidden = true) {
     }
     return eyeIconChecks;
 }
-registerWebsitePreviewTour(
-    "conditional_visibility_1",
-    {
-        edition: true,
-    },
-    () => [
+registry.category("web_tour.tours").add("conditional_visibility_1", {
+    steps: () => [
+        waitForEditMode,
         ...insertSnippet(snippets[0]),
         ...clickOnSnippet(snippets[0]),
         ...changeOptionInPopover("Text - Image", "Visibility", "Conditionally"),
@@ -109,15 +107,12 @@ registerWebsitePreviewTour(
                 }
             },
         },
-    ]
-);
+    ],
+});
 
-registerWebsitePreviewTour(
-    "conditional_visibility_3",
-    {
-        edition: true,
-    },
-    () => [
+registry.category("web_tour.tours").add("conditional_visibility_3", {
+    steps: () => [
+        waitForEditMode,
         checkEyeIcon("Text - Image", true),
         // Drag a "Banner" snippet on the website.
         ...insertSnippet(snippets[1]),
@@ -168,15 +163,12 @@ registerWebsitePreviewTour(
         ...clickOnSave(),
         ...clickOnEditAndWaitEditMode(),
         ...checkEyesIconAfterSave(),
-    ]
-);
+    ],
+});
 
-registerWebsitePreviewTour(
-    "conditional_visibility_4",
-    {
-        edition: true,
-    },
-    () => [
+registry.category("web_tour.tours").add("conditional_visibility_4", {
+    steps: () => [
+        waitForEditMode,
         // Click on the "Text-Image" snippet.
         ...clickOnSnippet(snippets[0]),
         {
@@ -210,16 +202,12 @@ registerWebsitePreviewTour(
             content: "Check the order on the 'Invisible Elements' panel",
             trigger: ".o_we_invisible_el_panel div:nth-child(3):contains('Text - Image')",
         },
-    ]
-);
+    ],
+});
 
-registerWebsitePreviewTour(
-    "conditional_visibility_5",
-    {
-        undeterministicTour_doNotCopy: true, // Remove this key to make the tour failed. ( It removes delay between steps )
-        edition: true,
-    },
-    () => [
+registry.category("web_tour.tours").add("conditional_visibility_5", {
+    steps: () => [
+        waitForEditMode,
         {
             content: "Toggle the visibility of the Footer",
             trigger: ".o_we_invisible_el_panel .o_we_invisible_entry:contains('Footer')",
@@ -328,5 +316,5 @@ registerWebsitePreviewTour(
             content: "Check that the 'Image - Text' entry is in the 'Invisible Elements' panel",
             trigger: ".o_we_invisible_el_panel .o_we_invisible_entry:contains('Image - Text')",
         },
-    ]
-);
+    ],
+});

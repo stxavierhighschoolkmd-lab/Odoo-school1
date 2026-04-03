@@ -4,7 +4,6 @@ import { clickOnSave, goToTheme, registerWebsitePreviewTour } from "@website/js/
 registerWebsitePreviewTour(
     "hide_sidebar_header",
     {
-        undeterministicTour_doNotCopy: true, // Remove this key to make the tour failed. ( It removes delay between steps )
         edition: true,
     },
     () => [

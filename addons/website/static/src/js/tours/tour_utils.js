@@ -156,9 +156,11 @@ export function changeOptionInPopover(blockName, optionName, elementName) {
         {
             content: `Check if "${elementName}" option is shown. If not, search for it.`,
             trigger: ".o_popover .o-dropdown-item",
-            async run(helpers) {
-                if (!helpers.queryFirst(itemSelector)) {
-                    await helpers.edit(elementName, ".o_popover input");
+            async run({ waitFor, edit }) {
+                try {
+                    await waitFor(itemSelector, { timeout: 9000 });
+                } catch {
+                    await edit(elementName, ".o_popover input");
                 }
             },
         },
@@ -249,7 +251,8 @@ export function clickOnEditAndWaitEditMode(position = "bottom") {
     return [
         {
             content: markup(_t("<b>Click Edit</b> to start designing your homepage.")),
-            trigger: "body .o_menu_systray .o_menu_systray_item.o_edit_website_container button",
+            trigger:
+                "body:has(:iframe body[is-ready=true]) .o_menu_systray .o_menu_systray_item.o_edit_website_container button",
             tooltipPosition: position,
             run: "click",
         },
@@ -270,7 +273,8 @@ export function clickOnEditAndWaitEditModeInTranslatedPage(position = "bottom") 
     return [
         {
             content: markup(_t("<b>Click Edit</b> dropdown")),
-            trigger: "body .o_menu_systray button:contains('Edit')",
+            trigger:
+                "body:has(:iframe body[is-ready=true]) .o_menu_systray button:contains('Edit')",
             tooltipPosition: position,
             run: "click",
         },
@@ -297,7 +301,6 @@ export function clickOnSnippet(snippet, position = "bottom") {
     return [
         {
             trigger: ".o-website-builder_sidebar",
-            noPrepend: true,
         },
         {
             trigger: `:iframe ${trigger}`,
@@ -315,7 +318,6 @@ export function clickOnSave(position = "bottom", timeout = 50000, withContains =
         },
         {
             trigger: "body:not(:has(.o_dialog))",
-            noPrepend: true,
         },
         {
             trigger: withContains
@@ -328,7 +330,6 @@ export function clickOnSave(position = "bottom", timeout = 50000, withContains =
         },
         {
             trigger: "body:not(.o_builder_open)",
-            noPrepend: true,
             timeout,
         },
         stepUtils.waitIframeIsReady(),
@@ -371,7 +372,6 @@ export function insertSnippet(snippet, { position = "bottom", ignoreLoading = fa
     const insertSnippetSteps = [
         {
             trigger: ".o_builder_sidebar_open",
-            noPrepend: true,
         },
     ];
     const snippetIDSelector = snippet.id
@@ -390,7 +390,6 @@ export function insertSnippet(snippet, { position = "bottom", ignoreLoading = fa
                 // FIXME `:not(.d-none)` should obviously not be needed but it seems
                 // currently needed when using a tour in user/interactive mode.
                 trigger: `.modal .show:iframe .o_snippet_preview_wrap${snippetIDSelector}:not(.d-none)`,
-                noPrepend: true,
                 tooltipPosition: "top",
                 run: "click",
             }
@@ -470,15 +469,6 @@ export function unfoldOptionsGroup(name) {
     ];
 }
 
-export function prepend_trigger(steps, prepend_text = "") {
-    for (const step of steps) {
-        if (!step.noPrepend && prepend_text) {
-            step.trigger = prepend_text + step.trigger;
-        }
-    }
-    return steps;
-}
-
 export function getClientActionUrl(path, edition) {
     let url = `/odoo/action-website.website_preview`;
     if (path) {
@@ -508,6 +498,12 @@ export function clickOnExtraMenuItem(stepOptions, backend = false) {
         stepOptions
     );
 }
+
+export const waitForEditMode = {
+    content: "Wait for the edit mode to be started",
+    trigger: ".o_builder_sidebar_open",
+    timeout: 30000,
+};
 
 /**
  * Registers a tour that will go in the website client action.
@@ -541,10 +537,7 @@ export function registerWebsitePreviewTour(name, options, steps) {
             } else {
                 tourSteps[0].timeout = 20000;
             }
-            return tourSteps.map((step) => {
-                delete step.noPrepend;
-                return step;
-            });
+            return tourSteps;
         },
     });
 }
