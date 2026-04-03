@@ -73,6 +73,8 @@ class TestCloudStorageAttachmentController(HttpCaseWithUserDemo, TestCloudStorag
                                     "original_id": False,
                                     "public": False,
                                     "res_id": 0,
+                                    "document_ids": [],
+                                    "linked_document_id": False,
                                 }
                             ),
                         },
