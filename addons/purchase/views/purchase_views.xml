@@ -45,12 +45,24 @@
     <!-- Products Control Menu -->
     <menuitem id="menu_purchase_products" name="Products" parent="purchase.menu_purchase_root" sequence="5"/>
 
+    <record id="product_template_kanban_view_cost" model="ir.ui.view">
+        <field name="name">product.template.kanban.cost</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_kanban_view"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='list_price']" position="replace">
+                <field name="standard_price" class="fw-bold" widget="monetary" options="{'currency_field': 'currency_id', 'field_digits': True}"/>
+            </xpath>
+        </field>
+    </record>
+    
     <record id="product_normal_action_puchased" model="ir.actions.act_window">
         <field name="name">Products</field>
         <field name="res_model">product.template</field>
         <field name="path">purchase-products</field>
         <field name="view_ids" eval="[Command.clear(),
-            Command.create({'view_mode': 'kanban'}),
+            Command.create({'view_mode': 'kanban', 'view_id': ref('purchase.product_template_kanban_view_cost')}),
             Command.create({'view_mode': 'list', 'view_id': ref('account.product_template_list_view_purchasable_inherit')}),
             Command.create({'view_mode': 'form'}),
             Command.create({'view_mode': 'activity'})]"/>
@@ -70,10 +82,26 @@
       <menuitem name="Products" id="menu_procurement_partner_contact_form" action="product_normal_action_puchased"
           parent="menu_purchase_products" sequence="20"/>
 
+        <record id="product_product_kanban_view_cost" model="ir.ui.view">
+            <field name="name">product.product.kanban.cost</field>
+            <field name="model">product.product</field>
+            <field name="inherit_id" ref="product.product_kanban_view"/>
+            <field name="mode">primary</field>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='lst_price']" position="replace">
+                    <field name="standard_price" class="fw-bold" widget="monetary" options="{'currency_field': 'currency_id', 'field_digits': True}"/>
+                </xpath>
+            </field>
+        </record>
+
         <record id="product_product_action" model="ir.actions.act_window">
             <field name="name">Product Variants</field>
             <field name="res_model">product.product</field>
-            <field name="view_mode">list,kanban,form,activity</field>
+            <field name="view_ids" eval="[Command.clear(),
+            Command.create({'view_mode': 'kanban', 'view_id': ref('purchase.product_product_kanban_view_cost')}),
+            Command.create({'view_mode': 'list'}),
+            Command.create({'view_mode': 'form'}),
+            Command.create({'view_mode': 'activity'})]"/>
             <field name="search_view_id" ref="product.product_search_form_view"/>
             <field name="context">{"search_default_filter_to_purchase": 1}</field>
             <field name="help" type="html">
