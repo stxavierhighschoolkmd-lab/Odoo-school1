@@ -122,6 +122,12 @@ class ProductTemplate(models.Model):
             self.env['stock.lot'].browse(lot_ids_to_update).sudo()._update_standard_price()
         return res
 
+    @api.onchange('standard_price')
+    def _onchange_standard_price(self):
+        super()._onchange_standard_price()
+        if self.lot_valuated:
+            raise UserError(self.env._("You cannot change the standard price of a product that is valuated by lot/serial number."))
+
     # -------------------------------------------------------------------------
     # Misc.
     # -------------------------------------------------------------------------
