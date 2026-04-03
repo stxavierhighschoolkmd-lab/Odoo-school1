@@ -41,9 +41,10 @@ export const computeComboItems = (
             priceUnit += remainingTotal;
             remainingTotal = 0;
         }
-        const attribute_value_ids = conf.configuration?.attribute_value_ids?.map(
-            (id) => productTemplateAttributeValueById[id]
-        );
+        const attribute_value_ids =
+            conf.configuration?.attribute_value_ids?.map(
+                (id) => productTemplateAttributeValueById[id]
+            ) || comboItem.product_id?.product_template_attribute_value_ids;
 
         const totalPriceExtra =
             priceUnit + getAttributesPriceExtra(attribute_value_ids) + comboItem.extra_price;
@@ -80,7 +81,9 @@ export const computeComboItems = (
             }
         }
         const attribute_value_ids = extra.configuration?.attribute_value_ids.map(
-            (id) => productTemplateAttributeValueById[id]
+            (id) =>
+                productTemplateAttributeValueById[id] ||
+                comboItem.product_id?.product_template_attribute_value_ids
         );
 
         const totalPriceExtra =
