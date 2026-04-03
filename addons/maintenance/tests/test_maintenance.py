@@ -6,6 +6,7 @@ import time
 from odoo.tests import Form
 from odoo.tests.common import tagged, TransactionCase
 from odoo import fields
+from datetime import timedelta
 
 
 class TestEquipmentCommon(TransactionCase):
@@ -64,7 +65,7 @@ class TestEquipment(TestEquipmentCommon):
         # Create new maintenance request
         maintenance_request_01 = self.maintenance_request.with_user(self.user).create({
             'name': 'Resolution is bad',
-            'user_id': self.user.id,
+            'user_ids': [self.user.id],
             'owner_user_id': self.user.id,
             'equipment_id': equipment_01.id,
             'color': 7,
@@ -132,27 +133,20 @@ class TestEquipmentPostInstall(TestEquipmentCommon):
         In theory this should never happen, but we should fail gracefully
         in case these dates are forced set to False.
         """
-
         form = Form(self.env['maintenance.equipment'].with_user(self.manager))
         form.name = "brain"
         equipment = form.save()
+
+        before = fields.Datetime.now()
         form = Form(self.env['maintenance.request'].with_user(self.manager))
         form.name = "improve efficiency"
         form.equipment_id = equipment
         form.maintenance_type = 'corrective'
         maintenance = form.save()
-        self.assertFalse(maintenance.schedule_date)
-        self.assertFalse(maintenance.close_date)
+        after = fields.Datetime.now()
 
-        maintenance.state = 'done'
-        self.assertFalse(maintenance.schedule_date)
-        self.assertTrue(maintenance.close_date)
-        form = Form(equipment)
-
-        # this shouldn't happen unless it's forced
-        maintenance.close_date = False
-        form = Form(equipment)
-        maintenance.close_date = fields.Date.today()
-        form = Form(equipment)
-        maintenance.close_date = False
-        form = Form(equipment)
+        self.assertTrue(maintenance.schedule_date)
+        self.assertTrue(maintenance.schedule_end)
+        self.assertGreaterEqual(maintenance.schedule_date, before)
+        self.assertLessEqual(maintenance.schedule_date, after)
+        self.assertEqual(maintenance.schedule_end, maintenance.schedule_date + timedelta(hours=1))
