@@ -9,12 +9,16 @@
                     <field name="description"/>
                 </p>
                 <field name="show_lots" invisible="1"/>
-                <field name="lot_ids" invisible="not show_lots">
+                <field name="show_list" invisible="1"/>
+
+                <field name="move_line_ids" invisible="not show_list">
                     <list string="Expired Lot(s)">
-                        <field name="product_id"/>
-                        <field name="name"/>
+                        <field name="display_name" string="Product"/>
+                        <field name="lot_name" string="Lot/Serial Number" column_invisible="parent.show_lots"/>
+                        <field name="lot_id" column_invisible="not parent.show_lots"/>
                     </list>
                 </field>
+
                 <footer>
                     <button name="process"
                         string="Confirm"

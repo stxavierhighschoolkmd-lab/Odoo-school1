@@ -10,12 +10,13 @@ class ExpiryPickingConfirmation(models.TransientModel):
     production_ids = fields.Many2many('mrp.production', readonly=True)
     workorder_id = fields.Many2one('mrp.workorder', readonly=True)
 
-    @api.depends('lot_ids')
+    @api.depends('move_line_ids')
     def _compute_descriptive_fields(self):
         if self.production_ids or self.workorder_id:
             # Shows expired lots only if we are more than one expired lot.
-            self.show_lots = len(self.lot_ids) > 1
-            if self.show_lots:
+            self.show_list = len(self.move_line_ids) > 1
+            self.show_lots = bool(self.move_line_ids.mapped('lot_id'))
+            if self.show_list:
                 # For multiple expired lots, they are listed in the wizard view.
                 self.description = _(
                     "You are going to use some expired components."
@@ -26,18 +27,18 @@ class ExpiryPickingConfirmation(models.TransientModel):
                 self.description = _(
                     "You are going to use the component %(product_name)s, %(lot_name)s which is expired."
                     "\nDo you confirm you want to proceed?",
-                    product_name=self.lot_ids.product_id.display_name,
-                    lot_name=self.lot_ids.name,
+                    product_name=self.move_line_ids.lot_id.product_id.display_name,
+                    lot_name=self.move_line_ids.lot_id.name,
                 )
         else:
             super()._compute_descriptive_fields()
 
     def confirm_produce(self):
         ctx = dict(self.env.context, skip_expired=True)
-        ctx.pop('default_lot_ids')
+        ctx.pop('default_move_line_ids')
         return self.production_ids.with_context(ctx).button_mark_done()
 
     def confirm_workorder(self):
         ctx = dict(self.env.context, skip_expired=True)
-        ctx.pop('default_lot_ids')
+        ctx.pop('default_move_line_ids')
         return self.workorder_id.with_context(ctx).record_production()
