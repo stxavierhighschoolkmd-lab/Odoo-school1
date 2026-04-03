@@ -495,6 +495,7 @@ class AccountEdiXmlUBL21JO(models.AbstractModel):
             'cac:AllowanceCharge': self._get_line_discount_allowance_charge_node(vals),
         }
 
+<<<<<<< a5fcb5ef6e6e22a1eadead0decd3379cca16ed67
     def _get_line_discount_allowance_charge_node(self, vals):
         # OVERRIDE account_edi_xml_ubl_20.py
         return {
@@ -508,3 +509,181 @@ class AccountEdiXmlUBL21JO(models.AbstractModel):
                 'currencyID': vals['currency_name'],
             }
         }
+||||||| fb35dbed4454e994338f98db7d4238934539cec7
+    ####################################################
+    # export methods
+    ####################################################
+
+    def _enumerate_invoice_lines(self, invoice, start=0):
+        if invoice.move_type == 'out_refund':
+            invoice_edi_id_x_line = dict(self._enumerate_invoice_lines(invoice.reversed_entry_id, start=start))
+            overflow_edi_id = len(invoice_edi_id_x_line) + 1
+
+            refund_edi_id_x_line = {}
+            refund_lines = invoice.invoice_line_ids.filtered(lambda line: line.display_type not in ('line_note', 'line_section'))
+            for refund_line in refund_lines:
+                matching_edi_ids = [
+                    line_id for line_id, line in invoice_edi_id_x_line.items()
+                    if line.product_id == refund_line.product_id
+                    and line.price_unit == refund_line.price_unit
+                    and line.discount == refund_line.discount
+                    and line.quantity >= refund_line.quantity
+                ]
+
+                if matching_edi_ids:
+                    edi_id = min(matching_edi_ids, key=lambda line_id: invoice_edi_id_x_line[line_id].quantity)
+                    refund_edi_id_x_line[edi_id] = refund_line
+                    invoice_edi_id_x_line.pop(edi_id)
+                else:
+                    refund_edi_id_x_line[overflow_edi_id] = refund_line
+                    overflow_edi_id += 1
+
+            return refund_edi_id_x_line.items()
+        else:
+            return super()._enumerate_invoice_lines(invoice, 1)
+
+    def _export_invoice_vals(self, invoice):
+        vals = super()._export_invoice_vals(invoice)
+
+        vals.update({
+            'main_template': 'l10n_jo_edi.ubl_jo_Invoice',
+            'InvoiceType_template': 'l10n_jo_edi.ubl_jo_InvoiceType',
+            'PaymentMeansType_template': 'l10n_jo_edi.ubl_jo_PaymentMeansType',
+            'InvoiceLineType_template': 'l10n_jo_edi.ubl_jo_InvoiceLineType',
+            'TaxTotalType_template': 'l10n_jo_edi.ubl_jo_TaxTotalType',
+        })
+
+        customer = invoice.partner_id
+        is_refund = invoice.move_type == 'out_refund'
+
+        vals['vals'].update({
+            'ubl_version_id': '',
+            'order_reference': '',
+            'sales_order_id': '',
+            'profile_id': 'reporting:1.0',
+            'id': invoice.name.replace('/', '_'),
+            'uuid': invoice.l10n_jo_edi_uuid,
+            'document_currency_code': invoice.currency_id.name,
+            'tax_currency_code': invoice.currency_id.name,
+            'document_type_code_attrs': {'name': self._get_payment_method_code(invoice)},
+            'document_type_code': "381" if is_refund else "388",
+            'accounting_customer_party_vals': {
+                'party_vals': self._get_empty_party_vals() if is_refund else self._get_partner_party_vals(customer, role='customer'),
+                'accounting_contact': {
+                    'telephone': '' if is_refund else self._sanitize_phone(invoice.partner_id.phone or invoice.partner_id.mobile),
+                },
+            },
+            'seller_supplier_party_vals': {
+                'party_vals': self._get_seller_supplier_party_vals(invoice),
+            },
+            'billing_reference_vals': self._get_billing_reference_vals(invoice),
+            'additional_document_reference_list': self._get_additional_document_reference_list(invoice),
+        })
+
+        self._aggregate_totals(vals['vals'])
+
+        return vals
+
+    def _export_invoice(self, invoice):
+        # EXTENDS account.edi.xml.ubl_21
+        # _export_invoice normally cleans up the xml to remove empty nodes.
+        # However, in the JO UBL version, we always want the PartyIdentification with ID nodes, even if empty.
+        # We'll replace the empty value by a dummy one so that the node doesn't get cleaned up and remove its content after the file generation.
+        xml, errors = super()._export_invoice(invoice)
+        xml_root = etree.fromstring(xml)
+        party_identification_id_elements = xml_root.findall('.//cac:PartyIdentification/cbc:ID', namespaces=xml_root.nsmap)
+        for element in party_identification_id_elements:
+            if element.text == 'NO_VAT':
+                element.text = ''
+        # method='html' is used to keep the element un-shortened ("<a></a>" instead of <a/>)
+        return etree.tostring(xml_root, method='html'), errors
+=======
+    ####################################################
+    # export methods
+    ####################################################
+
+    def _enumerate_invoice_lines(self, invoice, start=0):
+        if invoice.move_type == 'out_refund':
+            invoice_edi_id_x_line = dict(self._enumerate_invoice_lines(invoice.reversed_entry_id, start=start))
+            overflow_edi_id = len(invoice_edi_id_x_line) + 1
+
+            refund_edi_id_x_line = {}
+            refund_lines = invoice.invoice_line_ids.filtered(lambda line: line.display_type not in ('line_note', 'line_section'))
+            for refund_line in refund_lines:
+                matching_edi_ids = [
+                    line_id for line_id, line in invoice_edi_id_x_line.items()
+                    if line.product_id == refund_line.product_id
+                    and line.price_unit == refund_line.price_unit
+                    and line.discount == refund_line.discount
+                    and line.quantity >= refund_line.quantity
+                ]
+
+                if matching_edi_ids:
+                    edi_id = min(matching_edi_ids, key=lambda line_id: invoice_edi_id_x_line[line_id].quantity)
+                    refund_edi_id_x_line[edi_id] = refund_line
+                    invoice_edi_id_x_line.pop(edi_id)
+                else:
+                    refund_edi_id_x_line[overflow_edi_id] = refund_line
+                    overflow_edi_id += 1
+
+            return refund_edi_id_x_line.items()
+        else:
+            return super()._enumerate_invoice_lines(invoice, 1)
+
+    def _export_invoice_vals(self, invoice):
+        vals = super()._export_invoice_vals(invoice)
+
+        vals.update({
+            'main_template': 'l10n_jo_edi.ubl_jo_Invoice',
+            'InvoiceType_template': 'l10n_jo_edi.ubl_jo_InvoiceType',
+            'PaymentMeansType_template': 'l10n_jo_edi.ubl_jo_PaymentMeansType',
+            'InvoiceLineType_template': 'l10n_jo_edi.ubl_jo_InvoiceLineType',
+            'TaxTotalType_template': 'l10n_jo_edi.ubl_jo_TaxTotalType',
+        })
+
+        customer = invoice.partner_id
+        is_refund = invoice.move_type == 'out_refund'
+
+        invoice._compute_l10n_jo_edi_uuid()
+        vals['vals'].update({
+            'ubl_version_id': '',
+            'order_reference': '',
+            'sales_order_id': '',
+            'profile_id': 'reporting:1.0',
+            'id': invoice.name.replace('/', '_'),
+            'uuid': invoice.l10n_jo_edi_uuid,
+            'document_currency_code': invoice.currency_id.name,
+            'tax_currency_code': invoice.currency_id.name,
+            'document_type_code_attrs': {'name': self._get_payment_method_code(invoice)},
+            'document_type_code': "381" if is_refund else "388",
+            'accounting_customer_party_vals': {
+                'party_vals': self._get_empty_party_vals() if is_refund else self._get_partner_party_vals(customer, role='customer'),
+                'accounting_contact': {
+                    'telephone': '' if is_refund else self._sanitize_phone(invoice.partner_id.phone or invoice.partner_id.mobile),
+                },
+            },
+            'seller_supplier_party_vals': {
+                'party_vals': self._get_seller_supplier_party_vals(invoice),
+            },
+            'billing_reference_vals': self._get_billing_reference_vals(invoice),
+            'additional_document_reference_list': self._get_additional_document_reference_list(invoice),
+        })
+
+        self._aggregate_totals(vals['vals'])
+
+        return vals
+
+    def _export_invoice(self, invoice):
+        # EXTENDS account.edi.xml.ubl_21
+        # _export_invoice normally cleans up the xml to remove empty nodes.
+        # However, in the JO UBL version, we always want the PartyIdentification with ID nodes, even if empty.
+        # We'll replace the empty value by a dummy one so that the node doesn't get cleaned up and remove its content after the file generation.
+        xml, errors = super()._export_invoice(invoice)
+        xml_root = etree.fromstring(xml)
+        party_identification_id_elements = xml_root.findall('.//cac:PartyIdentification/cbc:ID', namespaces=xml_root.nsmap)
+        for element in party_identification_id_elements:
+            if element.text == 'NO_VAT':
+                element.text = ''
+        # method='html' is used to keep the element un-shortened ("<a></a>" instead of <a/>)
+        return etree.tostring(xml_root, method='html'), errors
+>>>>>>> ce37936d619d4f3bb14a2d582725be8d8495cd81
