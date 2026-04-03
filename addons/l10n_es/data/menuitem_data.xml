@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_account_report_mod_111" model="ir.actions.client">
+        <field name="name">Modelo 111</field>
+        <field name="tag">account_report</field>
+        <field name="path">tax-report-mod-111</field>
+        <field name="context" eval="{'report_id': ref('l10n_es.mod_111')}"/>
+    </record>
+
+    <record id="action_account_report_mod_115" model="ir.actions.client">
+        <field name="name">Modelo 115</field>
+        <field name="tag">account_report</field>
+        <field name="path">tax-report-mod-115</field>
+        <field name="context" eval="{'report_id': ref('l10n_es.mod_115')}"/>
+    </record>
+
+    <record id="action_account_report_mod_130" model="ir.actions.client">
+        <field name="name">Modelo 130</field>
+        <field name="tag">account_report</field>
+        <field name="path">tax-report-mod-130</field>
+        <field name="context" eval="{'report_id': ref('l10n_es.mod_130')}"/>
+    </record>
+
+    <record id="action_account_report_mod_303" model="ir.actions.client">
+        <field name="name">Modelo 303</field>
+        <field name="tag">account_report</field>
+        <field name="path">tax-report-mod-303</field>
+        <field name="context" eval="{'report_id': ref('l10n_es.mod_303')}"/>
+    </record>
+
+    <record id="action_account_report_mod_420" model="ir.actions.client">
+        <field name="name">Modelo 420</field>
+        <field name="tag">account_report</field>
+        <field name="path">tax-report-mod-420</field>
+        <field name="context" eval="{'report_id': ref('l10n_es.mod_420')}"/>
+    </record>
+
+    <menuitem id="menu_action_account_report_mod_111"
+              name="Tax Report (Mod 111) ES"
+              action="action_account_report_mod_111"
+              parent="account.account_reports_taxes_and_fiscal_menu"
+              sequence="1"
+    />
+
+    <menuitem id="menu_action_account_report_mod_115"
+              name="Tax Report (Mod 115) ES"
+              action="action_account_report_mod_115"
+              parent="account.account_reports_taxes_and_fiscal_menu"
+              sequence="2"
+    />
+
+    <menuitem id="menu_action_account_report_mod_130"
+              name="Tax Report (Mod 130) ES"
+              action="action_account_report_mod_130"
+              parent="account.account_reports_taxes_and_fiscal_menu"
+              sequence="3"
+    />
+
+    <menuitem id="menu_action_account_report_mod_303"
+              name="Tax Report (Mod 303) ES"
+              action="action_account_report_mod_303"
+              parent="account.account_reports_taxes_and_fiscal_menu"
+              sequence="4"
+    />
+
+    <menuitem id="menu_action_account_report_mod_420"
+              name="Tax Report (Mod 420) ES"
+              action="action_account_report_mod_420"
+              parent="account.account_reports_taxes_and_fiscal_menu"
+              sequence="7"
+    />
+</odoo>
