@@ -161,6 +161,11 @@ done
 BWRAP=(
   # Read-write bin (needed for Claude auto-updates). These 2 must already exists since they
   # contain the binaries.
+  # NOTE: ~/.local/bin/claude is a symlink to ~/.local/share/claude/versions/<version>.
+  # Claude auto-updates download a new binary under versions/ but cannot update the symlink
+  # because only the symlink itself is bind-mounted, not the parent ~/.local/bin/ directory.
+  # After an update, fix the symlink manually:
+  #   ln -sf ~/.local/share/claude/versions/<new-version> ~/.local/bin/claude
   --bind "$HOME/.local/bin/claude" "$HOME/.local/bin/claude"
   --bind "$HOME/.local/share/claude" "$HOME/.local/share/claude"
   --ro-bind-try "$HOME/.vscode" "$HOME/.vscode"
