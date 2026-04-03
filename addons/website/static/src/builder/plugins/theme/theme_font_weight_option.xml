@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="website.FontWeightPicker">
+    <BuilderRow
+        label="this.props.label"
+        level="this.props.level"
+        disabled="this.props.disabled"
+        tooltip="this.props.tooltip">
+        <BuilderSelect
+            action="'customizeWebsiteFontWeight'"
+            actionParam="this.actionParam"
+            disabled="this.props.disabled">
+            <BuilderSelectItem actionValue="null">
+                Default
+            </BuilderSelectItem>
+            <t t-foreach="this.props.weights" t-as="weight" t-key="weight.value">
+                <BuilderSelectItem actionValue="`${weight.value}`">
+                    <t t-out="weight.label + ' ' + weight.value"/>
+                </BuilderSelectItem>
+            </t>
+        </BuilderSelect>
+    </BuilderRow>
+</t>
+
+<t t-name="website.ThemeFontWeightOption">
+    <FontWeightPicker
+        label.translate="Font weight"
+        variable="this.props.regularVariable"
+        weights="this.state.availableWeights"/>
+    <FontWeightPicker
+        t-if="this.props.lightVariable"
+        label.translate="Light"
+        level="1"
+        variable="this.props.lightVariable"
+        weights="this.state.availableWeights"/>
+    <FontWeightPicker
+        t-if="this.props.boldVariable"
+        label.translate="Bold"
+        level="1"
+        variable="this.props.boldVariable"
+        weights="this.state.availableWeights"
+        disabled="this.isBoldDisabled"
+        tooltip="this.boldTooltip"/>
+</t>
+
+</templates>

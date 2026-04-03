@@ -50,6 +50,7 @@ export function isBold(node) {
         node,
         (el) => isBlock(el) || +getComputedStyle(el).fontWeight !== fontWeight
     );
+    // TODO DUAU: we will detect bold even when officially it's not :(
     return fontWeight > 500 || fontWeight > +getComputedStyle(referenceElement).fontWeight;
 }
 

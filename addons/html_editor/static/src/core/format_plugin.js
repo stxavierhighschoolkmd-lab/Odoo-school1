@@ -145,6 +145,7 @@ export class FormatPlugin extends Plugin {
                 groupId: "decoration",
                 namespaces: ["compact", "expanded"],
                 commandId: "formatBold",
+                // bold is detected even without the fw-bold
                 isActive: isFormatted(this, "bold"),
                 isDisabled: (sel, nodes) => nodes.some((node) => !isStylable(node)),
             },
