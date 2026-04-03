@@ -16,11 +16,11 @@ export class CalendarListModel extends listView.Model {
         const filters = params?.context?.calendar_filters;
         const emptyDomain = Array.isArray(params?.domain) && params.domain.length == 0;
         if (filters && emptyDomain) {
-            const selectedPartnerIds = await this.orm.call(
-                "res.users",
-                "get_selected_calendars_partner_ids",
-                [[user.userId], filters["user"]]
-            );
+            const selectedPartnerIds = filters.temporary
+                ? filters.partner_ids || []
+                : await this.orm.call("res.users", "get_selected_calendars_partner_ids", [
+                      [user.userId], filters["user"],
+                  ]);
             // Filter attendees to be shown if 'everybody' filter isn't active.
             if (!filters["all"]) {
                 params.domain.push(["partner_ids", "in", selectedPartnerIds]);

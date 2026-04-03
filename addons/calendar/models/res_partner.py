@@ -98,9 +98,10 @@ class ResPartner(models.Model):
         partner_ids.append(self.env.user.partner_id.id)
         action = self.env["ir.actions.actions"]._for_xml_id("calendar.action_calendar_event")
         action['context'] = {
+            'search_default_partner_ids': self.ids,
             'default_partner_ids': partner_ids,
+            'calendar_temporary_filter': True,
         }
-        action['domain'] = ['|', ('id', 'in', self._compute_meeting()[self.id]), ('partner_ids', 'in', self.ids)]
         return action
 
     def _get_busy_calendar_events(self, start_datetime, end_datetime):

@@ -15,6 +15,8 @@ export class AttendeeCalendarModel extends CalendarModel {
         super.setup(...arguments);
         this.dialog = services.dialog;
         this.rpc = rpc;
+        this.activeTemporaryPartnerIds = null;
+        this.visibleTemporaryPartnerIds = null;
     }
 
     /**
@@ -38,6 +40,104 @@ export class AttendeeCalendarModel extends CalendarModel {
 
     get attendees() {
         return this.data.attendees;
+    }
+
+    uniquePartnerIds(partnerIds) {
+        return [...new Set(partnerIds.filter(Boolean))];
+    }
+
+    getPartnerFilterIds(filters, { activeOnly = false } = {}) {
+        return this.uniquePartnerIds(
+            filters
+                .filter(
+                    (filter) =>
+                        filter.type !== "all" && filter.value && (!activeOnly || filter.active)
+                )
+                .map((filter) => filter.value)
+        );
+    }
+
+    isTemporaryPartnerFilterMode(fieldName) {
+        return fieldName === "partner_ids" && !!this.meta?.context?.calendar_temporary_filter;
+    }
+
+    getDefaultTemporaryPartnerFilterIds() {
+        return this.uniquePartnerIds(this.meta?.context?.default_partner_ids || []);
+    }
+
+    updateCalendarFiltersContext(filters = []) {
+        const activePartnerIds = this.getPartnerFilterIds(filters, { activeOnly: true });
+        const isTemporaryPartnerFilterMode = this.isTemporaryPartnerFilterMode("partner_ids");
+        if (isTemporaryPartnerFilterMode) {
+            this.activeTemporaryPartnerIds = activePartnerIds;
+        }
+        user.updateContext({
+            calendar_filters: {
+                all: filters.length > 0 && filters.every((filter) => filter.active),
+                user: filters.find((filter) => filter.type === "user")?.active ?? false,
+                temporary: isTemporaryPartnerFilterMode,
+                partner_ids: activePartnerIds,
+            },
+        });
+    }
+
+    makeTemporaryPartnerFilter(partnerId, label) {
+        return {
+            type: "temporary",
+            recordId: `temporary_${partnerId}`,
+            value: partnerId,
+            label,
+            active: true,
+            canRemove: false,
+            colorIndex: partnerId,
+            hasAvatar: !!partnerId,
+        };
+    }
+
+    async applyTemporaryPartnerFilters(filters) {
+        const visibleTemporaryPartnerIds =
+            this.visibleTemporaryPartnerIds ??
+            this.uniquePartnerIds([
+                ...this.getPartnerFilterIds(filters),
+                ...this.getDefaultTemporaryPartnerFilterIds(),
+            ]);
+        const activeTemporaryPartnerIds =
+            this.activeTemporaryPartnerIds ??
+            this.uniquePartnerIds([
+                ...this.getPartnerFilterIds(filters, { activeOnly: true }),
+                ...this.getDefaultTemporaryPartnerFilterIds(),
+            ]);
+        this.visibleTemporaryPartnerIds = visibleTemporaryPartnerIds;
+        const temporaryPartnerIdSet = new Set(activeTemporaryPartnerIds);
+        const updatedFilters = filters.map((filter) => ({
+            ...filter,
+            active: temporaryPartnerIdSet.has(filter.value),
+        }));
+        const existingPartnerIds = new Set(this.getPartnerFilterIds(updatedFilters));
+        const missingPartnerIds = visibleTemporaryPartnerIds.filter(
+            (partnerId) => !existingPartnerIds.has(partnerId)
+        );
+        if (!missingPartnerIds.length) {
+            return updatedFilters;
+        }
+        const partners = await this.orm.searchRead(
+            "res.partner",
+            [["id", "in", missingPartnerIds]],
+            ["display_name"],
+            {
+                context: { active_test: false },
+            }
+        );
+        const partnerById = new Map(partners.map((partner) => [partner.id, partner]));
+        for (const partnerId of missingPartnerIds) {
+            const filter = this.makeTemporaryPartnerFilter(
+                partnerId,
+                partnerById.get(partnerId)?.display_name || this.defaultFilterLabel
+            );
+            filter.active = temporaryPartnerIdSet.has(partnerId);
+            updatedFilters.push(filter);
+        }
+        return updatedFilters;
     }
 
     /**
@@ -78,14 +178,67 @@ export class AttendeeCalendarModel extends CalendarModel {
     async loadFilterSection(fieldName, filterInfo, previousSection) {
         const result = await super.loadFilterSection(fieldName, filterInfo, previousSection);
         if (result?.filters) {
-            user.updateContext({
-                calendar_filters: {
-                    all: result?.filters?.find((f) => f.type == "all")?.active ?? false,
-                    user: result?.filters?.find((f) => f.type == "user")?.active ?? false,
-                },
-            });
+            if (this.isTemporaryPartnerFilterMode(fieldName)) {
+                result.filters = await this.applyTemporaryPartnerFilters(result.filters);
+            }
+            this.updateCalendarFiltersContext(result.filters);
         }
         return result;
+    }
+
+    /**
+     * @override
+     */
+    async createFilter(fieldName, filterValue) {
+        if (!this.isTemporaryPartnerFilterMode(fieldName)) {
+            return super.createFilter(...arguments);
+        }
+        const filterValues = Array.isArray(filterValue) ? filterValue : [filterValue];
+        this.visibleTemporaryPartnerIds = this.uniquePartnerIds([
+            ...(this.visibleTemporaryPartnerIds || []),
+            ...filterValues,
+        ]);
+        this.activeTemporaryPartnerIds = this.uniquePartnerIds([
+            ...(this.activeTemporaryPartnerIds || []),
+            ...filterValues,
+        ]);
+        return super.createFilter(...arguments);
+    }
+
+    /**
+     * @override
+     */
+    async updateFilters(fieldName, filters, active) {
+        if (!this.isTemporaryPartnerFilterMode(fieldName)) {
+            return super.updateFilters(...arguments);
+        }
+        this.keepLast.add(Promise.resolve());
+        for (const filter of filters) {
+            filter.active = active;
+        }
+        this.updateCalendarFiltersContext(this.data.filterSections[fieldName]?.filters || []);
+        await this.debouncedLoad();
+    }
+
+    /**
+     * @override
+     */
+    async unlinkFilter(fieldName, recordId) {
+        if (this.isTemporaryPartnerFilterMode(fieldName)) {
+            const section = this.data.filterSections[fieldName];
+            const filter = section?.filters.find(
+                (currentFilter) => currentFilter.recordId === recordId
+            );
+            if (filter?.value) {
+                this.visibleTemporaryPartnerIds = (this.visibleTemporaryPartnerIds || []).filter(
+                    (partnerId) => partnerId !== filter.value
+                );
+                this.activeTemporaryPartnerIds = (this.activeTemporaryPartnerIds || []).filter(
+                    (partnerId) => partnerId !== filter.value
+                );
+            }
+        }
+        return super.unlinkFilter(...arguments);
     }
 
     /**

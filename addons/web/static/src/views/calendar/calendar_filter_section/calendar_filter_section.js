@@ -66,7 +66,7 @@ export class CalendarFilterSection extends Component {
     }
 
     getSortedFilters() {
-        const types = ["user", "record", "dynamic"];
+        const types = ["user", "record", "temporary", "dynamic"];
         return this.section.filters.slice().sort((a, b) => {
             if (a.type === b.type) {
                 const va = a.value ? -1 : 0;
