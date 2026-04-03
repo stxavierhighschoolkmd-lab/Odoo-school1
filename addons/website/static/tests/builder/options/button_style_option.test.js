@@ -1,4 +1,4 @@
-import { describe, expect, queryFirst, queryOne, test } from "@odoo/hoot";
+import { animationFrame, describe, expect, queryFirst, queryOne, test } from "@odoo/hoot";
 import {
     defineWebsiteModels,
     setupWebsiteBuilder,
@@ -72,4 +72,53 @@ test("keep current style when switching from button", async () => {
 
     expect(":iframe p > a").toHaveClass("btn btn-custom");
     expect(":iframe p > a").toHaveStyle(buttonSecondaryStyles, { inline: true });
+});
+
+test("should preview button styles in dropdown", async () => {
+    await setupWebsiteBuilder(
+        `<p>
+            <a href="#" class="btn btn-primary test-target">clickme</a>
+            <a href="#" class="btn btn-secondary test-target">clickme</a>
+        </p>`,
+        {
+            loadIframeBundles: true,
+        }
+    );
+
+    await contains(":iframe p > a.test-target").click();
+    // primary count=2 because it's shown both in dropdown list and trigger
+    expect(".o-hb-button-syle-preview-primary").toHaveCount(2);
+    expect(".o-hb-button-syle-preview-secondary").toHaveCount(1);
+    expect(".o-hb-button-syle-preview-custom").toHaveCount(1);
+
+    const primaryStyle = getComputedStyle(queryOne(":iframe .btn-primary.test-target"));
+    const secondaryStyle = getComputedStyle(queryOne(":iframe .btn-secondary.test-target"));
+    const previewVariables = [
+        "background-color",
+        "border",
+        "border-radius",
+        "color",
+        "font-family",
+        "font-weight",
+        "text-transform",
+    ];
+
+    previewVariables.forEach((v) => {
+        expect(".o-hb-button-syle-preview-primary").toHaveStyle(`${v}: ${primaryStyle[v]}`);
+        expect(".o-hb-button-syle-preview-secondary").toHaveStyle(`${v}: ${secondaryStyle[v]}`);
+    });
+});
+
+test("should have a button linking to theme tab", async () => {
+    await setupWebsiteBuilder(
+        '<p><a href="#" class="btn btn-primary test-target">clickme</a></p>',
+        {
+            loadIframeBundles: true,
+        }
+    );
+
+    await contains(":iframe p > a.test-target").click();
+    await contains("a.o-hb-button-style-btn-edit").click();
+    await animationFrame();
+    expect("button[data-name='theme']").toHaveClass("active");
 });

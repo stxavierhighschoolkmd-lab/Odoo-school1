@@ -18,6 +18,7 @@ import {
     getButtonSize,
     getButtonType,
 } from "@html_editor/utils/button_style";
+import { closestPath, findNode } from "@html_editor/utils/dom_traversal";
 
 export class ButtonStyleOptionPlugin extends Plugin {
     static id = "buttonStyleOption";
@@ -36,6 +37,7 @@ export class ButtonStyleOption extends BaseOptionComponent {
         BuilderNumberInput,
         BorderConfigurator,
     };
+    static dependencies = ["history"];
 
     buttonSizesData = BUTTON_SIZES;
     buttonShapesData = BUTTON_SHAPES;
@@ -43,16 +45,63 @@ export class ButtonStyleOption extends BaseOptionComponent {
 
     setup() {
         super.setup();
-
-        const editingElement = this.env.getEditingElement();
-        const computedStyle =
-            editingElement.ownerDocument.defaultView.getComputedStyle(editingElement);
         this.state = useDomState((el) => ({
+            buttonStyles: this.getButtonStyles(el),
+            buttonCombinationClass: this.findColorCombination(el),
             type: getButtonType(el),
-            textColor: computedStyle.color,
-            fillColor: computedStyle.backgroundColor,
-            border: computedStyle.border,
         }));
+    }
+
+    goToThemeTab() {
+        this.env.editColorCombination(
+            parseInt(this.state.buttonCombinationClass.replace("o_cc", ""))
+        );
+    }
+
+    getButtonStyles(el) {
+        const buttonVariants = {
+            primary: "btn-primary",
+            secondary: "btn-secondary",
+        };
+        const previewVariables = [
+            "background-color",
+            "border",
+            "border-radius",
+            "color",
+            "font-family",
+            "font-weight",
+            "text-transform",
+        ];
+
+        const buttonContainerEl = el.parentElement;
+        const styles = { primary: "", secondary: "", custom: "" };
+        for (const [variantName, variantClass] of Object.entries(buttonVariants)) {
+            const tempButtonEl = document.createElement("a");
+            tempButtonEl.className = `btn ${variantClass}`;
+            this.dependencies.history.ignoreDOMMutations(() =>
+                buttonContainerEl.appendChild(tempButtonEl)
+            );
+            const computedStyle = getComputedStyle(tempButtonEl);
+            for (const style of previewVariables) {
+                const value = computedStyle.getPropertyValue(style);
+                if (value) {
+                    styles[variantName] += `${style}: ${value};`;
+                }
+            }
+            this.dependencies.history.ignoreDOMMutations(() => tempButtonEl.remove());
+        }
+        return styles;
+    }
+
+    findColorCombination(el) {
+        // Crawl the DOM upwards until a cc class is found, otherwise return cc1
+        const ccClasses = ["o_cc1", "o_cc2", "o_cc3", "o_cc4", "o_cc5"];
+        let matchedClass;
+        findNode(closestPath(el), (node) => {
+            matchedClass = ccClasses.find((cls) => node.classList?.contains(cls));
+            return !!matchedClass;
+        });
+        return matchedClass !== undefined ? matchedClass : ccClasses[0];
     }
 }
 
