@@ -16,6 +16,7 @@ class WebsiteSaleCartPayment(PaymentHttpCommon, WebsiteSaleCommon):
     def setUpClass(cls):
         super().setUpClass()
 
+<<<<<<< 400b7b20b57ada0d9b9863948fef6392de590aed
         cls.tx = cls.env["payment.transaction"].create({
             "payment_method_id": cls.payment_method_id,
             "amount": cls.amount,
@@ -24,6 +25,25 @@ class WebsiteSaleCartPayment(PaymentHttpCommon, WebsiteSaleCommon):
             "reference": cls.reference,
             "operation": "online_redirect",
             "partner_id": cls.partner.id,
+||||||| a16bc72c26c0b597673746e8c751662236a5bb65
+        cls.tx = cls.env['payment.transaction'].create({
+            'payment_method_id': cls.payment_method_id,
+            'amount': cls.amount,
+            'currency_id': cls.currency.id,
+            'provider_id': cls.provider.id,
+            'reference': cls.reference,
+            'operation': 'online_redirect',
+            'partner_id': cls.partner.id,
+=======
+        cls.tx = cls.env['payment.transaction'].create({
+            'payment_method_id': cls.payment_method_id,
+            'amount': cls.amount,
+            'currency_id': cls.currency.id,
+            'provider_id': cls.provider.id,
+            'reference': cls.reference,
+            'operation': 'online_redirect',
+            'partner_id': cls.cart.partner_id.id,
+>>>>>>> 55fdfb67590d5b71d25e59c9790675b5e6683e65
         })
         cls.cart.write({"transaction_ids": [Command.set([cls.tx.id])]})
 
@@ -79,3 +99,23 @@ class WebsiteSaleCartPayment(PaymentHttpCommon, WebsiteSaleCommon):
                 salesperson,
                 "Salesperson should get assigned when sending payment confirmation mail",
             )
+
+    def test_payment_archives_customer_if_automatic_invoice(self):
+        # Async emails must be disabled otherwise invoice (and partner archiving) will be handled in
+        # a cron.
+        self.env["ir.config_parameter"].set_bool("sale.async_emails", False)
+        self.env["ir.config_parameter"].set_bool("sale.automatic_invoice", True)
+        self.tx._set_done()
+        self.tx._post_process()
+        self.assertFalse(self.cart.partner_id.active)
+
+    def test_payment_doesnt_archive_partner_if_manual_invoicing(self):
+        """Customers shouldn't be archived if automatic invoice is disabled, otherwise their address
+        won't be considered when sending the invoice later on."""
+        # Async emails must be disabled otherwise invoice (and partner archiving) will be handled in
+        # a cron.
+        self.env["ir.config_parameter"].set_bool("sale.async_emails", False)
+        self.env["ir.config_parameter"].set_bool("sale.automatic_invoice", False)
+        self.tx._set_done()
+        self.tx._post_process()
+        self.assertTrue(self.cart.partner_id.active)

@@ -43,4 +43,56 @@ class TestSaleOrder(WebsiteSaleCommon):
         self.cart.action_confirm()
         invoice = self.cart._create_invoices()
         self.assertTrue(self.cart.website_id)
+<<<<<<< 400b7b20b57ada0d9b9863948fef6392de590aed
         self.assertEqual(self.cart.website_id, invoice.website_id)
+||||||| a16bc72c26c0b597673746e8c751662236a5bb65
+        self.assertEqual(
+            self.cart.website_id,
+            invoice.website_id,
+        )
+=======
+        self.assertEqual(
+            self.cart.website_id,
+            invoice.website_id,
+        )
+
+    def test_unregistered_customer_archiving(self):
+        self.cart._archive_partner_if_no_user()
+        self.assertFalse(self.cart.partner_id.active)
+
+        # Customers with parent company record (if a parent_name is provided)
+        customer = self.env["res.partner"].create({"parent_name": "Company", "name": "Cuzco"})
+        billing = self.env["res.partner"].create({
+            "parent_id": customer.parent_id.id,
+            "type": "invoice",
+            "name": "Cuzco Billing",
+        })
+        cart = self._create_so(partner_id=customer.id)
+        self.assertEqual(cart.partner_invoice_id, billing)
+
+        cart._archive_partner_if_no_user()
+        self.assertFalse(customer.active)
+        self.assertFalse(billing.active)
+        self.assertFalse(customer.parent_id.active)
+
+        # Customers without a parent company.
+        customer = self.env["res.partner"].create({"name": "Simple"})
+        billing = self.env["res.partner"].create({
+            "parent_id": customer.id,
+            "type": "invoice",
+            "name": "Simple Billing",
+        })
+        cart = self._create_so(partner_id=customer.id)
+        self.assertEqual(cart.partner_invoice_id, billing)
+
+        cart._archive_partner_if_no_user()
+        self.assertFalse(customer.active)
+        self.assertFalse(billing.active)
+
+    def test_customer_archiving_if_has_user(self):
+        self._create_new_portal_user(login="whatever", partner_id=self.cart.partner_id.id)
+        self.cart._archive_partner_if_no_user()
+        self.assertTrue(
+            self.cart.partner_id.active, "Registered customers shouldn't be archived on payment"
+        )
+>>>>>>> 55fdfb67590d5b71d25e59c9790675b5e6683e65
