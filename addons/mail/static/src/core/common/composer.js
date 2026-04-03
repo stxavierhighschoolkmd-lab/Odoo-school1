@@ -668,10 +668,13 @@ export class Composer extends Component {
         return {};
     }
 
-    async onClickFullComposerGetAction() {
+    async onClickFullComposerGetAction(message) {
         this.props.composer.restoredFromFullComposer = false;
-        const allRecipients = [...this.thread.suggestedRecipients];
-        if (this.props.type !== "note") {
+        const isEditing = !!message;
+        const allRecipients = isEditing
+            ? message.partner_ids
+            : [...this.thread.suggestedRecipients];
+        if (!isEditing && this.props.type !== "note") {
             allRecipients.push(...this.thread.additionalRecipients);
             // auto-create partners:
             const newPartners = allRecipients.filter((recipient) => !recipient.partner_id);
@@ -694,35 +697,52 @@ export class Composer extends Component {
                 }
             }
         }
-        const attachmentIds = this.props.composer.attachments.map((attachment) => attachment.id);
+        const attachmentIds = isEditing
+            ? message.attachment_ids.map((a) => a.id)
+            : this.props.composer.attachments.map((attachment) => attachment.id);
         let default_body = this.props.composer.composerHtml;
-        if (isHtmlEmpty(default_body)) {
-            const composer = toRaw(this.props.composer);
-            // Reset signature when recovering an empty body.
-            composer.emailAddSignature = true;
+        if (!isEditing) {
+            if (isHtmlEmpty(default_body)) {
+                const composer = toRaw(this.props.composer);
+                // Reset signature when recovering an empty body.
+                composer.emailAddSignature = true;
+            }
+            const signature = this.thread.effectiveSelf.main_user_id?.getSignatureBlock();
+            default_body = this.formatDefaultBodyForFullComposer(
+                default_body,
+                this.props.composer.emailAddSignature ? signature : ""
+            );
+        } else {
+            const doc = new DOMParser().parseFromString(message.body, "text/html");
+            doc.querySelector("span.o-mail-Message-edited")?.remove();
+            default_body = markup(doc.body.innerHTML);
         }
-        const signature = this.thread.effectiveSelf.main_user_id?.getSignatureBlock();
-        default_body = this.formatDefaultBodyForFullComposer(
-            default_body,
-            this.props.composer.emailAddSignature ? signature : ""
-        );
         const context = {
             default_attachment_ids: attachmentIds,
             default_body,
             default_email_add_signature: false,
-            default_model: this.thread.model,
-            default_partner_ids:
-                this.props.type === "note"
-                    ? []
-                    : allRecipients.map((recipient) => recipient.partner_id),
-            default_res_ids: [this.thread.id],
-            default_subtype_xmlid: this.props.type === "note" ? "mail.mt_note" : "mail.mt_comment",
+            default_model: isEditing ? message.thread.model : this.thread.model,
+            default_partner_ids: isEditing
+                ? message.partner_ids.map((p) => p.id)
+                : this.props.type === "note"
+                ? []
+                : allRecipients.map((recipient) => recipient.partner_id),
+            default_res_ids: isEditing ? [message.thread.id] : [this.thread.id],
+            default_subtype_xmlid:
+                this.props.type === "note" || (isEditing && message.isNote)
+                    ? "mail.mt_note"
+                    : "mail.mt_comment",
             clicked_on_full_composer: true,
+            is_editing_message: isEditing,
+            default_message_id: isEditing ? message.id : undefined,
             // Changed in 18.2+: finally get rid of autofollow, following should be done manually
             ...this.fullComposerAdditionalContext,
         };
         const action = {
-            name: this.props.type === "note" ? _t("Log note") : _t("Compose Email"),
+            name:
+                this.props.type === "note" || (isEditing && message.isNote)
+                    ? _t("Log note")
+                    : _t("Compose Email"),
             type: "ir.actions.act_window",
             res_model: "mail.compose.message",
             view_mode: "form",
@@ -737,7 +757,7 @@ export class Composer extends Component {
                 const accidentalDiscard = args?.dismiss;
                 const isDiscard = accidentalDiscard || args?.special;
                 // otherwise message is posted (args === [undefined])
-                if (!isDiscard && this.props.composer.thread.model === "mail.box") {
+                if (!isDiscard && this.props.composer.thread?.model === "mail.box") {
                     this.notifySendFromMailbox();
                 }
                 if (accidentalDiscard) {
@@ -753,6 +773,9 @@ export class Composer extends Component {
                     });
                 } else {
                     this.clear();
+                    if (!isDiscard && isEditing && message) {
+                        message.exitEditMode(message.thread);
+                    }
                 }
                 this.props.composer.replyToMessage = undefined;
                 this.onCloseFullComposerCallback(isDiscard);
@@ -768,8 +791,9 @@ export class Composer extends Component {
         return { action, options };
     }
 
-    async onClickFullComposer(ev) {
-        const { action, options } = await this.onClickFullComposerGetAction();
+    async onClickFullComposer(params = {}) {
+        const { message } = params;
+        const { action, options } = await this.onClickFullComposerGetAction(message);
         await this.env.services.action.doAction(action, options);
         this.state.isFullComposerOpen = true;
     }

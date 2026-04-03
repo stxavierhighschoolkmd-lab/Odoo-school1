@@ -132,7 +132,6 @@ registerComposerAction("upload-files", {
 });
 registerComposerAction("open-full-composer", {
     condition: ({ composer, owner }) =>
-        !composer.message &&
         owner.props.showFullComposer &&
         composer.targetThread &&
         composer.targetThread.model !== "discuss.channel" &&
@@ -144,7 +143,11 @@ registerComposerAction("open-full-composer", {
     isActive: ({ composer, owner }) =>
         (composer.restoredFromFullComposer && !owner.state.isFullComposerOpen) || undefined,
     name: _t("Open Full Composer"),
-    onSelected: ({ owner }) => owner.onClickFullComposer(),
+    onSelected: ({ composer, owner }) => {
+        owner.onClickFullComposer({
+            message: composer.message,
+        });
+    },
     sequence: 30,
     tags: ({ composer, owner }) =>
         composer.restoredFromFullComposer && !owner.state.isFullComposerOpen

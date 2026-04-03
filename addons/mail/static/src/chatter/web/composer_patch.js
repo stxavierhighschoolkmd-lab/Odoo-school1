@@ -50,8 +50,8 @@ patch(Composer.prototype, {
         return super.setup();
     },
 
-    async onClickFullComposerGetAction() {
-        const res = await super.onClickFullComposerGetAction();
+    async onClickFullComposerGetAction(message) {
+        const res = await super.onClickFullComposerGetAction(message);
         if (this.props.withMessageFields && this.props.thread.showSubjectInSmallComposer) {
             res.action.context.default_subject = this.subject;
         }

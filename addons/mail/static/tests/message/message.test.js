@@ -334,8 +334,9 @@ test("Basic list of edit message actions in chatter", async () => {
     await click(".o-mail-Message [title='Edit']");
     await contains(".o-mail-Message .o-mail-Composer.o-focused");
     await click(".o-mail-Message .o-mail-Composer button[title='More Actions']");
-    await contains(".dropdown-menu .dropdown-item", { count: 1 });
+    await contains(".dropdown-menu .dropdown-item", { count: 2 });
     await contains(".dropdown-menu .dropdown-item:has(:text('Attach Files'))");
+    await contains(".dropdown-menu .dropdown-item:has(:text('Open Full Composer'))");
 });
 
 test("Cursor is at end of composer input on edit", async () => {
