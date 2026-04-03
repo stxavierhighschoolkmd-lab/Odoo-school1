@@ -40,7 +40,7 @@ test("Test request creator buttons", async() => {
 
     ResUsers._records = [
         ...ResUsers._records,
-        { 'id': 100, 'name': "User 1", 'employee_id': 100 },
+        { 'id': 100, 'name': "User 1", 'employee_ids': [100] },
     ]
 
     onRpc("get_mandatory_days", () => ({}));
