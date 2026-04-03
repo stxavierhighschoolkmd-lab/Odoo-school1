@@ -142,6 +142,7 @@ class HrLeave(models.Model):
                 ('requires_allocation', '=', False),
                 ('has_valid_allocation', '=', True),
         ]""",
+        index='btree_not_null',
         tracking=True)
     work_entry_type_requires_allocation = fields.Boolean(related="work_entry_type_id.requires_allocation")
     work_entry_type_filter_domain = fields.Json(compute="_compute_work_entry_type_filter_domain")
