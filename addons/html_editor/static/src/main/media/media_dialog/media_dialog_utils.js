@@ -29,6 +29,7 @@ export async function renderAndSaveMedia({
     multiImages,
     saveFunction,
     aiChannelId = null,
+    copiedDataAttributes = [],
 }) {
     const elements = await renderMedia({
         orm,
@@ -39,6 +40,7 @@ export async function renderAndSaveMedia({
         extraClassesToAdd,
         extraClassesToRemove,
         aiChannelId,
+        copiedDataAttributes,
     });
     if (multiImages) {
         await saveFunction(elements, selectedMedia, activeTab, oldMediaNode);
@@ -67,6 +69,7 @@ export async function renderMedia({
     extraClassesToAdd,
     extraClassesToRemove,
     aiChannelId = null,
+    copiedDataAttributes = [],
 }) {
     const elements = await availableTabs[activeTab].Component.createElements(selectedMedia, {
         orm: orm,
@@ -79,31 +82,21 @@ export async function renderMedia({
                 element.setAttribute("style", style);
             }
             if (activeTab === TABS.IMAGES.id) {
-                if (oldMediaNode.dataset.shape) {
-                    element.dataset.shape = oldMediaNode.dataset.shape;
-                }
-                if (oldMediaNode.dataset.shapeColors) {
-                    element.dataset.shapeColors = oldMediaNode.dataset.shapeColors;
-                }
-                if (oldMediaNode.dataset.shapeFlip) {
-                    element.dataset.shapeFlip = oldMediaNode.dataset.shapeFlip;
-                }
-                if (oldMediaNode.dataset.shapeRotate) {
-                    element.dataset.shapeRotate = oldMediaNode.dataset.shapeRotate;
-                }
-                if (oldMediaNode.dataset.hoverEffect) {
-                    element.dataset.hoverEffect = oldMediaNode.dataset.hoverEffect;
-                }
-                if (oldMediaNode.dataset.hoverEffectColor) {
-                    element.dataset.hoverEffectColor = oldMediaNode.dataset.hoverEffectColor;
-                }
-                if (oldMediaNode.dataset.hoverEffectStrokeWidth) {
-                    element.dataset.hoverEffectStrokeWidth =
-                        oldMediaNode.dataset.hoverEffectStrokeWidth;
-                }
-                if (oldMediaNode.dataset.hoverEffectIntensity) {
-                    element.dataset.hoverEffectIntensity =
-                        oldMediaNode.dataset.hoverEffectIntensity;
+                const dataAttributes = [
+                    "shape",
+                    "shapeColors",
+                    "shapeFlip",
+                    "shapeRotate",
+                    "hoverEffect",
+                    "hoverEffectColor",
+                    "hoverEffectStrokeWidth",
+                    "hoverEffectIntensity",
+                    ...copiedDataAttributes,
+                ];
+                for (const attr of dataAttributes) {
+                    if (oldMediaNode.dataset[attr]) {
+                        element.dataset[attr] = oldMediaNode.dataset[attr];
+                    }
                 }
             }
         }

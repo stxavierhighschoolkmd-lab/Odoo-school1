@@ -24,6 +24,18 @@ class IrQwebFieldContact(models.AbstractModel):
 class IrQwebFieldHtml(models.AbstractModel):
     _inherit = 'ir.qweb.field.html'
 
+    def _clear_translate_attributes(self, attrib):
+        for att in list(attrib):
+            if att.endswith('.translate'):
+                attrib[att.removesuffix('.translate')] = attrib.pop(att)
+        return attrib
+
+    def _post_processing_att(self, tag, attrib):
+        self.env['ir.qweb']._copy_translate_attributes(attrib)
+        attrib = super()._post_processing_att(tag, attrib)
+        attrib = self._clear_translate_attributes(attrib)
+        return attrib
+
     @api.model
     def value_to_html(self, value, options):
         res = super().value_to_html(value, options)

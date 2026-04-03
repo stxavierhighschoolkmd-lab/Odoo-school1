@@ -37,6 +37,11 @@ export class ImageToolOptionPlugin extends Plugin {
         on_will_save_media_dialog_handlers: async (elements, { node }) => {
             for (const image of elements) {
                 if (image && image.tagName === "IMG") {
+                    for (const override of this.getResource("on_will_save_media_image_overrides")) {
+                        if (await override(node, image)) {
+                            return;
+                        }
+                    }
                     const updateImageAttributes =
                         await this.dependencies.imagePostProcess.processImage({
                             img: image,
@@ -284,3 +289,4 @@ export class AltAction extends BuilderAction {
 }
 
 registry.category("builder-plugins").add(ImageToolOptionPlugin.id, ImageToolOptionPlugin);
+registry.category("translation-plugins").add(ImageToolOptionPlugin.id, ImageToolOptionPlugin);

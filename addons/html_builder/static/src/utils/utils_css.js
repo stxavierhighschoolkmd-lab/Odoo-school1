@@ -208,9 +208,10 @@ export function areCssValuesEqual(value1, value2, cssProp, htmlStyle) {
     }
     const numValue1 = data[0];
     // Zero values don't need unit conversion (0px === 0rem === 0em === 0)
-    const numValue2 = parseFloat(numValue1) === 0
-        ? getNumericAndUnit(value2)[0]
-        : convertValueToUnit(value2, data[1], htmlStyle);
+    const numValue2 =
+        parseFloat(numValue1) === 0
+            ? getNumericAndUnit(value2)[0]
+            : convertValueToUnit(value2, data[1], htmlStyle);
     return Math.abs(numValue1 - numValue2) < Number.EPSILON;
 }
 /**
@@ -320,7 +321,10 @@ export function shouldEditableMediaBeEditable(mediaEl) {
     // This case is complex and the solution to support it is not
     // perfect: we mark those media with a class and check that they
     // are descendant of a savable.
-    return mediaEl.parentElement && mediaEl.parentElement.closest(".o_savable");
+    return (
+        (mediaEl.parentElement && !!mediaEl.parentElement.closest(".o_savable")) ||
+        mediaEl.matches(".o_savable_attribute")
+    );
 }
 /**
  * Returns the label of a link element.
@@ -343,10 +347,10 @@ export function forwardToThumbnail(imgEl) {
         if (carouselInnerEl && carouselItemEl) {
             const imageIndex = [...carouselInnerEl.children].indexOf(carouselItemEl);
             const miniatureEl = carouselEl.querySelector(
-                `.carousel-indicators [data-bs-slide-to="${imageIndex}"]`
+                `.carousel-indicators [data-bs-slide-to="${imageIndex}"] img`
             );
-            if (miniatureEl && miniatureEl.style.backgroundImage) {
-                miniatureEl.style.backgroundImage = `url(${imgEl.getAttribute("src")})`;
+            if (miniatureEl) {
+                miniatureEl.setAttribute("src", imgEl.getAttribute("src"));
             }
         }
     }

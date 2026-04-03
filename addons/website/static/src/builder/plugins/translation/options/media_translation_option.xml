@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="website.ImgTranslationOption">
+    <BuilderRow label.translate="Media">
+        <BuilderButton
+            action="'translateMediaSrc'"
+            actionParam="'images'"
+            label.translate="Replace"
+            type="'success'"
+            preview="false"/>
+    </BuilderRow>
+</t>
+
+<t t-name="website.VideoTranslationOption">
+    <BuilderRow label.translate="Video">
+        <BuilderButton
+            action="'translateMediaSrc'"
+            actionParam="'videos'"
+            label.translate="Replace"
+            type="'success'"
+            preview="false"/>
+    </BuilderRow>
+</t>
+
+<t t-name="website.DocumentTranslationOption">
+    <BuilderRow label.translate="Document">
+        <BuilderButton
+            action="'translateMediaSrc'"
+            actionParam="'documents'"
+            label.translate="Replace"
+            type="'success'"
+            preview="false"/>
+    </BuilderRow>
+</t>
+
+<t t-inherit="website.TranslationBuilderOptions" t-inherit-mode="extension">
+    <xpath expr="//t[@id='translation_options']" position="before">
+        <img_translation_option
+            template="website.ImgTranslationOption"
+            t-att-selector="translateImageOptionSelector"
+            editableOnly="false"/>
+        <video_translation_option
+            template="website.VideoTranslationOption"
+            t-att-selector="translateVideoOptionSelector"
+            editableOnly="false"/>
+        <document_translation_option
+            template="website.DocumentTranslationOption"
+            t-att-selector="translateDocumentOptionSelector"
+            editableOnly="false"/>
+    </xpath>
+</t>
+
+</templates>

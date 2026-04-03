@@ -7,6 +7,11 @@ import { registry } from "@web/core/registry";
  * @property { WebsiteSavePlugin['saveView'] } saveView
  */
 
+const ATTRS_TO_TRANSLATE = {
+    img: ["src", "srcset"],
+    ".media_iframe_video": ["data-oe-expression"],
+};
+
 export class WebsiteSavePlugin extends Plugin {
     static id = "websiteSavePlugin";
     static shared = ["saveView"];
@@ -15,6 +20,21 @@ export class WebsiteSavePlugin extends Plugin {
     resources = {
         on_will_save_element_handlers: this.saveView.bind(this),
     };
+
+    setTranslateAttributes(rootEl) {
+        for (const elType of Object.keys(ATTRS_TO_TRANSLATE)) {
+            const attrs = ATTRS_TO_TRANSLATE[elType];
+            const translateSelector = attrs.map((attr) => `${elType}[${attr}]`).join(", ");
+            for (const el of rootEl.querySelectorAll(translateSelector)) {
+                for (const attr of attrs) {
+                    if (el.getAttribute(attr)) {
+                        el.setAttribute(`${attr}.translate`, el.getAttribute(attr));
+                        el.removeAttribute(attr);
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * Saves one (dirty) element of the page.
@@ -37,6 +57,14 @@ export class WebsiteSavePlugin extends Plugin {
             };
         }
 
+        // Only translate attributes within arch views (website pages) or html
+        // fields. Any other type should not be translated.
+        if (
+            (el.dataset.oeModel === "ir.ui.view" && el.dataset.oeField === "arch") ||
+            el.dataset.oeType === "html"
+        ) {
+            this.setTranslateAttributes(el);
+        }
         escapeTextNodes(el);
         return this.services.orm.call(
             "ir.ui.view",
