@@ -530,7 +530,6 @@ export class PosOrderline extends Base {
             })
         );
         accountTaxHelpers.add_tax_details_in_base_line(baseLine, company);
-        accountTaxHelpers.round_base_lines_tax_details([baseLine], company);
 
         const baseLineNoDiscount = accountTaxHelpers.prepare_base_line_for_taxes_computation(
             this,
@@ -541,25 +540,25 @@ export class PosOrderline extends Base {
             })
         );
         accountTaxHelpers.add_tax_details_in_base_line(baseLineNoDiscount, company);
-        accountTaxHelpers.round_base_lines_tax_details([baseLineNoDiscount], company);
 
         // Tax details.
         const taxDetails = {};
         for (const taxData of baseLine.tax_details.taxes_data) {
             taxDetails[taxData.tax.id] = {
-                amount: taxData.tax_amount_currency,
-                base: taxData.base_amount_currency,
+                amount: taxData.raw_tax_amount_currency,
+                base: taxData.raw_base_amount_currency,
             };
         }
 
         return {
-            priceWithTax: baseLine.tax_details.total_included_currency,
-            priceWithoutTax: baseLine.tax_details.total_excluded_currency,
-            priceWithTaxBeforeDiscount: baseLineNoDiscount.tax_details.total_included_currency,
-            priceWithoutTaxBeforeDiscount: baseLineNoDiscount.tax_details.total_excluded_currency,
+            priceWithTax: baseLine.tax_details.raw_total_included_currency,
+            priceWithoutTax: baseLine.tax_details.raw_total_excluded_currency,
+            priceWithTaxBeforeDiscount: baseLineNoDiscount.tax_details.raw_total_included_currency,
+            priceWithoutTaxBeforeDiscount:
+                baseLineNoDiscount.tax_details.raw_total_excluded_currency,
             tax:
-                baseLine.tax_details.total_included_currency -
-                baseLine.tax_details.total_excluded_currency,
+                baseLine.tax_details.raw_total_included_currency -
+                baseLine.tax_details.raw_total_excluded_currency,
             taxDetails: taxDetails,
             taxesData: baseLine.tax_details.taxes_data,
         };
