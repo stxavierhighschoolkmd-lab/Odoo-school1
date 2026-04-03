@@ -30,6 +30,7 @@ Generate tasks in Project app from a form published on your website. This module
             'website/static/src/js/utils.js',
             'web/static/src/core/autocomplete/*',
             'website/static/src/components/autocomplete_with_pages/*',
+            'website/static/src/components/googleplaces_autocomplete/*',
         ],
     },
     'license': 'LGPL-3',

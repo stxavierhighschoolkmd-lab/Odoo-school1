@@ -12,12 +12,6 @@ options.registry.GoogleMap = options.Class.extend({
     /**
      * @see this.selectClass for parameters
      */
-    resetMapColor(previewMode, widgetValue, params) {
-        this.$target[0].dataset.mapColor = '';
-    },
-    /**
-     * @see this.selectClass for parameters
-     */
     setFormattedAddress(previewMode, widgetValue, params) {
         this.$target[0].dataset.pinAddress = params.gmapPlace.formatted_address;
     },

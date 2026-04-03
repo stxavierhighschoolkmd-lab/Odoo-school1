@@ -6,6 +6,7 @@ import { renderToElement } from "@web/core/utils/render";
 import { App, Component } from "@odoo/owl";
 import { templates } from "@web/core/assets";
 import { UrlAutoComplete } from "@website/components/autocomplete_with_pages/url_autocomplete";
+import { PlacesAutoComplete } from "@website/components/googleplaces_autocomplete/places_autocomplete";
 
 /**
  * Allows to load anchors from a page.
@@ -45,20 +46,20 @@ function loadAnchors(url, body) {
 }
 
 /**
- * Allows the given input to propose existing website URLs.
+ * Creates an Owl App for the given component, mounts it into a new container
+ * appended to the document body, and returns a cleanup function that destroys
+ * the app and removes the container.
  *
- * @param {HTMLInputElement} input
+ * @param {typeof Component} ComponentClass the OWL component to mount
+ * @param {Object} props
+ * @returns {Function} cleanup function
  */
-function autocompleteWithPages(input, options= {}) {
-    const owlApp = new App(UrlAutoComplete, {
+function mountAutocompleteComponent(ComponentClass, props) {
+    const owlApp = new App(ComponentClass, {
         env: Component.env,
         dev: Component.env.debug,
         templates,
-        props: {
-            options,
-            loadAnchors,
-            targetDropdown: input,
-        },
+        props,
         translatableAttributes: ["data-tooltip"],
         translateFn: _t,
     });
@@ -71,6 +72,35 @@ function autocompleteWithPages(input, options= {}) {
         owlApp.destroy();
         container.remove();
     }
+}
+
+/**
+ * Allows the given input to propose existing website URLs.
+ *
+ * @param {HTMLInputElement} input
+ * @param {Object} [options]
+ */
+function autocompleteWithPages(input, options = {}) {
+    return mountAutocompleteComponent(UrlAutoComplete, {
+        options,
+        loadAnchors,
+        targetDropdown: input,
+    });
+}
+
+/**
+ * Allows the given input to propose Google Places suggestions.
+ *
+ * @param {HTMLInputElement} input
+ * @param {Object} [options]
+ */
+function autocompleteWithGPS(input, options = {}) {
+    return mountAutocompleteComponent(PlacesAutoComplete, {
+        targetDropdown: input,
+        contentWindow: options.contentWindow,
+        onPlaceSelected: options.onPlaceSelected,
+        onError: options.onError,
+    });
 }
 
 /**
@@ -464,6 +494,7 @@ export function cloneContentEls(content, keepScripts = false) {
 export default {
     loadAnchors: loadAnchors,
     autocompleteWithPages: autocompleteWithPages,
+    autocompleteWithGPS: autocompleteWithGPS,
     onceAllImagesLoaded: onceAllImagesLoaded,
     prompt: prompt,
     sendRequest: sendRequest,
