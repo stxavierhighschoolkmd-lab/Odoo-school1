@@ -270,6 +270,51 @@
         </div>
     </t>
 
+    <t t-name="website.form_field_many2many_selection">
+        <t t-call="website.form_field">
+            <t t-if="!field.records">
+                <input
+                    class="form-control s_website_form_input"
+                    t-att-name="field.name"
+                    t-att-value="undefined"
+                    t-att-required="field.required || field.modelRequired || None"
+                    placeholder="No matching record!"
+                    disabled=""
+                />
+            </t>
+            <div t-else="" class="s_website_form_m2m_selection dropdown">
+                <select multiple="multiple" class="s_website_form_input d-none" t-att-id="field.id" t-att-name="field.name" t-att-required="field.required || field.modelRequired || None">
+                    <option t-if="field.allowEmpty" t-out="field.placeholder" class="s_website_form_empty_option" value=""/>
+                    <t t-foreach="field.records" t-as="record" t-key="record_index">
+                        <option t-out="record.display_name" t-att-id="field.id + record_index" t-att-value="record.id"
+                            t-att="{
+                                selected: record.selected and 'selected' or None,
+                            }"
+                        />
+                    </t>
+                </select>
+                <t t-set="hasSelected" t-value="field.records and field.records.some(r => r.selected)"/>
+                <div class="s_website_form_m2m_pills_container form-select d-flex flex-wrap align-items-center gap-1" role="button">
+                    <t t-foreach="field.records" t-as="record" t-key="record_index">
+                        <span t-if="record.selected" class="s_website_form_m2m_pill badge rounded-pill text-bg-primary" t-att-data-value="record.id">
+                            <span t-out="record.display_name"/>
+                            <i class="s_website_form_m2m_pill_remove fa fa-times ms-1 cursor-pointer"/>
+                        </span>
+                    </t>
+                    <span t-att-class="'s_website_form_m2m_placeholder text-muted' + (hasSelected ? ' d-none' : '')" t-out="field.placeholder"/>
+                </div>
+                <div class="dropdown-menu w-100 py-0">
+                    <t t-foreach="field.records" t-as="record" t-key="record_index">
+                        <div class="dropdown-item d-flex align-items-center px-3 py-2" t-att-data-value="record.id">
+                            <input type="checkbox" class="form-check-input me-2 mt-0 pe-none" t-att="{checked: record.selected and 'checked' or None}"/>
+                            <span class="user-select-none" t-out="record.display_name"/>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </t>
+    </t>
+
     <!-- Many2One Field -->
     <t t-name="website.form_field_many2one">
         <!-- Binary one2many -->
