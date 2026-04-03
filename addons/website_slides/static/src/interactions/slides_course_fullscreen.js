@@ -422,7 +422,10 @@ export class WebsiteSlidesFullscreen extends WebsiteSlidesCommon {
                     slideData.id
                 )}/image_1024`;
             } else if (slideData.category === "document") {
-                slideData.embedUrl = this.stringToElements(slideData.embedCode)[0]?.src;
+                slideData.embedUrl = this.stringToElements(slideData.embedCode)[0]?.src.replace(
+                    "/embed_external/",
+                    "/embed/"
+                );
             }
             // fill empty property to allow searching on it with list.filter(matcher)
             slideData.isQuiz = !!slideData.isQuiz;
@@ -625,7 +628,9 @@ export class WebsiteSlidesFullscreen extends WebsiteSlidesCommon {
     }
 }
 
-registry.category("public.interactions").add("website_slides.text_highlight", FullscreenTextHighlight);
+registry
+    .category("public.interactions")
+    .add("website_slides.text_highlight", FullscreenTextHighlight);
 registry
     .category("public.interactions")
     .add("website_slides.WebsiteSlidesFullscreen", WebsiteSlidesFullscreen);
