@@ -376,6 +376,10 @@ body {
         }
     }
 
+    header, section, footer {
+        word-break: break-word;
+    }
+
     #footer {
         & + .o_cookie_policy_link_container {
             margin-top: 1rem;
