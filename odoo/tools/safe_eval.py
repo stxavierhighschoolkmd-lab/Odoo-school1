@@ -567,6 +567,9 @@ Pre-wrapped modules are provided as attributes of `odoo.tools.safe_eval`.
     return d
 
 class wrap_module:
+
+    __register = set()
+
     def __init__(self, module, attributes):
         """Helper for wrapping a package/module to expose selected attributes
 
@@ -576,6 +579,7 @@ class wrap_module:
                                     are used as an ``attributes`` in case the
                                     corresponding item is a submodule
         """
+        self.__register.add(self)
         # builtin modules don't have a __file__ at all
         modfile = getattr(module, '__file__', '(built-in)')
         self._repr = f"<wrapped {module.__name__!r} ({modfile})>"
@@ -1106,28 +1110,19 @@ def add_monitoring(code):
 def _initialize_safe_whitelist():
     # Custom functions
     safe_whitelist.add_function('odoo.tools.safe_eval.<evaluated_code>.*')
-    # Wrapped modules
-    safe_whitelist.add_class('datetime.date')
-    safe_whitelist.add_class('datetime.datetime')
-    safe_whitelist.add_class('datetime.time')
-    safe_whitelist.add_class('datetime.timedelta')
-    safe_whitelist.add_class('datetime.timezone')
-    safe_whitelist.add_class('datetime.tzinfo')
-    safe_whitelist.add_class('dateutil.tz.tz.tzutc')
-    safe_whitelist.add_function('dateutil.parser.isoparser.isoparser.isoparse')
-    safe_whitelist.add_function('dateutil.parser._parser.parse')
-    safe_whitelist.add_class('dateutil.relativedelta.relativedelta')
-    safe_whitelist.add_class('dateutil.rrule.rrule')
-    safe_whitelist.add_class('dateutil.rrule.rruleset')
-    safe_whitelist.add_instance('dateutil.rrule._rrulestr')
-    safe_whitelist.add_function('json.dumps')
-    safe_whitelist.add_function('json.loads')
-    safe_whitelist.add_function('time.time')
-    safe_whitelist.add_function('time.strptime')
-    safe_whitelist.add_function('time.strftime')
-    safe_whitelist.add_function('time.sleep')
+    # Wrapped modules (automatically trust the attributes of the wrapped modules)
+    for wrapped_module in wrap_module._wrap_module__register:
+        for attr in vars(wrapped_module).values():
+            if isinstance(attr, (
+                FunctionType, MethodType, BuiltinMethodType,
+                MethodDescriptorType, MemberDescriptorType, GetSetDescriptorType,
+            )):
+                safe_whitelist.add_function(safe_whitelist.get_full_path(attr))
+            elif isinstance(attr, type):
+                safe_whitelist.add_class(safe_whitelist.get_full_path(attr))
+            elif type(attr) not in safe_whitelist.TRUSTED_CLASSES:
+                safe_whitelist.add_instance(safe_whitelist.get_full_path(type(attr)))
     # Monkey patches
-    safe_whitelist.add_class('odoo._monkeypatches.zoneinfo.ZoneInfo')
     safe_whitelist.add_function('odoo._monkeypatches.*')
     # Core
     safe_whitelist.add_class('odoo.addons.*')  # TODO: Restrict addons
