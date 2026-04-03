@@ -270,7 +270,8 @@ class ProductProduct(models.Model):
 
         for product in self:
             product.total_value = sum(total_value_by_company_id[c.id].get(product.id, 0) for c in self.env.companies)
-            product.avg_cost = product.total_value / product.qty_available if product.qty_available else std_price_by_company_id[self.env.company.id].get(product.id, product.standard_price)
+            quantity_available = product._with_valuation_context().qty_available
+            product.avg_cost = product.total_value / quantity_available if quantity_available else std_price_by_company_id[self.env.company.id].get(product.id, product.standard_price)
 
     @api.model_create_multi
     def create(self, vals_list):
