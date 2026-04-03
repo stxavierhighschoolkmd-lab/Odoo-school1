@@ -5,6 +5,9 @@
     'summary': "Monitor MRP account using project",
     'category': 'Services/Project',
     'depends': ['mrp_account', 'project_mrp'],
+    'data': [
+        'views/stock_picking_type_views.xml',
+    ],
     'demo': [
         'data/project_mrp_account_demo.xml',
     ],
