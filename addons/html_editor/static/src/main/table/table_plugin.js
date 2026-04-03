@@ -20,7 +20,13 @@ import {
     lastLeaf,
 } from "@html_editor/utils/dom_traversal";
 import { parseHTML } from "@html_editor/utils/html";
+<<<<<<< 8119107660d06cfcb92287fc1e56bd18069a293a
 import { DIRECTIONS, leftPos, rightPos, nodeSize } from "@html_editor/utils/position";
+||||||| ccbe9107b2e5d0193a482ada16873ce923338e4e
+import { leftPos, rightPos, nodeSize } from "@html_editor/utils/position";
+=======
+import { leftPos, rightPos, nodeSize, DIRECTIONS } from "@html_editor/utils/position";
+>>>>>>> 67a826268b4ad7c713f5b51ae5020b6195ce70f7
 import { withSequence } from "@html_editor/utils/resource";
 import { findInSelection } from "@html_editor/utils/selection";
 import { getColumnIndex, getRowIndex, getTableCells } from "@html_editor/utils/table";
@@ -111,6 +117,7 @@ export class TablePlugin extends Plugin {
         traversed_nodes_processors: this.adjustTraversedNodes.bind(this),
         move_node_whitelist_selectors: "table",
         normalize_handlers: this.distributeTableColorsToAllCells.bind(this),
+        overlay_selection_target_rect_providers: this.getTableSelectionRangeRect.bind(this),
     };
 
     setup() {
@@ -527,6 +534,25 @@ export class TablePlugin extends Plugin {
         }
 
         return false;
+    }
+
+    getTableSelectionRangeRect() {
+        const selection = this.dependencies.selection.getEditableSelection();
+        if (closestElement(selection.commonAncestorContainer, "table.o_selected_table")) {
+            let [startTd, endTd] = [
+                closestElement(selection.anchorNode, "td"),
+                closestElement(selection.focusNode, "td"),
+            ];
+            if (selection.direction === DIRECTIONS.LEFT) {
+                [startTd, endTd] = [endTd, startTd];
+            }
+            const startTdRect = startTd.getBoundingClientRect();
+            const endTdRect = endTd.getBoundingClientRect();
+            const { left, top } = startTdRect;
+            const { bottom, right } = endTdRect;
+            const rect = new DOMRect(left, top, right - left, bottom - top);
+            return rect;
+        }
     }
 
     /**
