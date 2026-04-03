@@ -11,7 +11,7 @@
             <t t-if="this.showNoContentHelper">
                 <ActionHelper noContentHelp="this.props.noContentHelp"/>
             </t>
-            <table t-attf-class="o_list_table table table-sm table-hover position-relative mb-0 {{this.props.list.isGrouped ? 'o_list_table_grouped' : 'o_list_table_ungrouped table-striped'}}" t-custom-ref="table">
+            <table t-attf-class="o_list_table table table-sm table-hover position-relative mb-0 {{this.isListGrouped ? 'o_list_table_grouped' : 'o_list_table_ungrouped table-striped'}}" t-custom-ref="table">
                 <thead>
                     <tr>
                         <th t-if="this.hasSelectors" class="o_list_record_selector o_list_controller align-middle pe-1 cursor-pointer" tabindex="-1" t-on-keydown="(ev) => this.onCellKeydown(ev)" t-on-click.stop="this.toggleSelection">
@@ -44,8 +44,21 @@
                             </th>
                             <th t-else="" t-on-keydown="(ev) => this.onCellKeydown(ev)" t-att-class="{'o_list_button w-print-0 p-print-0': column.type === 'button_group'}"/>
                         </t>
+                        <th
+                            class="o_count_header opacity-trigger-hover w-print-auto"
+                            t-att-class="this.getColumnClass(this.countColumn)"
+                            t-if="this.showCountColumn"
+                            t-on-click="() => this.onClickSortColumn(this.countColumn)"
+                            tabindex="-1"
+                        >
+                            <div class="d-flex align-items-center">
+                                <span class="d-block min-w-0 text-truncate flex-grow-1 flex-shrink-1 o_list_number_th" t-out="this.countColumn.label"/>
+                                <div class="o_list_header_label_spacer"/>
+                                <i class="o_list_sortable_icon" t-att-class="this.getSortableIconClass(this.countColumn)"/>
+                            </div>
+                        </th>
                         <th t-if="this.hasOpenFormViewColumn" t-on-keydown="(ev) => this.onCellKeydown(ev)" class="o_list_open_form_view w-print-0 p-print-0"/>
-                        <th t-if="this.hasActionsColumn" t-on-keydown="(ev) => this.onCellKeydown(ev)" class="o_list_controller o_list_actions_header w-print-0 p-print-0 position-sticky end-0 z-2">
+                        <th t-if="this.hasActionsColumn" t-on-keydown="(ev) => this.onCellKeydown(ev)" class="o_list_controller o_list_actions_header w-print-0 p-print-0 position-sticky end-0 z-2 ps-2">
                             <div t-if="this.displayOptionalFields or this.hasOptionalOpenFormViewColumn" class="o_optional_columns_dropdown d-print-none text-center border-top-0">
                                 <Dropdown position="'bottom-end'" menuRef="this.optionalColumnsDropdownRef">
                                     <button class="btn p-0" tabindex="-1" data-available-offline="">
@@ -246,14 +259,6 @@
                             </t>
                         </t>
                     </div>
-                    <div class="d-flex align-items-center ms-auto gap-2">
-                        <t t-if="!this.showGroupPager(group)" class="m-1">
-                            <span><t t-out="group.count"/></span>
-                        </t>
-                        <div t-att-class="this.showGroupPager(group) ? '' : 'o_pager_hidden'" t-on-click.stop="">
-                            <Pager t-props="this.getGroupPagerProps(group)"/>
-                        </div>
-                    </div>
                 </div>
             </th>
             <td t-on-keydown="(ev) => this.onCellKeydown(ev, group)" t-foreach="this.getAggregateColumns(group)" t-as="column" t-key="column.id" t-att-class="{'o_list_number': column.type === 'field'}">
@@ -272,8 +277,27 @@
             </td>
             <t t-set="groupPagerColspan" t-value="this.getGroupPagerCellColspan(group)"/>
             <th t-on-keydown="(ev) => this.onCellKeydown(ev, group)" t-if="groupPagerColspan > 0" t-att-colspan="groupPagerColspan"/>
-            <th class="p-0" t-on-keydown="(ev) => this.onCellKeydown(ev, group)">
-                <GroupConfigMenu t-if="this.showGroupConfigMenu(group)" t-props="this.getGroupConfigMenuProps(group)"/>
+            <th class="o_count_column" t-if="this.showCountColumn">
+                <div class="d-flex justify-content-end align-items-center w-100 h-100">
+                    <span t-if="!showGroupPager(group)" class="m-1" >
+                        <t t-out="group.count"/>
+                    </span>
+                    <div t-else="" t-on-click.stop="" class="o_pager_counter">
+                        <Pager t-props="getGroupPagerProps(group)"/>
+                    </div>
+                </div>
+            </th>
+            <th class="px-1 position-sticky end-0 z-2" t-on-keydown="(ev) => this.onCellKeydown(ev, group)">
+                <GroupConfigMenu
+                    t-if="this.showGroupConfigMenu(group) and !this.showGroupPager(group)"
+                    t-props="this.getGroupConfigMenuProps(group)"
+                />
+                <div
+                    t-if="this.showGroupPager(group)"
+                    t-on-click.stop="" class="o_pager_buttons"
+                >
+                    <Pager t-props="this.getGroupPagerProps(group)"/>
+                </div>
             </th>
         </tr>
     </t>
@@ -379,6 +403,7 @@
                 </t>
                 <td t-else="" tabindex="-1" class="w-print-0 p-print-0"/>
             </t>
+            <td t-if="this.showCountColumn" tabindex="-1" class="w-print-0 p-print-0"/>
         </tr>
     </t>
 
