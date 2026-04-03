@@ -25,16 +25,18 @@
         <t t-call="website.layout" additional_title="product.name">
             <div id="wrap" class="o_wsale_product_page">
                 <div class="oe_structure oe_empty oe_structure_not_nearest" id="oe_structure_website_sale_product_1" data-editor-message.translate="DROP BUILDING BLOCKS HERE TO MAKE THEM AVAILABLE ACROSS ALL PRODUCTS"/>
-                <section id="product_detail"
-                         t-attf-class="oe_website_sale mt-1 mt-lg-2 mb-5 #{'discount'
-                            if combination_info['has_discounted_price'] else ''}
-                            {{website._get_product_page_container() == 'regular' and 'o_wsale_container_lg container-lg' or (website._get_product_page_container() == 'fluid' and 'o_wsale_container_fluid container-fluid' or false)}}
-                            o_wsale_product_page_opt_image_width_{{website.product_page_image_width}}
-                            o_wsale_product_page_opt_image_ratio_{{website.product_page_image_ratio}}
-                            o_wsale_product_page_opt_image_ratio_mobile_{{website.product_page_image_ratio_mobile}}
-                            o_wsale_product_page_opt_image_radius_{{website.product_page_image_roundness}}
-                         "
-                         t-att-data-view-track="view_track and '1' or '0'"
+                <section
+                    id="product_detail"
+                    data-anchor="true"
+                    t-attf-class="oe_website_sale mt-1 mt-lg-2 mb-5 #{'discount'
+                       if combination_info['has_discounted_price'] else ''}
+                       {{website._get_product_page_container() == 'regular' and 'o_wsale_container_lg container-lg' or (website._get_product_page_container() == 'fluid' and 'o_wsale_container_fluid container-fluid' or false)}}
+                       o_wsale_product_page_opt_image_width_{{website.product_page_image_width}}
+                       o_wsale_product_page_opt_image_ratio_{{website.product_page_image_ratio}}
+                       o_wsale_product_page_opt_image_ratio_mobile_{{website.product_page_image_ratio_mobile}}
+                       o_wsale_product_page_opt_image_radius_{{website.product_page_image_roundness}}
+                    "
+                    t-att-data-view-track="view_track and '1' or '0'"
                 >
                     <div class="o_wsale_content_contained container d-flex flex-wrap align-items-center py-3">
                         <div class="d-flex align-items-center flex-grow-1">
@@ -630,7 +632,7 @@
                 <span name="o_wsale_cta_wrapper_boxed_price_label" class="text-muted">Price</span>
                 <div>
                     <t t-call="website_sale.product_price"/>
-                    <small 
+                    <small
                         t-if="combination_info.get('base_unit_price')"
                         class="ms-1 text-muted o_base_unit_price_wrapper d-none"
                     >
@@ -847,20 +849,40 @@
     >
         <xpath expr="//div[@t-field='product.website_description']" position="after">
             <div class="o_shop_discussion_rating border-top" data-anchor='true'>
-                <section id="o_product_page_reviews" class="container pt48 pb48" data-anchor='true'>
-                    <a class="o_product_page_reviews_title d-flex justify-content-between text-reset text-decoration-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#o_product_page_reviews_content" aria-expanded="false" aria-controls="o_product_page_reviews_content">
-                        <h2 class="fs-4 mb-0">Customer Reviews</h2>
-                        <i class="oi align-self-center"/>
-                    </a>
-                    <div id="o_product_page_reviews_content" class="collapse mt-3">
+                <section
+                    id="o_product_page_reviews"
+                    class="container pt48 pb48"
+                    data-anchor='true'
+                >
+                    <div class="o_product_page_reviews_title mb-4">
+                        <h3>Reviews</h3>
+                    </div>
+                    <div id="o_product_page_reviews_content">
                         <t t-call="portal.message_thread"
                             object="product"
                             display_rating="True"
-                            message_per_page="5"
+                            message_per_page="3"
                             two_columns="true"/>
                     </div>
                 </section>
             </div>
+            <!-- <article t-if="is_add_to_cart_possible" class="card o_wsale_sticky_object sticky-top ">
+                <div class="card-body">
+                    <h4 t-field="product.name"/>
+                    <div
+                        t-if="not is_view_active('website_sale.cta_wrapper_boxed')"
+                        class="o_wsale_product_details_content_section o_wsale_product_details_content_section_price mb-4"
+                    >
+                        <t t-call="website_sale.product_price"/>
+                        <small t-if="combination_info.get('base_unit_price')"
+                            class="ms-1 text-muted o_base_unit_price_wrapper d-none">
+                            <t t-call="website_sale.base_unit_price"
+                                base_unit_price="combination_info['base_unit_price']"/>
+                        </small>
+                    </div>
+                    <a href="#product_detail" class="btn btn-primary w-100">Back to product</a>
+                </div>
+            </article> -->
         </xpath>
     </template>
 

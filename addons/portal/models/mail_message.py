@@ -147,7 +147,7 @@ class MailMessage(models.Model):
                     "reactions": reaction_groups,
                     "author_id": {
                         "id": message.author_id.id,
-                        "name": message.author_id.name,
+                        "name": self._pseudonymize_name(message.author_id.name),
                         "avatar_128_access_token": message.author_id._get_avatar_128_access_token(),
                     },
                     "thread": {
@@ -158,6 +158,16 @@ class MailMessage(models.Model):
                 }
             )
         return vals_list
+
+    @staticmethod
+    def _pseudonymize_name(name):
+        """Convert a full name to pseudonymized format."""
+        if not name:
+            return name
+        parts = name.split()
+        if len(parts) > 1:
+            return f"{parts[0]} {parts[-1][0]}."
+        return name
 
     def _portal_message_format_attachments(self, attachment_values):
         """ From 'attachment_values' get an updated version formatted for
@@ -170,7 +180,7 @@ class MailMessage(models.Model):
         :rtype: dict
         """
         safari = request and request.httprequest.user_agent and request.httprequest.user_agent.browser == 'safari'
-        attachment_values['filename'] = attachment_values['name']
+        attachment_values['filename'] = attachment_values["name"]
         attachment_values['mimetype'] = (
             'application/octet-stream' if safari and
             'video' in (attachment_values["mimetype"] or "")

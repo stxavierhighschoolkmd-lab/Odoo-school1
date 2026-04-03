@@ -5,22 +5,29 @@ const ratingCardSelector = ".o_website_rating_card_container";
 registry.category("web_tour.tours").add("portal_rating_tour", {
     steps: () => [
         {
-            // Ensure that the rating data has been fetched before making a negative assertion for rating cards.
+            // Ensure that the rating data has been fetched before interacting with the composer.
             trigger: "#chatterRoot:shadow .o-mail-Message-body:text(Message without rating)",
         },
         {
-            trigger: `#chatterRoot:shadow .o-mail-Chatter-top:not(:has(${ratingCardSelector}))`,
+            // With no ratings yet the card shows 0 reviews.
+            trigger: `#chatterRoot:shadow .o-mail-Chatter-top ${ratingCardSelector} .text-muted:text(0 reviews)`,
         },
         {
-            trigger: "#chatterRoot:shadow .o-mail-Composer-input",
-            run: "edit Excellent service!",
-        },
-        {
-            trigger: "#chatterRoot:shadow .o-mail-Composer-send:enabled",
+            // Open the review composer modal.
+            trigger: "#chatterRoot:shadow .o-mail-Chatter-top .btn:contains(Write a review)",
             run: "click",
         },
         {
-            trigger: `#chatterRoot:shadow .o-mail-Chatter-top ${ratingCardSelector} .o_website_rating_table_row[data-star='4']:has(:text(100%))`,
+            trigger: "#chatterRoot:shadow .o_review_composer_modal .o-mail-Composer-input",
+            run: "edit Excellent service!",
+        },
+        {
+            trigger: "#chatterRoot:shadow .o_review_composer_modal .o-mail-Composer-send:enabled",
+            run: "click",
+        },
+        {
+            // After posting a 4-star review the progress bar for star 4 should be filled.
+            trigger: `#chatterRoot:shadow .o-mail-Chatter-top ${ratingCardSelector} .o_website_rating_table_row[data-star='4'] .o_rating_progressbar`,
         },
     ],
 });
