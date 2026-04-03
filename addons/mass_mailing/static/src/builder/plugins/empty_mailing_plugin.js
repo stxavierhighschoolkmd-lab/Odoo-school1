@@ -13,20 +13,19 @@ export class EmptyMailingPlugin extends Plugin {
     ];
 
     setup() {
-        this.addDomListener(this.editable, "click", this.onMailWrapperClick.bind(this));
+        this.addDomListener(this.editable, "mousedown", this.onMailWrapperClick.bind(this));
     }
 
     onMailWrapperClick(ev) {
-        const wrapperId = ev.target.matches(".o_mail_wrapper_td.oe_empty") ? ev.target : null;
+        const wrapperId = ev.target.matches(".o_mail_wrapper_td:empty") ? ev.target : null;
         if (!wrapperId) {
             return;
         }
         ev.preventDefault();
         ev.stopPropagation();
 
-        const snippet = this.config.snippetModel.getSnippetByName(
-            "snippet_groups",
-            "s_snippet_group"
+        const snippet = this.config.snippetModel.snippetGroups.find(
+            (group) => group.groupName === "text"
         );
         this.dependencies.blockTab.onSnippetGroupClick(snippet, {});
     }
