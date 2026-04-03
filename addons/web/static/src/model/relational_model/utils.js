@@ -506,8 +506,8 @@ export function parseServerValue(field, value) {
             };
         }
         case "many2one_reference": {
-            if (value === 0) {
-                // unset many2one_reference fields' value is 0
+            if (!value) {
+                // unset many2one_reference fields' value is falsy
                 return false;
             }
             if (typeof value === "number") {
