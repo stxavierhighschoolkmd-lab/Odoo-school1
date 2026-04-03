@@ -21,6 +21,9 @@ caps.drop all
 nonewprivs
 noroot
 seccomp
+seccomp.drop @reboot,@swap,@clock,@module
+restrict-namespaces
+shell none
 
 nodvd
 nosound
@@ -29,6 +32,10 @@ notv
 nou2f
 novideo
 nogroups
+
+machine-id
+hostname claude-sandbox
+protocol inet,inet6
 
 # ============================================================================
 # FILESYSTEM ISOLATION
@@ -61,6 +68,7 @@ disable-mnt
 mkdir ${HOME}/.cache/claude
 mkdir ${HOME}/.cache/claude-cli-nodejs
 mkdir ${HOME}/.claude
+mkdir ${HOME}/.local/share/claude
 mkdir ${HOME}/.local/state/claude
 
 whitelist ${HOME}/.cache/claude
