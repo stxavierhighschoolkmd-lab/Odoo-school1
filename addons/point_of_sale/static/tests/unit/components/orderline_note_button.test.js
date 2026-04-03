@@ -28,7 +28,7 @@ test("orderline_note_button.js", async () => {
     expect(order.lines[0].qty).toBe(1);
     expect(order.lines[1].qty).toBe(1);
     expect(order.lines[2].qty).toBe(2);
-    const orderSummary = await mountWithCleanup(OrderSummary, { props: {} });
+    const orderSummary = await mountWithCleanup(OrderSummary);
     orderSummary._setValue(4);
     expect(order.lines[0].qty).toBe(4);
     expect(order.lines[1].qty).toBe(4);

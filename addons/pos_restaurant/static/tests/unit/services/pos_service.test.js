@@ -57,16 +57,6 @@ describe("restaurant pos_store.js", () => {
         expect(store.getOrder().id).toBe(blankOrder.id);
     });
 
-    test("computeTableCount", async () => {
-        const store = await setupPosEnv();
-        const order1 = store.addNewOrder();
-        const table = store.models["restaurant.table"].get(2);
-        expect(table.uiState.orderCount).toBe(0);
-        order1.table_id = table;
-        store.computeTableCount();
-        expect(table.uiState.orderCount).toBe(1);
-    });
-
     test("sync dirty order when unsetting table", async () => {
         const store = await setupPosEnv();
         const table = store.models["restaurant.table"].get(2);
@@ -86,13 +76,13 @@ describe("restaurant pos_store.js", () => {
         expect(store.getPendingOrder().orderToUpdate).toHaveLength(0);
     });
 
-    test("getOrderChanges", async () => {
+    test("getChanges", async () => {
         const store = await setupPosEnv();
         const product = store.models["product.product"].get(5);
         product.display_name = "001 TEST";
-        await getFilledOrder(store);
-        const result = store.getOrderChanges();
-        const [line] = Object.values(result.orderlines);
+        const order = await getFilledOrder(store);
+        const result = order.getChanges();
+        const [line] = Object.values(result.addedQuantity);
         expect(line.basic_name).toBe("TEST");
     });
 
@@ -295,23 +285,7 @@ describe("restaurant pos_store.js", () => {
             order.lines[1].note =
                 '[{"text":"Test 1","colorIndex":0},{"text":"Test 2","colorIndex":0}]';
             order.general_customer_note = '[{"text":"General Note","colorIndex":0}]';
-            const changes = store.categoryCount;
-            expect(changes).toEqual([
-                { count: 3, name: "Category 1" },
-                { count: 2, name: "Category 2" },
-                { count: 1, name: "Message" },
-            ]);
-        });
-
-        test("Unselected order", async () => {
-            const store = await setupPosEnv();
-            const order = await getFilledOrder(store);
-            order.general_customer_note = '[{"text":"General Note","colorIndex":0}]';
-            store.selectedOrderUuid = null;
-            // without a selected order, `categoryCount` throws
-            expect(() => store.categoryCount).toThrow();
-            // explicitly specify the order to compute the changes for
-            const changes = store.getCategoryCount(order);
+            const changes = store.getOrder().preparationChanges.categoryCount;
             expect(changes).toEqual([
                 { count: 3, name: "Category 1" },
                 { count: 2, name: "Category 2" },

@@ -128,13 +128,18 @@ export class SplitBillScreen extends Component {
             }
         }
     }
+
     async createSplittedOrder() {
         const curOrderUuid = this.currentOrder.uuid;
         const originalOrder = this.pos.models["pos.order"].find((o) => o.uuid === curOrderUuid);
         const originalOrderName = this._getOrderName(originalOrder);
         const newOrderName = this._getSplitOrderName(originalOrderName);
-
-        const newOrder = this.pos.createNewOrder();
+        const newOrder = this.pos.createNewOrder({});
+        const prepOrder = originalOrder.prep_order_ids?.length
+            ? this.pos.models["pos.prep.order"].create({
+                  pos_order_id: newOrder,
+              })
+            : null;
         newOrder.floating_order_name = newOrderName;
         newOrder.uiState.splittedOrderUuid = curOrderUuid;
         originalOrder.uiState.splittedOrderUuid = newOrder.uuid;
@@ -166,6 +171,7 @@ export class SplitBillScreen extends Component {
                 delete data.combo_line_ids;
                 delete data.uuid;
                 delete data.id;
+                delete data.prep_line_ids;
                 const newLine = this.pos.models["pos.order.line"].create(
                     {
                         ...data,
@@ -195,14 +201,14 @@ export class SplitBillScreen extends Component {
                     const newQty = line.getQuantity() - this.qtyTracker[line.uuid];
                     line.update({ qty: newQty });
                 }
-
-                this.pos.handlePreparationHistory(
-                    originalOrder.last_order_preparation_change.lines,
-                    newOrder.last_order_preparation_change.lines,
-                    line,
-                    newLine,
-                    this.qtyTracker[line.uuid]
-                );
+                if (prepOrder) {
+                    this.pos.handlePreparationHistory(
+                        line,
+                        newLine,
+                        this.qtyTracker[line.uuid],
+                        prepOrder
+                    );
+                }
             }
         }
 
@@ -216,6 +222,7 @@ export class SplitBillScreen extends Component {
         this.pos.selectedOrderUuid = null;
         this.pos.setOrder(newOrder);
         this.back();
+        return newOrder;
     }
 
     setLineQtyStr(line) {

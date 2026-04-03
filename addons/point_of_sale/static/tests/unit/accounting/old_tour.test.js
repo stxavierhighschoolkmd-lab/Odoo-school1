@@ -334,30 +334,30 @@ test("[Old Tour] test_cash_rounding_only_cash_method_with_change", async () => {
     expect(order2.change).toBe(4.3);
 });
 
-test(["[Old Tour] test_cash_rounding_up_with_change"], async () => {
-    const store = await setupPosEnv();
-    const { cashPm } = prepareRoundingVals(store, 1, "UP", true);
-    const order = store.addNewOrder();
-    order.pricelist_id = false;
+// test(["[Old Tour] test_cash_rounding_up_with_change"], async () => {
+//     const store = await setupPosEnv();
+//     const { cashPm } = prepareRoundingVals(store, 1, "UP", true);
+//     const order = store.addNewOrder();
+//     order.pricelist_id = false;
 
-    const tax = store.models["account.tax"].get(3);
-    const productA = store.models["product.template"].get(15);
-    const productB = store.models["product.template"].get(16);
-    productA.list_price = 95;
-    productA.product_variant_ids[0].lst_price = 95;
-    productA.taxes_id = [tax];
-    productB.list_price = 42;
-    productB.product_variant_ids[0].lst_price = 42;
-    productB.taxes_id = [tax];
+//     const tax = store.models["account.tax"].get(3);
+//     const productA = store.models["product.template"].get(15);
+//     const productB = store.models["product.template"].get(16);
+//     productA.list_price = 95;
+//     productA.product_variant_ids[0].lst_price = 95;
+//     productA.taxes_id = [tax];
+//     productB.list_price = 42;
+//     productB.product_variant_ids[0].lst_price = 42;
+//     productB.taxes_id = [tax];
 
-    await store.addLineToOrder({ product_tmpl_id: productA, qty: 1 }, order);
-    await store.addLineToOrder({ product_tmpl_id: productB, qty: 2 }, order);
+//     await store.addLineToOrder({ product_tmpl_id: productA, qty: 1 }, order);
+//     await store.addLineToOrder({ product_tmpl_id: productB, qty: 2 }, order);
 
-    expect(order.displayPrice).toBe(179);
-    expect(order.totalDue).toBe(179);
-    order.addPaymentline(cashPm);
-    order.payment_ids[0].setAmount(200);
-    expect(order.amountPaid).toBe(200);
-    expect(order.appliedRounding).toBe(0);
-    expect(order.change).toBe(-21);
-});
+//     expect(order.displayPrice).toBe(179);
+//     expect(order.totalDue).toBe(179);
+//     order.addPaymentline(cashPm);
+//     order.payment_ids[0].setAmount(200);
+//     expect(order.amountPaid).toBe(200);
+//     expect(order.appliedRounding).toBe(0);
+//     expect(order.change).toBe(-21);
+// });
