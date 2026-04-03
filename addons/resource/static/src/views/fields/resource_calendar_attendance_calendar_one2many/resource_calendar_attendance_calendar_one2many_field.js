@@ -19,7 +19,7 @@ export class CalendarOne2Many extends Component {
         return {
             type: "calendar",
             resModel: this.props.record.data[this.props.name].resModel,
-            domain: [["calendar_id", "=", this.props.record.resId]],
+            domain: [["calendar_id", "=", this.props.record.resId], ["date", "!=", false]],
             display: { controlPanel: false },
             searchViewId: false,
             className: "h-100 w-100 d-flex",

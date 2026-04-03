@@ -2,6 +2,7 @@
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from odoo.exceptions import UserError
 from odoo.tests import Form
 from odoo.tests.common import TransactionCase
 
@@ -134,3 +135,135 @@ class TestVariableResourceCalendar(TransactionCase):
             'schedule_type': 'variable',
         })
         self.assertEqual(len(calendar.attendance_ids), 0, "Variable calendar should not have default attendances created.")
+
+    def setup_collision(self):
+        """
+        DB = Duration Based; TB = Time Based
+
+        R1 : 1d + 2025-01-02  -  duration: 2h; hour_from: 7h; hour_to: 8h; until: 2025-01-25;
+        R2 : 1w + 2025-01-01  -  duration: 8h; hour_from: 8h; hour_to: 16h; until: 2025-01-31;
+        R4 : 2d + 2025-01-03  -  duration: 1h; hour_from: 16h; hour_to: 17h;
+        R8 : 0  + 2025-01-26  -  duration: 2h;
+
+        2025-01 -----
+        S|M|T|W|T|F|S
+              2 9 5 1
+        5 1 5 3 5 1 5
+        1 5 1 7 1 5 1
+        5 1 5 3 5 1 5
+        8 4 8 6 8 4
+        """
+
+        self.variable_calendar.attendance_ids = [(5, 0, 0),
+            (0, 0, {
+                'hour_from': 7,
+                'hour_to': 8,
+                'recurrency': True,
+                'duration_based': False,
+                'date': "2025-01-02",
+                'recurrency_interval': 1,
+                'recurrency_type': "days",
+                'recurrency_until': "2025-01-25",
+            }),
+            (0, 0, {
+                'hour_from': 8,
+                'hour_to': 16,
+                'recurrency': True,
+                'duration_based': False,
+                'date': "2025-01-01",
+                'recurrency_interval': 1,
+                'recurrency_type': "weeks",
+                'recurrency_until': "2025-01-31",
+            }),
+            (0, 0, {
+                'hour_from': 16,
+                'hour_to': 17,
+                'recurrency': True,
+                'duration_based': False,
+                'date': "2025-01-03",
+                'recurrency_interval': 2,
+                'recurrency_type': "days",
+            }),
+            (0, 0, {
+                'duration_hours': 2,
+                'recurrency': True,
+                'duration_based': True,
+                'date': "2025-01-26",
+                'recurrency_interval': 2,
+                'recurrency_type': "days",
+            }),
+        ]
+
+    def test_collision_overlap_adhoc_recurrence(self):
+        self.setup_collision()
+        with self.assertRaises(UserError):
+            self.env["resource.calendar.attendance"].create([
+                {
+                    'calendar_id': self.variable_calendar.id,
+                    'hour_from': 7,
+                    'hour_to': 9,
+                    'duration_based': False,
+                    'date': '2025-01-08',
+                },
+            ])
+
+    def test_collision_overlap_recurrence_recurrence(self):
+        self.setup_collision()
+        with self.assertRaises(UserError):
+            self.env["resource.calendar.attendance"].create([
+                {
+                    'calendar_id': self.variable_calendar.id,
+                    'hour_from': 7,
+                    'hour_to': 9,
+                    'recurrency': True,
+                    'recurrency_interval': 1,
+                    'recurrency_type': "weeks",
+                    'duration_based': False,
+                    'date': '2025-01-08',
+                },
+            ])
+
+    def test_collision_overlap_adhoc_adhoc(self):
+        self.env["resource.calendar.attendance"].create([
+            {
+                'calendar_id': self.variable_calendar.id,
+                'hour_from': 7,
+                'hour_to': 9,
+                'duration_based': False,
+                'date': '2024-12-31',
+            },
+        ])
+        with self.assertRaises(UserError):
+            self.env["resource.calendar.attendance"].create([
+                {
+                    'calendar_id': self.variable_calendar.id,
+                    'hour_from': 8,
+                    'hour_to': 10,
+                    'duration_based': False,
+                    'date': '2024-12-31',
+                },
+            ])
+
+    def test_collision_overlap_recurrence_adhoc(self):
+        self.env["resource.calendar.attendance"].create([
+            {
+                'calendar_id': self.variable_calendar.id,
+                'hour_from': 7,
+                'hour_to': 9,
+                'recurrency': True,
+                'recurrency_interval': 1,
+                'recurrency_type': "days",
+                'duration_based': False,
+                'date': '2024-12-01',
+            },
+        ])
+        with self.assertRaises(UserError):
+            self.env["resource.calendar.attendance"].create([
+                {
+                    'calendar_id': self.variable_calendar.id,
+                    'hour_from': 8,
+                    'hour_to': 10,
+                    'duration_based': False,
+                    'date': '2024-12-31',
+                },
+            ])

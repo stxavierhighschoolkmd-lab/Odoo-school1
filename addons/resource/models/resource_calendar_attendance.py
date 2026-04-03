@@ -1,47 +1,53 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import math
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError
+from odoo.fields import Domain
 from odoo.tools import format_time
 from odoo.tools.date_utils import float_to_time, parse_iso_date
 from odoo.tools.intervals import Intervals
+from odoo.tools.misc import format_date
 
 
 def extended_gcd(a, b):
-    if a == 0: return b, 0, 1
+    if a == 0:
+        return b, 0, 1
     gcd, x1, y1 = extended_gcd(b % a, a)
     x = y1 - (b // a) * x1
     y = x1
     return gcd, x, y
 
 
-def check_conflict(interval1, offset, interval2):
-    gcd, x0, _ = extended_gcd(interval1, interval2)
-
-    # 1. Check if the sequences ever align
-    if offset % gcd != 0:
+def _check_collision(atti, attj):
+    gcd, x0, _ = extended_gcd(atti['period'], attj['period'])
+    delta_dates = (attj['date'] - atti['date']).days
+    if delta_dates % gcd != 0:
         return None
 
-    # 2. Find the first mathematical collision (k1)
-    # We solve: interval1 * k1 ≡ offset (mod interval2)
-    mod_val = interval2 // gcd
-    k1 = (x0 * (offset // gcd)) % mod_val
+    new_period = math.lcm(atti['period'], attj['period'])
+    n_i_colide = (delta_dates * x0 // gcd) % (attj['period'] // gcd)
+    new_date = relativedelta(days=atti['period'] * n_i_colide) + atti['date']
+    start_date_max = max(atti['date'], attj['date'])
+    if new_date < start_date_max:
+        diff_days = (start_date_max - new_date).days
+        nb_sauts = (diff_days + new_period - 1) // new_period
+        new_date += relativedelta(days=nb_sauts * new_period)
 
-    first_collision = k1 * interval1
+    new_excluded = atti['excluded_ocurrences'] | attj['excluded_ocurrences']
+    new_until = min(atti['until'], attj['until'])
+    while new_date in new_excluded:
+        new_date += relativedelta(days=new_period)
 
-    # 3. Ensure the collision is not before the second offset starts
-    if first_collision < offset:
-        lcm = abs(interval1 * interval2) // gcd
-        diff = offset - first_collision
-        steps = math.ceil(diff / lcm)
-        first_collision += steps * lcm
+    if new_date > new_until:
+        return None
 
-    return first_collision
+    return new_period, new_date, new_excluded, new_until
+
 
 class ResourceCalendarAttendance(models.Model):
     _name = 'resource.calendar.attendance'
@@ -105,55 +111,125 @@ class ResourceCalendarAttendance(models.Model):
         "A recurrency should finish after the first occurence",
     )
 
-    @api.constrains('calendar_id', 'date', 'duration_hours', 'dayofweek')
-    def _check_attendance(self):
-        # Check for each day of week that there are no superimposed attendances.
-        target_calendars = self.mapped("calendar_id")
-        target_dates = list(set(self.mapped("date")))
-        target_dayofweeks = list(set(self.mapped("dayofweek")))
+    def _format_attendance(self):
+        self.ensure_one
+        return {
+            'ids': {self.id},
+            'period': (self.recurrency_interval * 7 if self.recurrency_type == "weeks" else self.recurrency_interval) if self.recurrency else 0,
+            'date': self.date,
+            'excluded_ocurrences': set(self.recurrency_excluded_occurences['dates']),
+            'until': self.recurrency_until,
+            'max_id': self.id,
+        }
 
-        domain = [
-            ('calendar_id', 'in', target_calendars.ids),
-            '|',
-                ('date', 'in', target_dates),
-                '&',
-                    ('date', '=', False),
-                    ('dayofweek', 'in', target_dayofweeks)
-        ]
+    def _check_duration(self, formatted_date):
+        if sum(self.mapped('duration_hours')) > 24:
+            raise UserError(self.env._("Total duration of attendances cannot exceed 24 hours on %(date)s", date=formatted_date))
 
-        attendances_overlappable = self.search(domain)
+    def _check_overlap(self, formatted_date):
+        attendances_not_duration_based = self.filtered(lambda a: not a.duration_based)
+        number_of_attendances = len(attendances_not_duration_based)
+        number_of_distincts_intervals = len(Intervals([(att.hour_from, att.hour_to, att) for att in attendances_not_duration_based], keep_distinct=True))
+        if number_of_attendances != number_of_distincts_intervals:
+            raise UserError(self.env._("Overlap of attendances on %(date)s", date=formatted_date))
 
-        att_by_date_overlappable = defaultdict(list)
-        att_by_weekday_overlappable = defaultdict(list)
+    def _check_types(self, formatted_date):
+        if len(set(self.mapped('duration_based'))) > 1:
+            raise UserError(self.env._("You can't have duration based and time based attendances on the same day (on %(date)s)", date=formatted_date))
 
-        for attendance in attendances_overlappable:
-            if attendance.date:
-                att_by_date_overlappable[attendance.calendar_id, attendance.date].append(attendance)
+    def _check_attendance(self, date):
+        formatted_date = format_date(self.env, date)
+        self._check_duration(formatted_date)
+        self._check_overlap(formatted_date)
+        self._check_types(formatted_date)
+
+    def _check_attendances(self):
+        ids_to_check = set(self.ids)
+        # Search to get all attendances that can be in conflict with the new ones
+        all_dates = self.mapped('date')
+        min_date = min(all_dates)
+        max_date_list = all_dates + [d.recurrency_until for d in self if d.recurrency]
+        max_date = max(max_date_list)
+        domain = Domain.AND([
+            Domain('calendar_id', 'in', self.calendar_id.ids),
+            Domain.OR([
+                Domain.AND([
+                    Domain('recurrency', '=', True),
+                    Domain('date', '<=', max_date),
+                    Domain.OR([
+                        Domain('recurrency_until', '=', False),
+                        Domain('recurrency_until', '>=', min_date),
+                    ])
+                ]),
+                Domain.AND([
+                    Domain('recurrency', '=', False),
+                    Domain('date', '>=', min_date),
+                    Domain('date', '<=', max_date),
+                ])
+            ])
+        ])
+        other_attendances = self.env['resource.calendar.attendance'].search(domain, order='id asc')
+        recurrent_attendance_leaves = []
+        ad_hoc_attendances = defaultdict(self.browse)
+        for attendance in other_attendances:
+            if attendance.recurrency:
+                recurrent_attendance_leaves.append(attendance._format_attendance())
             else:
-                att_by_weekday_overlappable[attendance.calendar_id, attendance.dayofweek].append(attendance)
+                ad_hoc_attendances[attendance.date] |= attendance
+        # Build a collision tree for the reccurent attendances (all collisions with the new ones)
+        collision_tree = list(recurrent_attendance_leaves)
+        current_level_recurrent_attendance_nodes = list(recurrent_attendance_leaves)
+        while current_level_recurrent_attendance_nodes:
+            if len(collision_tree) > 1000:
+                raise UserError(self.env._("Too Complex Calendar"))
+            next_level_recurrent_attendance_nodes = []
+            for node_reccurency in current_level_recurrent_attendance_nodes:
+                for leaf_reccurency in recurrent_attendance_leaves:
+                    # To not compare permuations of the same collisions
+                    if node_reccurency['max_id'] >= leaf_reccurency['max_id']:
+                        continue
+                    new_ids = node_reccurency['ids'] | leaf_reccurency['ids']
+                    # To compare only with new ids to check
+                    if ids_to_check.isdisjoint(new_ids):
+                        continue
+                    collision = _check_collision(node_reccurency, leaf_reccurency)
+                    if not collision:
+                        continue
+                    new_period, new_date, new_excluded, new_until = collision
+                    attendances = self.browse(new_ids)
+                    attendances._check_attendance(new_date)
+                    next_level_recurrent_attendance_nodes.append({
+                        'ids': new_ids,
+                        'period': new_period,
+                        'date': new_date,
+                        'excluded_ocurrences': new_excluded,
+                        'until': new_until,
+                        'max_id': leaf_reccurency['max_id'],
+                    })
+            collision_tree.extend(next_level_recurrent_attendance_nodes)
+            current_level_recurrent_attendance_nodes = list(next_level_recurrent_attendance_nodes)
 
-        for (att_calendar, att_date, att_dayofweek), attendances in self.grouped(lambda a: (a.calendar_id, a.date, a.dayofweek)).items():
-            intervals_attendances = []
-            duration_per_date = defaultdict(float)
-            for attendance in att_by_date_overlappable[att_calendar, att_date] or att_by_weekday_overlappable[att_calendar, att_dayofweek]:
-                if attendance.duration_hours <= 0 or attendance.duration_hours > 24:
-                    raise ValidationError(self.env._("Attendance duration must be between 0 and 24 hours"))
-                if attendance.date:
-                    date_to_combine = attendance.date
-                else:
-                    date_to_combine = date.min + timedelta(days=int(attendance.dayofweek))
-                if not attendance.duration_based:
-                    intervals_attendances.append((
-                        datetime.combine(date_to_combine, float_to_time(attendance.hour_from)) + timedelta(
-                            microseconds=1),
-                        datetime.combine(date_to_combine, float_to_time(attendance.hour_to)),
-                        attendance
-                    ))
-                duration_per_date[date_to_combine] += attendance.duration_hours
-                if duration_per_date[date_to_combine] > 24:
-                    raise ValidationError(self.env._("Attendance durations can't exceed 24 hours in the day."))
-            if len(Intervals(intervals_attendances)) != len(intervals_attendances):
-                raise ValidationError(self.env._("Attendances can't overlap."))
+        # Use the collision tree for the ad hocs attendances
+        for attendance_date, attendances in ad_hoc_attendances.items():
+            ids_in_conflict = set()
+            for node in collision_tree:
+                days_diff = (attendance_date - node['date']).days
+                if days_diff >= 0 and days_diff % node['period'] == 0:
+                    if str(attendance_date) not in node['excluded_ocurrences']:
+                        ids_in_conflict.update(node['ids'])
+            if ids_in_conflict or attendances:
+                attendances_to_validate = attendances | self.browse(ids_in_conflict)
+                attendances_to_validate._check_attendance(attendance_date)
+
+    def create(self, vals_list):
+        new_ids = super().create(vals_list)
+        new_ids._check_attendances()
+        return new_ids
+
+    def write(self, vals):
+        res = super().write(vals)
+        self._check_attendances()
+        return res
 
     @api.onchange('hour_from')
     def _onchange_hour_from(self):
@@ -306,101 +382,10 @@ class ResourceCalendarAttendance(models.Model):
 
     def create_new_recurrency(self, date, changes):
         self.ensure_one()
-        new_recurrency = self.copy({
+        data = self.copy_data()[0]
+        self.stop_recurrency(date)
+        return self.create({
+            **data,
             **changes,
             'date': parse_iso_date(date),
         })
-        self.stop_recurrency(date)
-        return new_recurrency
-
-    def _check_day_overlap(self):
-        if not self:
-            return False
-        assert len(set(att.calendar_id for att in self)) == 1
-        assert self.calendar_id.schedule_type == 'variable'
-        assert all(self.mapped('recurrency'))
-        # M: This function is the same as _check_overlap_time_based but it half handles the duration_based.
-        # M: A duration_based cannot overlap in the same day with a non-duration based attendance (time based)
-
-        date_intervals = [(attendance.date, attendance.recurrency_until, attendance) for attendance in self]
-        date_overlaps = Intervals(date_intervals, keep_distinct=True)
-        date_overlaps_to_check = [attendances for _, _, attendances in date_overlaps._items if len(attendances) > 1]
-        for attendances in date_overlaps_to_check:
-            if len(set(attendances.mapped('duration_based'))) == 1:
-                continue
-            for one in attendances:
-                for other in (attendances - one):
-                    if one.date > other.recurrency_until or other.date > one.recurrency_until:
-                        continue
-                    if one.duration_based == other.duration_based:
-                        # M: If they have a different type of base, meaning one is time based and the other is duration based.
-                        # M: We treat it like a time overlap and we check that they never meet in any day.
-                        if (one.duration_based == False and (one.hour_from >= other.hour_to or one.hour_to <= other.hour_from)):
-                            # If they are based differently or they overlap in hours, then they shouldn't collide.
-                            continue
-                    interval1 = one.recurrency_interval * (7 if one.recurrency_type == 'weeks' else 1)
-                    interval2 = other.recurrency_interval * (7 if other.recurrency_type == 'weeks' else 1)
-                    offset = abs((one.date - other.date).days)
-                    first_collision = check_conflict(interval1, offset, interval2)
-                    if first_collision is not None:
-                        collision_date = min(one.date, other.date) + timedelta(days=first_collision)
-                        if collision_date < min(one.recurrency_until, other.recurrency_until):
-                            return True
-        return False
-
-    def _check_overlap_time_based(self):
-        """Check overlap on recurrent time-based attendances."""
-
-        # Should work perfectly.
-        if not self:
-            return False
-        assert len(set(att.calendar_id for att in self)) == 1
-        assert self.calendar_id.schedule_type == 'variable'
-        assert all(att.recurrency and not att.duration_based for att in self)
-
-        date_intervals = [(attendance.date, attendance.recurrency_until, attendance) for attendance in self]
-        date_overlaps = Intervals(date_intervals, keep_distinct=True)
-        # M: We make an interval with all dates to see if they overlap. keep_distinct is important so that att 1-4 and 4-6 dont get overlapped.
-        date_overlaps_to_check = [attendances for _, _, attendances in date_overlaps._items if len(attendances) > 1]
-        # M: Now we take all the overlap groups:
-        for attendances in date_overlaps_to_check:
-            for one in attendances:
-                for other in (attendances - one):
-                    # M: We have to re-check because if we have 3 attendances: A 1-10, B 8-12, C 11-15. A and C dont overlap, but the intervals function will fuse A-B-C together as B overlaps with both.
-                    # M: In the end this is useful so we dont check attendance D 20-30 with ABC.
-                    if one.date > other.recurrency_until or other.date > one.recurrency_until:
-                        continue
-                    # M: If they overlap by dates, we check if they overlap by hours.
-                    if one.hour_from >= other.hour_to or one.hour_to <= other.hour_from:
-                        continue
-                    # M: If they overlap by hours then we find the first day collision.
-                    interval1 = one.recurrency_interval * (7 if one.recurrency_type == 'weeks' else 1)
-                    interval2 = other.recurrency_interval * (7 if other.recurrency_type == 'weeks' else 1)
-                    offset = abs((one.date - other.date).days)
-                    first_collision = check_conflict(interval1, offset, interval2) # blackbox.
-                    if first_collision is not None:
-                        collision_date = min(one.date, other.date) + timedelta(days=first_collision)
-                        if collision_date < min(one.recurrency_until, other.recurrency_until):
-                            # M: We still need to check that the first collision date is before the end of the recurrency, as they will never collide.
-                            return True
-        return False
-
-    def _check_overlap_duration_based(self):
-        """Check overlap on recurrent duration-based attendances."""
-        if not self:
-            return False
-        assert len(set(att.calendar_id for att in self)) == 1
-        assert self.calendar_id.schedule_type == 'variable'
-        assert all(att.recurrency and att.duration_based for att in self)
-
-        date_intervals = [(attendance.date, attendance.recurrency_until, attendance) for attendance in self]
-        date_overlaps = Intervals(date_intervals, keep_distinct=True)
-        date_overlaps_to_check = [attendances for _, _, attendances in date_overlaps._items if len(attendances) > 1]
-        for attendances in date_overlaps_to_check:
-            # M: I still dont know how to handle this. Jugj suggestion is to calculate the hyper period, but is it really feasable?
-            # The problem is that we need to check if there is ever a day where the total duration is more than 24h.
-            # With the dates overlap strategy we can filter down the things to check.
-            # We could have a greedy stategy where we assume you are overlapping always with attendances of a different interval as yours.
-            # something like how check_conflict detects if they are parallel
-            raise NotImplementedError("Checking overlap between duration based attendances with recurrency is not implemented yet.")
-        return False

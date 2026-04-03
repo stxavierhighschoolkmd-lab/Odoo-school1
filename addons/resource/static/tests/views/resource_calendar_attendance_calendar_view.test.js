@@ -59,13 +59,13 @@ test(`resource calendar week multi select creation`, async () => {
 
 test.tags("desktop");
 test(`resource calendar week daygrid to timegrid`, async () => {
-    ResourceCalendarAttendance._records.push({
+    onRpc("resource.calendar.attendance", "get_attendances", () => ({
         id: 1,
         calendar_id: 1,
         date: "2025-01-01",
         duration_hours: 2,
         duration_based: true,
-    });
+    }));
     await mountView({
         resModel: "resource.calendar.attendance",
         type: "calendar",
@@ -101,7 +101,7 @@ test(`resource calendar week daygrid to timegrid`, async () => {
 
 test.tags("desktop");
 test(`resource calendar week timegrid to daygrid`, async () => {
-    ResourceCalendarAttendance._records.push({
+    onRpc("resource.calendar.attendance", "get_attendances", () => ({
         id: 1,
         calendar_id: 1,
         date: "2025-01-01",
@@ -109,7 +109,7 @@ test(`resource calendar week timegrid to daygrid`, async () => {
         hour_to: 12,
         duration_hours: 2,
         duration_based: false,
-    });
+    }));
     await mountView({
         resModel: "resource.calendar.attendance",
         type: "calendar",
@@ -139,6 +139,7 @@ test(`resource calendar week timegrid to daygrid`, async () => {
 
 test.tags("desktop");
 test(`resource calendar week simple click on empty slot in timegrid`, async () => {
+    onRpc("resource.calendar.attendance", "get_attendances", () => ({}))
     await mountView({
         resModel: "resource.calendar.attendance",
         type: "calendar",
@@ -156,14 +157,14 @@ test(`resource calendar week simple click on empty slot in timegrid`, async () =
 
 test.tags("desktop");
 test(`resource calendar week move and resize event`, async () => {
-    ResourceCalendarAttendance._records.push({
+    onRpc("resource.calendar.attendance", "get_attendances", () => ({
         id: 1,
         calendar_id: 1,
         date: "2025-01-01",
         hour_from: 10,
         hour_to: 12,
         duration_based: false,
-    });
+    }))
     await mountView({
         resModel: "resource.calendar.attendance",
         type: "calendar",
@@ -178,6 +179,7 @@ test(`resource calendar week move and resize event`, async () => {
 
 test.tags("desktop");
 test(`resource calendar week select in timegrid`, async () => {
+    onRpc("resource.calendar.attendance", "get_attendances", () => ({}))
     await mountView({
         resModel: "resource.calendar.attendance",
         type: "calendar",

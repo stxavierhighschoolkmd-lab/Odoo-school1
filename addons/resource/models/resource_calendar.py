@@ -17,8 +17,6 @@ from odoo.tools.date_utils import float_to_time, localized, to_timezone
 from odoo.tools.float_utils import float_round
 from odoo.tools.intervals import Intervals
 
-from .resource_calendar_attendance import check_conflict
-
 class ResourceCalendar(models.Model):
     """ Calendar model for a resource. It has
 
@@ -84,79 +82,9 @@ class ResourceCalendar(models.Model):
     def _get_attendances_to_unlink(self, next_schedule_type=None):
         return self.attendance_ids.filtered(lambda a: bool(a.date) if (next_schedule_type or a.calendar_id.schedule_type) != "variable" else not a.date)
 
-    @api.constrains('attendance_ids', 'schedule_type')
-    def _check_attendance_ids(self):
-        if self._get_attendances_to_unlink():
-            raise ValidationError(self.env._("You cannot have attendances based on weekday and date in the same calendar"))
-
-    def write(self, vals):
-        vals['attendance_ids'] = [
-            *vals.get('attendance_ids', []),
-            *[Command.delete(a.id) for a in self._get_attendances_to_unlink(vals.get("schedule_type"))]
-        ]
-        return super().write(vals)
-
     @api.autovacuum
     def _auto_attendance_clean(self):
         self._get_attendances_to_unlink().unlink()
-
-    @api.constraints('attendance_ids.date', 'attendance_ids.recurrency', 'attendance_ids.recurrency_interval', 'attendance_ids.recurrency_type',
-                     'attendance_ids.recurrency_count', 'attendance_ids.recurrency_end_type', 'attendance_ids.recurrency_until',
-                     'attendance_ids.hour_from', 'attendance_ids.hour_to', 'attendance_ids.duration_hours', 'attendance_ids.dayofweek')
-    def _check_attendances(self):
-        DURATION_OVERLAP = self.env._("Total duration of attendances on a day cannot exceed 24 hours.")
-        TIMING_OVERLAP = self.env._("Attendances of a fixed schedule cannot have overlapping hours on the same day.")
-        BASE_OVERLAP = self.env._("You cannot define both duration based and hour based attendances for the same day.")
-
-        def _check_day(attendances):
-            if len(set(attendances.mapped('duration_based'))) != 1:
-                raise ValidationError(BASE_OVERLAP)
-            if intervals := [(att.hour_from, att.hour_to, att) for att in attendances if not att.duration_based]:
-                attendance_intervals = Intervals(intervals, keep_distinct=True)
-                if len(attendance_intervals._items) != len(intervals):
-                    raise ValidationError(TIMING_OVERLAP)
-            elif sum(att.duration_hours for att in attendances) > 24:
-                raise ValidationError(DURATION_OVERLAP)
-
-        for calendar in self:
-            if calendar.schedule_type == 'fixed':
-                if any(att.date for att in calendar.attendance_ids):
-                    raise ValidationError(self.env._("Attendances of a fixed schedule cannot have a date."))
-                for _, attendances in calendar.attendance_ids.grouped('dayofweek'):
-                    _check_day(attendances)
-            else:
-                if any(not att.date for att in calendar.attendance_ids):
-                    raise ValidationError(self.env._("Attendances of a variable schedule must have a date."))
-                all_attendances = calendar.attendance_ids
-                recurrent_attendances = all_attendances.filtered('recurrency')
-                ad_hoc_attendances = all_attendances - recurrent_attendances
-
-                for date, _ in ad_hoc_attendances.grouped('date'):
-                    _check_day(all_attendances._filter_by_date(date))
-
-                if recurrent_attendances._check_day_overlap():
-                    # Return specific overlap.
-                    raise ValidationError("THERE WAS SOME KIND OF OVERLAP")
-
-            # We can either call the above function or do a spaghetti like the one below.
-
-                duration_based_recurrent_attendances = recurrent_attendances.filtered('duration_based')
-                time_based_recurrent_attendances = recurrent_attendances - duration_based_recurrent_attendances
-                for att1 in time_based_recurrent_attendances:
-                    for att2 in (time_based_recurrent_attendances - att1):
-                        if (att1.date < att2.recurrency_until and att2.date < att1.recurrency_until
-                                and att1.hour_from < att2.hour_to and att1.hour_to > att2.hour_from):
-                            interval1 = att1.recurrency_interval * (7 if att1.recurrency_type == 'weeks' else 1)
-                            interval2 = att2.recurrency_interval * (7 if att2.recurrency_type == 'weeks' else 1)
-                            offset = abs((att1.date - att2.date).days)
-                            first_collision = check_conflict(interval1, offset, interval2)
-                            if first_collision is not None:
-                                collision_date = min(att1.date, att2.date) + timedelta(days=first_collision)
-                                if collision_date < min(att1.recurrency_until, att2.recurrency_until):
-                                    return True
-                                raise ValidationError(TIMING_OVERLAP)
-
-                # Duration based not handled yet.
 
     # --------------------------------------------------
     # Compute Methods
@@ -170,12 +98,13 @@ class ResourceCalendar(models.Model):
     @api.depends('company_id', 'schedule_type')
     def _compute_attendance_ids(self):
         for calendar in self:
-            if calendar.schedule_type == "variable":
-                calendar.attendance_ids = calendar._origin.attendance_ids
-            elif not (calendar.attendance_ids.filtered(lambda a: not a.date)
-                      or (calendar._origin.company_id == calendar.company_id
-                      and calendar._origin.schedule_type == calendar.schedule_type)):
-                calendar.attendance_ids = calendar._get_default_attendance_ids(calendar.company_id)
+            if not calendar.id:
+                if calendar.schedule_type == "fixed" and not calendar.attendance_ids:
+                    calendar.attendance_ids = calendar._get_default_attendance_ids(calendar.company_id)
+            if calendar._origin:
+                if (calendar._origin.company_id != calendar.company_id):
+                    if calendar.schedule_type == 'fixed' and not calendar.attendance_ids:
+                        calendar.attendance_ids = calendar._get_default_attendance_ids(calendar.company_id)
 
     @api.depends('company_id')
     def _compute_global_leave_ids(self):
@@ -257,6 +186,16 @@ class ResourceCalendar(models.Model):
     def copy_data(self, default=None):
         vals_list = super().copy_data(default=default)
         return [dict(vals, name=self.env._("%s (copy)", calendar.name)) for calendar, vals in zip(self, vals_list)]
+
+    def create(self, vals_list):
+        new_ids = super().create(vals_list)
+        new_ids._get_attendances_to_unlink().unlink()
+        return new_ids
+
+    def write(self, vals):
+        res = super().write(vals)
+        self._get_attendances_to_unlink().unlink()
+        return res
 
     # --------------------------------------------------
     # Computation API
@@ -649,9 +588,9 @@ class ResourceCalendar(models.Model):
 
     def _get_default_attendance_ids(self, company_id=None):
         """ return a copy of the company's calendar attendance or default 40 hours/week """
-        if company_id and (attendances := company_id.resource_calendar_id.attendance_ids):
-            return [Command.create(attendance._to_dict()) for attendance in attendances]
-        return [
+        if company_id and company_id.resource_calendar_id.schedule_type == "fixed" and (attendances := company_id.resource_calendar_id.attendance_ids):
+            return [Command.clear()] + [Command.create(attendance._to_dict()) for attendance in attendances]
+        return [Command.clear()] + [
             Command.create({'dayofweek': str(dayofweek), 'duration_hours': 8, 'hour_from': 0, 'hour_to': 0})
             for dayofweek in range(5)
         ]
