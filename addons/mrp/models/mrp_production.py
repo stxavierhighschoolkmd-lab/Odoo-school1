@@ -3120,6 +3120,12 @@ class MrpProduction(models.Model):
         if self.state == "confirmed":
             self.state = "progress"
 
+    def button_reset_quantity(self):
+        self.ensure_one()
+        moves = self.move_raw_ids.filtered(lambda m: not m.manual_consumption)
+        for move in moves:
+            move.quantity = move.product_uom_qty
+
     def action_view_serial_numbers(self):
         action = self.env["ir.actions.actions"]._for_xml_id("stock.action_production_lot_form")
         action['domain'] = [('id', 'in', self.lot_producing_ids.ids)]
