@@ -45,23 +45,76 @@ export class Attachment extends FileModelMixin(Record) {
             }
         },
     });
+    hasVideoThumbnail = fields.Attr(undefined, {
+        compute() {
+            if (this.isVideo) {
+                return Boolean(this.thumbnailUrl);
+            }
+        },
+    });
+    thumbnailUrl = fields.Attr(undefined, {
+        compute() {
+            if (this.isPdf) {
+                return imageUrl(
+                    "ir.attachment",
+                    this.id,
+                    "thumbnail",
+                    assignDefined(
+                        {},
+                        {
+                            access_token: this.thumbnail_access_token,
+                            crop: "top",
+                            height: 110,
+                            unique: this.checksum,
+                            width: 180,
+                        }
+                    )
+                );
+            }
+        },
+    });
+    videoThumbnail = fields.Attr(undefined, {
+        compute() {
+            if (!this.isVideo || this.thumbnailUrl) {
+                return;
+            }
+            this.generateVideoThumbnail().then((data) => (this.thumbnailUrl = data));
+        },
+        eager: true,
+    });
 
-    get thumbnailUrl() {
-        return imageUrl(
-            "ir.attachment",
-            this.id,
-            "thumbnail",
-            assignDefined(
-                {},
-                {
-                    access_token: this.thumbnail_access_token,
-                    crop: "top",
-                    height: 110,
-                    unique: this.checksum,
-                    width: 180,
-                }
-            )
-        );
+    generateVideoThumbnail() {
+        return new Promise((resolve) => {
+            const video = document.createElement("video");
+            video.src = this.defaultSource;
+            video.addEventListener(
+                "loadedmetadata",
+                () => {
+                    const thumbnailCanvas = document.createElement("canvas");
+                    thumbnailCanvas.width = video.videoWidth;
+                    thumbnailCanvas.height = video.videoHeight;
+                    video.currentTime = 0;
+                    video.addEventListener(
+                        "seeked",
+                        () => {
+                            thumbnailCanvas
+                                .getContext("2d")
+                                .drawImage(
+                                    video,
+                                    0,
+                                    0,
+                                    thumbnailCanvas.width,
+                                    thumbnailCanvas.height
+                                );
+                            const thumbnailUrl = thumbnailCanvas.toDataURL("image/webp");
+                            resolve(thumbnailUrl);
+                        },
+                        { once: true }
+                    );
+                },
+                { once: true }
+            );
+        });
     }
 
     get gifPaused() {
