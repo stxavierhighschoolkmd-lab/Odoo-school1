@@ -9,7 +9,7 @@ import { getElementsWithOption, getSnippetName } from "@html_builder/utils/utils
 const anchorSelector =
     ":not(p).oe_structure > *, :not(p)[data-oe-type=html] > *, .row > *, .s_card, .accordion-item";
 const anchorExclude =
-    ".modal *, .oe_structure .oe_structure *, [data-oe-type=html] .oe_structure *, .s_popup, .carousel *, .o_portal_index_card";
+    ".modal *, .oe_structure .oe_structure *:not(.s_table_of_content_main > *), [data-oe-type=html] .oe_structure *, .s_popup, .carousel *, .o_portal_index_card, [class*='s_table_of_content']";
 
 /**
  * Anchor titles are usually taken from headings (h1–h6). Here, styled titles

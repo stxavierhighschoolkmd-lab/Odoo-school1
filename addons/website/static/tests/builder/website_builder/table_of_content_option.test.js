@@ -15,6 +15,7 @@ import {
     queryAllTexts,
     queryFirst,
     queryOne,
+    queryText,
     tick,
     waitFor,
 } from "@odoo/hoot-dom";
@@ -250,4 +251,17 @@ test("update second toc navbar", async () => {
     );
     expect(toc1Anchor1El.getAttribute("href")).not.toEqual(toc2Anchor1El.getAttribute("href"));
     expect(toc1Anchor2El.getAttribute("href")).not.toEqual(toc2Anchor2El.getAttribute("href"));
+});
+
+test("create anchor links for sections", async () => {
+    await setupWebsiteBuilderWithSnippet("s_table_of_content");
+    expect(":iframe .s_table_of_content").toHaveCount(1);
+
+    await contains(":iframe .s_table_of_content_main h2:contains('Intuitive system')").click();
+    await contains("[data-container-title='Section'] button.oe_snippet_anchor").click();
+    expect(".o_notification_manager .o_notification_content").toHaveCount(1);
+    expect(queryText(".o_notification_manager .o_notification_content")).toInclude(
+        "#Intuitive-system"
+    );
+    expect(":iframe #Intuitive-system").toHaveCount(1);
 });
