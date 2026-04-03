@@ -65,7 +65,7 @@ class PosOrder(models.Model):
         :returns: id of created/updated pos.order
         :rtype: int
         """
-        draft = True if order.get('state') == 'draft' else False
+        draft = order.get('state') == 'draft'
         pos_session = self.env['pos.session'].browse(order['session_id'])
         if pos_session.state == 'closing_control' or pos_session.state == 'closed':
             pos_session = self._get_valid_session(order)
@@ -384,6 +384,10 @@ class PosOrder(models.Model):
         }
 
     def _ensure_to_keep_last_preparation_change(self, vals):
+        def _outdated_preparation_change_warning(record):
+            _logger.warning("Preparation changes were outdated, probably linked to a synching issue.")
+            vals['last_order_preparation_change'] = record.last_order_preparation_change
+
         for record in self:
             if record.last_order_preparation_change:
                 change = json.loads(record.last_order_preparation_change)
@@ -399,11 +403,26 @@ class PosOrder(models.Model):
                 local_date = fields.Datetime.from_string(local_change['metadata'].get('serverDate'))
 
                 if server_date > local_date:
-                    _logger.warning("Preparation changes were outdated, probably linked to a synching issue.")
-                    vals['last_order_preparation_change'] = record.last_order_preparation_change
-                else:
-                    local_change['metadata']['serverDate'] = fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    vals['last_order_preparation_change'] = json.dumps(local_change)
+                    _outdated_preparation_change_warning(record)
+                    return
+
+                server_lopc_lines = change.get('lines', {})
+                local_lopc_lines = local_change.get('lines', {})
+
+                for line_uuid, server_lopc_line in server_lopc_lines.items():
+                    local_lopc_line = local_lopc_lines.get(line_uuid)
+
+                    server_check_quantity = server_lopc_line['check_quantity']
+                    local_check_quantity = local_lopc_line['check_quantity']
+
+                    if server_check_quantity != local_check_quantity:
+                        _outdated_preparation_change_warning(record)
+                        return
+
+                    local_lopc_line['check_quantity'] = local_lopc_line['quantity']
+
+                local_change['metadata']['serverDate'] = fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                vals['last_order_preparation_change'] = json.dumps(local_change)
 
     @api.depends('account_move')
     def _compute_invoice_status(self):
