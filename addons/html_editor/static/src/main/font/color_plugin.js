@@ -260,10 +260,16 @@ export class ColorPlugin extends Plugin {
             }
         }
 
-        const selectedNodes =
-            mode === "backgroundColor" && color
-                ? targetedNodes.filter((node) => !closestElement(node, "table.o_selected_table"))
-                : targetedNodes;
+        const isFormattableNodePredicates = this.getResource("is_formattable_node_predicates");
+        const selectedNodes = targetedNodes.filter((node) => {
+            if (isFormattableNodePredicates.some((p) => !p(node))) {
+                return false;
+            }
+            if (mode === "backgroundColor" && color) {
+                return !closestElement(node, "table.o_selected_table");
+            }
+            return true;
+        });
 
         const targetedFieldNodes = new Set(
             this.dependencies.selection

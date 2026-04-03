@@ -292,6 +292,14 @@ export class FormatPlugin extends Plugin {
                 )
         );
 
+        const isFormattableNodePredicates = this.getResource("is_formattable_node_predicates");
+        const unformattedTextNodes = selectedTextNodes.filter((n) => {
+            if (isFormattableNodePredicates.some((p) => !p(n))) {
+                return false;
+            }
+            return true;
+        });
+
         const tagetedFieldNodes = new Set(
             this.dependencies.selection
                 .getTargetedNodes()
@@ -299,7 +307,7 @@ export class FormatPlugin extends Plugin {
                 .filter((node) => node && this.dependencies.selection.isNodeEditable(node))
         );
         const formatSpec = formatsSpecs[formatName];
-        for (const node of selectedTextNodes) {
+        for (const node of unformattedTextNodes) {
             const inlineAncestors = [];
             /** @type { Node } */
             let currentNode = node;
