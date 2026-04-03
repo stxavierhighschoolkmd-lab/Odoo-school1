@@ -1,0 +1,18 @@
+<t t-name="sale_stock.ReturnLabelBody">
+    <t t-if="isSinglePickingWithLabel">1. Download and print the Return label and place it in your package.
+        <br/>2. Download and print the Shipping label and place it on your package.
+    </t>
+    <t t-else="">Download, print and add this label in your package and send it to this address:</t>
+    <br/><br/>
+
+    <div class="card border">
+        <div class="card-body">
+            <b class="d-block mb-2">
+                <t t-out="companyName"/>
+            </b>
+            <span class="text-muted">
+                <t t-out="warehouseAddress"/>
+            </span>
+        </div>
+    </div>
+</t>

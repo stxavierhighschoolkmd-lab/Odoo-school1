@@ -167,6 +167,15 @@ class StockPicking(models.Model):
             and l.product_id == self.carrier_id.product_id
         )
 
+    def _get_return_details(self):
+        return_details = super()._get_return_details()
+        if self.carrier_id.get_return_label_from_portal and self.return_label_ids:
+            label = self.return_label_ids[:1]
+            return_details['shipping_label_url'] = (
+                f'/web/content/{label.id}?access_token={label.access_token or ''}'
+            )
+        return return_details
+
     def _prepare_sale_delivery_line_vals(self):
         return {
             'price_unit': self.carrier_price,

@@ -314,6 +314,14 @@ class StockPicking(models.Model):
 
         return super(StockPicking, self)._log_less_quantities_than_expected(moves)
 
+    def _get_return_details(self):
+        """Get return related details."""
+        self.ensure_one()
+        return {
+            'delivery_id': self.id,
+            'delivery_name': self.name,
+        }
+
     def _prepare_return_move_default_values(self, move_id):
         vals = super()._prepare_return_move_default_values(move_id)
         if move_id.sale_line_id:

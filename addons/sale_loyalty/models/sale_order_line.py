@@ -156,3 +156,6 @@ class SaleOrderLine(models.Model):
 
     def _can_be_edited_on_portal(self):
         return super()._can_be_edited_on_portal() and not self.is_reward_line
+
+    def _has_regular_product(self):
+        return self.reward_id.reward_type != "discount" and super()._has_regular_product()
