@@ -486,7 +486,7 @@ test("'Switch Theme' after a mutation should only ask one confirmation", async (
     await contains(`.o-snippets-tabs button[data-name="theme"]`).click();
     await contains(`.o_theme_tab button[data-action-id="switchTheme"]`).click();
     expect(".modal main").toHaveText(/Changing theme/);
-    await contains(`.modal button:contains(Ok)`).click();
+    await contains(`.modal button:contains(Apply New Palette)`).click();
     expect(".modal").toHaveCount(0, {
         message: "There should not be the modal telling changes will be lost",
     });
