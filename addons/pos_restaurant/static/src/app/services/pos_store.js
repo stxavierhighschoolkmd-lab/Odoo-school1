@@ -139,7 +139,7 @@ patch(PosStore.prototype, {
             const firstCourse = order.getFirstCourse();
             if (firstCourse && !firstCourse.fired) {
                 firstCourse.fired = true;
-                this.getOrder().deselectCourse();
+                order.deselectCourse();
             }
         }
 
@@ -553,9 +553,10 @@ patch(PosStore.prototype, {
     async submitOrder() {
         const order = this.getOrder();
         await this.ensureGuestCustomerCount(order);
+        this.showDefault();
+        await this.syncAllOrders({ orders: [order] });
         await this.sendOrderInPreparationUpdateLastChange(order);
         this.addPendingOrder([order.id]);
-        this.showDefault();
     },
     async reprintOrder() {
         const order = this.getOrder();
