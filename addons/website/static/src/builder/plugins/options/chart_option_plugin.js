@@ -10,12 +10,20 @@ import { registry } from "@web/core/registry";
 
 export class ChartOptionPlugin extends Plugin {
     static id = "chartOptionPlugin";
-    static dependencies = ["history"];
+    static dependencies = ["history", "edit_interaction"];
     static shared = ["isPieChart"];
 
     /** @type {import("plugins").WebsiteResources} */
     resources = {
         so_content_addition_selectors: [".s_chart"],
+        on_bg_color_updated_handlers: (element) => {
+            const chartEl = element.matches(".s_chart")
+                ? element
+                : element.querySelector(".s_chart");
+            if (chartEl) {
+                this.dependencies.edit_interaction.restartInteractions(chartEl);
+            }
+        },
         builder_actions: {
             SetChartTypeAction,
             AddColumnAction,
