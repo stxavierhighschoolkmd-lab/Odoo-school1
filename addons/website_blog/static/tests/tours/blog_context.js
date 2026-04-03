@@ -1,4 +1,5 @@
 import {
+    changeOptionInPopover,
     clickOnEditAndWaitEditMode,
     clickOnSave,
     clickOnSnippet,
@@ -95,12 +96,45 @@ registerWebsitePreviewTour(
         },
         {
             content: "Click on the first article",
-            trigger: ":iframe article[name='blog_post'] a",
+            trigger: ":iframe a:contains('First Post')",
             run: "click",
         },
         {
             content: "Check the blog info is available",
             trigger: ":iframe #o_wblog_post_info",
+        },
+        ...clickOnEditAndWaitEditMode(),
+        {
+            content: "Click on blogpost footer",
+            trigger: ":iframe #wrap #o_wblog_post_footer",
+            run: "click",
+        },
+        ...changeOptionInPopover("Blog Page", "Layout", "Title Above Cover"),
+        {
+            content: "Click on the next post cover image",
+            trigger: ":iframe #o_wblog_post_footer .o_record_cover_image",
+            run: "click",
+        },
+        {
+            content: "Verify cover options are not displayed.",
+            trigger: ".o_customize_tab div:not([data-container-title='Cover'])",
+        },
+        {
+            content: "Verify next post elements are not editable.",
+            trigger: ":iframe #o_wblog_post_footer",
+            run() {
+                const nonEditableELement = this.anchor.querySelectorAll(
+                    ".o_wblog_post_subtitle, .o_wblog_post_name, .o_record_cover_image"
+                );
+                for (const el of nonEditableELement) {
+                    if (el.getAttribute("contenteditable") !== "false") {
+                        console.error(
+                            "Next post elements(name, subtitle, cover) should not be editable."
+                        );
+                        break; // Exit on first failure
+                    }
+                }
+            },
         },
     ]
 );
