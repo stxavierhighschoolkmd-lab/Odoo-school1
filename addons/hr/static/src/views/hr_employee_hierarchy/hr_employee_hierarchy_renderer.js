@@ -1,4 +1,3 @@
-import { Avatar } from "@mail/views/web/fields/avatar/avatar";
 import { useService } from "@web/core/utils/hooks";
 
 import { HierarchyRenderer } from "@web_hierarchy/hierarchy_renderer";
@@ -9,7 +8,6 @@ export class HrEmployeeHierarchyRenderer extends HierarchyRenderer {
     static components = {
         ...HierarchyRenderer.components,
         HierarchyCard: HrEmployeeHierarchyCard,
-        Avatar,
     };
 
     setup() {

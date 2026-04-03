@@ -16,7 +16,8 @@ HIERARCHY_VALID_ATTRIBUTES = {
     'child_field',
     'icon',
     'draggable',
-    'default_order'
+    'default_order',
+    'avatar',
 }
 
 

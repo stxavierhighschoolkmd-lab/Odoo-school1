@@ -26,7 +26,7 @@ class Employee extends models.Model {
 
     _views = {
         hierarchy: `
-            <hierarchy js_class="hr_employee_hierarchy">
+            <hierarchy js_class="hr_employee_hierarchy" avatar="true">
                 <templates>
                     <t t-name="hierarchy-box">
                         <div class="o_hierarchy_node_header">
@@ -108,7 +108,7 @@ test("display the avatar of the parent when there is more than one node in the s
     expect(".o_hierarchy_node").toHaveCount(4);
     expect(".o_hierarchy_separator").toHaveCount(2);
     expect(".o_hierarchy_parent_node_container .o_avatar").toHaveCount(1);
-    expect(".o_avatar").toHaveText("Josephine");
+    expect(".o_hierarchy_parent_node_container").toHaveText("Josephine");
 });
 
 test("hierarchy with a self manager employee", async () => {

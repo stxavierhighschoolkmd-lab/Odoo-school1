@@ -247,6 +247,20 @@ test("display the parent above the line when many records on the parent row", as
     expect(".o_hierarchy_parent_node_container").toHaveText("Albert");
 });
 
+test("display the parent with avatar above the line when many records on the parent row", async () => {
+    Employee._views["hierarchy"] = Employee._views["hierarchy"].replace(
+        "<hierarchy>",
+        "<hierarchy avatar='true'>"
+    );
+    await mountView({
+        type: "hierarchy",
+        resModel: "hr.employee",
+    });
+    
+    await contains(".o_hierarchy_node_button.btn-primary").click();
+    expect(".o_hierarchy_parent_node_container .o_avatar").toHaveCount(1);
+});
+
 test("Add a custom domain leaf on default state of the view with a globalDomain and search default filters", async () => {
     Employee._records = [
         { id: 1, name: "A", parent_id: false, child_ids: [] },

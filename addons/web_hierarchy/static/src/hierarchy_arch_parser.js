@@ -8,6 +8,7 @@ export class HierarchyArchParser {
     parse(xmlDoc, models, modelName) {
         const archInfo = {
             activeActions: getActiveActions(xmlDoc),
+            avatar: false,
             defaultOrder: stringToOrderBy(xmlDoc.getAttribute("default_order") || null),
             draggable: false,
             icon: "fa-share-alt fa-rotate-90 align-text-top",
@@ -49,6 +50,9 @@ export class HierarchyArchParser {
                 }
                 if (node.hasAttribute("draggable")) {
                     archInfo.draggable = exprToBoolean(node.getAttribute("draggable"));
+                }
+                if (node.hasAttribute("avatar")) {
+                    archInfo.avatar = exprToBoolean(node.getAttribute("avatar"));
                 }
                 if (node.hasAttribute("icon")) {
                     archInfo.icon = node.getAttribute("icon");
