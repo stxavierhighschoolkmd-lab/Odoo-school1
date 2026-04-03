@@ -3,7 +3,6 @@
 
 import logging
 import re
-import werkzeug
 
 from odoo import api, fields, models, tools, _
 from odoo.exceptions import UserError, ValidationError
