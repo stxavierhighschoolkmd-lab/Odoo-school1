@@ -15,6 +15,7 @@ import { rightPos } from "@html_editor/utils/position";
 import { withSequence } from "@html_editor/utils/resource";
 
 const MEDIA_SELECTOR = `${ICON_SELECTOR} , .o_image, .media_iframe_video`;
+export const ATTACHMENT_PENDING_RECORD_ID = "o_attachment_pending_record_id";
 
 /**
  * @typedef { Object } MediaShared
@@ -134,6 +135,10 @@ export class MediaPlugin extends Plugin {
             // @todo @phoenix to remove
             throw new Error("Element is required: onSaveMediaDialog");
             // return;
+        }
+
+        if (!this.config.getRecordInfo()?.resId) {
+            element.classList.add(ATTACHMENT_PENDING_RECORD_ID);
         }
 
         if (node) {

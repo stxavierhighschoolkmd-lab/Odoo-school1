@@ -6,7 +6,7 @@ import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { QWebPlugin } from '@web_editor/js/backend/QWebPlugin';
 import { TranslationButton } from "@web/views/fields/translation_button";
 import { useDynamicPlaceholder } from "@web/views/fields/dynamic_placeholder_hook";
-import { useBus, useSpellCheck } from "@web/core/utils/hooks";
+import { useBus, useService, useSpellCheck } from "@web/core/utils/hooks";
 import {
     getAdjacentPreviousSiblings,
     getAdjacentNextSiblings,
@@ -34,6 +34,7 @@ import '@web/views/fields/html/html_field';
 import { Deferred } from "@web/core/utils/concurrency";
 
 let stripHistoryIds;
+export const ATTACHMENT_PENDING_RECORD_ID = "o_attachment_pending_record_id";
 
 export class HtmlField extends Component {
     static template = "web_editor.HtmlField";
@@ -64,6 +65,8 @@ export class HtmlField extends Component {
         this.codeViewRef = useRef("codeView");
         this.iframeRef = useRef("iframe");
         this.codeViewButtonRef = useRef("codeViewButton");
+
+        this.ormService = useService("orm");
 
         if (this.props.dynamicPlaceholder) {
             this.dynamicPlaceholder = useDynamicPlaceholder();
@@ -289,8 +292,34 @@ export class HtmlField extends Component {
             this.props.record.model.bus.trigger("FIELD_IS_DIRTY", false);
             this.currentEditingValue = value;
             await this.props.record.update({ [this.props.name]: value });
+            const { resId, resModel } = this.props.record;
+            await this.remapAttachmentsToRecord(this.wysiwyg.getEditable().get(0), resId, resModel);
         }
     }
+
+    async remapAttachmentsToRecord(content, resId, resModel) {
+        if (!resId || !content) {
+            return;
+        }
+        const unmappedAttachments = [
+            ...content.querySelectorAll(`.${ATTACHMENT_PENDING_RECORD_ID}`),
+        ];
+        const attachmentIds = unmappedAttachments
+            .map((attachment) => attachment.dataset.originalId)
+            .filter(Boolean)
+            .map((id) => parseInt(id));
+        if (attachmentIds.length) {
+            await this.ormService.write("ir.attachment", attachmentIds, {
+                res_id: resId,
+                res_model: resModel,
+            });
+            unmappedAttachments.forEach((attachment) =>
+                attachment.classList.remove(ATTACHMENT_PENDING_RECORD_ID)
+            );
+        }
+        return;
+    }
+
     async startWysiwyg(wysiwyg) {
         this.wysiwyg = wysiwyg;
         await this.wysiwyg.startEdition();
