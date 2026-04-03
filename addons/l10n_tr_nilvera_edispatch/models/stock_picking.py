@@ -1,8 +1,10 @@
+import base64
 import uuid
-
-from markupsafe import Markup
 from io import BytesIO
+from urllib.parse import quote
+
 from lxml import etree
+from markupsafe import Markup
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
@@ -97,14 +99,27 @@ class StockPicking(models.Model):
     )
     l10n_tr_nilvera_edispatch_warnings = fields.Json(compute='_compute_edispatch_warnings')
     l10n_tr_nilvera_edispatch_xml_file = fields.Binary(
-        string="Nilvera E-Despatch XML File",
+        string="Nilvera e-Dispatch XML File",
         copy=False,
         attachment=True,
     )
     l10n_tr_nilvera_edispatch_xml_id = fields.Many2one(
         "ir.attachment",
-        string="Nilvera E-Despatch XML",
+        store=True,
+        readonly=False,
+        string="e-Dispatch XML",
         compute='_compute_l10n_tr_nilvera_edispatch_xml_id',
+    )
+    l10n_tr_nilvera_edispatch_pdf_file = fields.Binary(
+        attachment=True,
+        string="Nilvera PDF File",
+        copy=False,
+    )
+    l10n_tr_nilvera_edispatch_pdf_id = fields.Many2one(
+        comodel_name='ir.attachment',
+        string="Nilvera PDF Attachment",
+        compute=lambda self: self._compute_linked_attachment_id('l10n_tr_nilvera_edispatch_pdf_id', 'l10n_tr_nilvera_edispatch_pdf_file'),
+        depends=['l10n_tr_nilvera_edispatch_pdf_file'],
     )
 
     @api.depends('l10n_tr_nilvera_edispatch_xml_file')
@@ -117,11 +132,54 @@ class StockPicking(models.Model):
         attachments = self.env['ir.attachment'].search([
             ('res_model', '=', self._name),
             ('res_id', 'in', self.ids),
-            ('res_field', '=', 'l10n_tr_nilvera_edispatch_xml_file')
+            ('res_field', '=', 'l10n_tr_nilvera_edispatch_xml_file'),
         ])
         picking_vals = {att.res_id: att for att in attachments}
         for picking in self:
             picking.l10n_tr_nilvera_edispatch_xml_id = picking_vals.get(picking._origin.id, False)
+
+    def _compute_linked_attachment_id(self, attachment_field, binary_field):
+        """Helper to retreive Attachment from Binary fields
+        This is needed because fields.Many2one('ir.attachment') makes all
+        attachments available to the user.
+        """
+        attachments = self.env['ir.attachment'].search([
+            ('res_model', '=', self._name),
+            ('res_id', 'in', self.ids),
+            ('res_field', '=', binary_field),
+        ])
+        move_vals = {att.res_id: att for att in attachments}
+        for move in self:
+            move[attachment_field] = move_vals.get(move._origin.id, False)
+
+    def write(self, vals):
+        if 'l10n_tr_nilvera_edispatch_xml_id' not in vals:
+            return super().write(vals)
+
+        new_attachment = self.env['ir.attachment'].browse(vals.get('l10n_tr_nilvera_edispatch_xml_id'))
+        old_attachment = self.l10n_tr_nilvera_edispatch_xml_id
+        res = super().write(vals)
+
+        old_attachment.res_model, old_attachment.res_id = False, False
+        new_attachment.res_model, new_attachment.res_id = self._name, self.id
+
+        self.invalidate_recordset([
+            'l10n_tr_nilvera_edispatch_xml_id',
+            'l10n_tr_nilvera_edispatch_xml_file',
+        ])
+
+        return res
+
+    def button_l10n_tr_nilvera_update_data_from_xml(self):
+        for picking in self:
+            if not (attachment := picking.l10n_tr_nilvera_edispatch_xml_id):
+                continue
+            file_data = next(iter(self.env['account.move']._to_files_data(attachment)), None)
+            if file_data is None:
+                continue
+            picking.move_line_ids.unlink()
+            picking.move_ids.unlink()
+            picking._update_data_from_xml(file_data)
 
     @api.depends(
         'l10n_tr_nilvera_carrier_id', 'l10n_tr_nilvera_buyer_id', 'l10n_tr_nilvera_seller_supplier_id',
@@ -194,7 +252,7 @@ class StockPicking(models.Model):
         if drivers := len(invalid_country_drivers):
             error_messages['invalid_driver_country'] = {
                 'message': _(
-                    "Only Drivers from Türkiye are valid. Please update the Country and enter a valid TCKN in the Tax ID."
+                    "Only Drivers from Türkiye are valid. Please update the Country and enter a valid TCKN in the Tax ID.",
                 ),
                 'action_text': _(
                     "View %s",
@@ -634,7 +692,7 @@ class StockPicking(models.Model):
         vals_to_update.update(self._import_edispatch_fields(tree))
 
         self.write(vals_to_update)
-        self.message_post(body=_("e-Receipt uploaded successfully."), attachment_ids=[file_data['attachment'].id])
+        self.message_post(body=_("Record updated from e-Receipt successfully."), attachment_ids=[file_data['attachment'].id])
 
     def _l10n_tr_create_receipts_from_attachment(self, attachments):
         files_with_errors = []
@@ -690,3 +748,131 @@ class StockPicking(models.Model):
         """
         sequence_number = self.name.removeprefix(self.picking_type_id.sequence_id.prefix or '').removesuffix(self.picking_type_id.sequence_id.suffix or '')
         return f"{self.picking_type_id.l10n_tr_nilvera_gib_sequence_code.upper()}{self.scheduled_date.year}{sequence_number.zfill(9)}"
+
+    def _l10n_tr_nilvera_get_attachments(self, nilvera_channel="edespatch", document_category="Purchase"):
+        with _get_nilvera_client(self.env._, self.env.company) as client:
+            endpoint = f"/{nilvera_channel}/{quote(document_category)}"
+            last_fetched_date_field_name = f"l10n_tr_{nilvera_channel}_{document_category.lower()}_last_fetched_date"
+            start_date = self.env.company[last_fetched_date_field_name]
+            # Force check Istanbul time when requesting from nilvera
+            self_tz = self.with_context(tz="Europe/Istanbul")
+            end_date = fields.Datetime.context_timestamp(self_tz, fields.Datetime.now()).strftime("%Y-%m-%dT%H:%M:%S")
+            page = 1
+
+            # We filter documents by their CreatedDate on Nilvera, which represents when the document was created on
+            # their platform. This ensures we always fetch the most recently uploaded documents, regardless of their
+            # actual invoicing date (which might be much older).
+            # The sorting allows us to resume from the last successfully fetched document in case an error interrupts
+            # the batch fetching process.
+            params = {
+                'StatusCode': ['succeed'],
+                'StartDate': start_date,
+                'EndDate': end_date,
+                'DateFilterType': 'IssueDate',
+                'SortColumn': 'CreatedDate',
+                'SortType': 'ASC',
+            }
+            response = client.request("GET", endpoint, params={**params, "Page": page})
+            total_pages = response.get("TotalPages")
+            if not total_pages:
+                return
+
+            while page <= total_pages:
+                # Reuse first response, fetch subsequent pages.
+                if page > 1:
+                    response = client.request("GET", endpoint, params={**params, "Page": page})
+
+                despatch_to_uuid_and_date = {
+                    content.get('DespatchNumber'): {
+                        'uuid': content.get('UUID'),
+                        'created_date': content.get('CreatedDate'),
+                    }
+                    for content in response.get('Content')
+                    if content.get('DespatchNumber') and content.get('UUID')
+                }
+                existing_attachments = self.env['ir.attachment'].search([('res_field', '=', 'l10n_tr_nilvera_edispatch_xml_file')])
+                existing_document_despatches = {att.name.replace('_e_Dispatch.xml', '') for att in existing_attachments}
+
+                for despatch_number, info in despatch_to_uuid_and_date.items():
+                    if despatch_number in existing_document_despatches:
+                        continue
+                    self._l10n_tr_nilvera_create_attachment_from_uuid(client, info['uuid'], document_category, nilvera_channel)
+                    self.env.company.write({last_fetched_date_field_name: info['created_date'][:19].replace('T', ' ')})
+                    self.env.cr.commit()
+                page += 1
+
+    def _l10n_tr_nilvera_create_attachment_from_uuid(self, client, document_uuid, document_category="Purchase", nilvera_channel="edespatch"):
+        response = client.request(
+            "GET",
+            f"/{nilvera_channel}/{quote(document_category)}/{quote(document_uuid)}/xml",
+            params={"StatusCode": ["succeed"]},
+        )
+
+        tree = etree.fromstring(response)
+        document_id = tree.findtext('./cbc:ID', namespaces=tree.nsmap)
+
+        self.env['ir.attachment'].create({
+            'name': '%s_e_Dispatch.xml' % document_id,
+            'raw': response.encode('utf-8'),
+            'type': 'binary',
+            'mimetype': 'application/xml',
+            'res_field': 'l10n_tr_nilvera_edispatch_xml_file',
+            })
+
+    def _l10n_tr_nilvera_company_get_attachments(self, nilvera_channel, category):
+        for company in self.env.companies:
+            if company.country_code != "TR" or not company.l10n_tr_nilvera_api_key:
+                continue
+            self.with_company(company)._l10n_tr_nilvera_get_attachments(nilvera_channel, category)
+
+    def _cron_nilvera_get_edispatch_purchase_attachments(self):
+        # The Edispatch Purchase channel is /edespatch/Purchase
+        self._l10n_tr_nilvera_company_get_attachments("edespatch", "Purchase")
+
+    def _cron_nilvera_get_edispatch_purchase_pdf(self, batch_size=100):
+        """ Fetches the Nilvera generated PDFs for the sales generated on Odoo. """
+        # We fetch all invoices whose message_main_attachment_id is the same
+        # as their invoice_pdf_report_id attachment. After we add the Nilvera
+        # PDF, `_l10n_tr_nilvera_add_pdf_to_picking` will set
+        # `message_main_attachment_id` to the Nilvera attachment, so they
+        # won't be picked up by next runs.
+        # This is a workaround to do this in stable without adding a dedicated field.
+        pickings_to_fetch_pdf = self.env['stock.picking'].search([
+            ('state', '=', 'Done'),
+            ('l10n_tr_nilvera_delivery_printed_number', '=', True),
+            ('l10n_tr_nilvera_edispatch_xml_file', '=', True),
+            ('l10n_tr_nilvera_edispatch_pdf_file', '=', False),
+        ], limit=batch_size)
+        for company, pickings in pickings_to_fetch_pdf.grouped("company_id").items():
+            with _get_nilvera_client(self.env._, company) as client:
+                for picking in pickings:
+                    self._l10n_tr_nilvera_add_pdf_to_picking(
+                        client,
+                        picking,
+                        picking.l10n_tr_nilvera_uuid,
+                        document_category="Purchase",
+                        nilvera_channel='edespatch',
+                    )
+
+    def _l10n_tr_nilvera_add_pdf_to_picking(self, client, picking, document_uuid, document_category="Purchase", nilvera_channel="edespatch"):
+        response = client.request("GET", f"/{nilvera_channel}/{quote(document_category)}/{quote(document_uuid)}/pdf")
+        filename = f'{picking.l10n_tr_nilvera_delivery_printed_number}_e_Dispatch.pdf'
+
+        attachment = self.env['ir.attachment'].create({
+            'name': filename,
+            'res_id': picking.id,
+            'res_field': 'l10n_tr_nilvera_pdf_file',
+            'res_model': 'stock.picking',
+            'raw': base64.b64decode(response),
+            'type': 'binary',
+            'mimetype': 'application/pdf',
+        })
+        self.invalidate_recordset(fnames=["l10n_tr_nilvera_pdf_id", "l10n_tr_nilvera_pdf_file"])
+        # The created attachement coming form Nilvera should be the main attachment
+        picking.message_main_attachment_id = attachment
+        picking.message_post(attachment_ids=attachment.ids)
+
+    def button_l10n_tr_nilvera_fetch_edispatch_purchase_attachments(self):
+        """ Fetches E-Recipients attachments from Nilvera."""
+        super().button_fetch_in_einvoices()
+        self.env['stock.picking']._cron_nilvera_get_edispatch_purchase_attachments()
