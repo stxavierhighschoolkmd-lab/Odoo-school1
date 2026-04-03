@@ -13,4 +13,14 @@ export class BadgeOptionPlugin extends Plugin {
         },
     };
 }
+
+export class BadgeTranslationPlugin extends Plugin {
+    static id = "badgeTranslation";
+    /** @type {import("plugins").WebsiteResources} */
+    resources = {
+        require_repeat_translation_state_background_selectors: "span.s_badge",
+    };
+}
+
+registry.category("translation-plugins").add(BadgeTranslationPlugin.id, BadgeTranslationPlugin);
 registry.category("builder-plugins").add(BadgeOptionPlugin.id, BadgeOptionPlugin);
