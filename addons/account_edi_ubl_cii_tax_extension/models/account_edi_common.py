@@ -1,4 +1,5 @@
 from odoo import models, _
+from odoo.tools import html2plaintext
 
 TAX_EXEMPTION_MAPPING = {
     'VATEX-EU-79-C': 'Exempt based on article 79, point c of Council Directive 2006/112/EC',
@@ -113,7 +114,13 @@ class AccountEdiCommon(models.AbstractModel):
         if tax.ubl_cii_tax_category_code:
             reason_code = tax.ubl_cii_tax_exemption_reason_code
             reason_code = FIX_WRONG_CODES_MAPPING.get(reason_code, reason_code)
-            tax_exemption_reason = TAX_EXEMPTION_MAPPING.get(reason_code, _("Exempt from tax") if tax._requires_exemption_reason() else None)
+
+            cocontractant_note = self._get_BE_cocontractant_note(invoice, invoice.partner_id)
+            if cocontractant_note:
+                    tax_exemption_reason = TAX_EXEMPTION_MAPPING.get(reason_code)
+                    tax_exemption_reason = f"{tax_exemption_reason} - {cocontractant_note}" if tax_exemption_reason else cocontractant_note
+            else:
+                tax_exemption_reason = TAX_EXEMPTION_MAPPING.get(reason_code, _("Exempt from tax") if tax._requires_exemption_reason() else None)
             return {
                 'tax_category_code': tax.ubl_cii_tax_category_code,
                 'tax_exemption_reason_code': reason_code,
