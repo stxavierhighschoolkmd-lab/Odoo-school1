@@ -3,8 +3,8 @@
 
     <t t-inherit="portal.Chatter" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('o-mail-Chatter-top')]" position="before">
-            <div class="d-flex justify-content-end">
-                <button t-if="props.displayFollowButton" class="btn btn-link w-auto" t-on-click="toggleIsFollower">
+            <div class="d-flex justify-content-end mb-2">
+                <button t-if="props.displayFollowButton" class="btn btn-link w-auto py-0" t-on-click="toggleIsFollower">
                     <t t-if="state.isFollower">
                         Unfollow
                     </t>
