@@ -37,3 +37,11 @@ class PosSession(models.Model):
             > 0
         )
         return read_records
+
+    def update_closing_control_state_session(self, notes):
+        super().update_closing_control_state_session(notes)
+        self.config_id._notify("SESSION_STATE_CHANGED", {})
+
+    def _set_opening_control_data(self, cashbox_value: int, notes: str):
+        super()._set_opening_control_data(cashbox_value, notes)
+        self.config_id._notify("SESSION_STATE_CHANGED", {})
