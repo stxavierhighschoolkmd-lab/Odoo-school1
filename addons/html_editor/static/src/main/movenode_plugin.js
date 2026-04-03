@@ -17,7 +17,8 @@ import { getDeepestPosition, isContentEditable } from "@html_editor/utils/dom_in
  */
 
 const WIDGET_CONTAINER_WIDTH = 25;
-const WIDGET_MOVE_SIZE = 20;
+const WIDGET_MOVE_WIDTH = 18;
+const WIDGET_MOVE_HEIGHT = 20;
 
 const ALLOWED_ELEMENTS = "h1, h2, h3, p, hr, pre, blockquote, li";
 
@@ -189,7 +190,7 @@ export class MoveNodePlugin extends Plugin {
                 // For <li>, move hookBox to the left to avoid blocking
                 // checkboxes — needed for proper list item interaction.
                 hookBox = new DOMRect(
-                    elementRect.x - containerRect.left - WIDGET_CONTAINER_WIDTH - WIDGET_MOVE_SIZE,
+                    elementRect.x - containerRect.left - WIDGET_CONTAINER_WIDTH - WIDGET_MOVE_WIDTH,
                     elementRect.y - containerRect.top - marginTop,
                     WIDGET_CONTAINER_WIDTH,
                     elementRect.height + marginTop + marginBottom
@@ -259,11 +260,11 @@ export class MoveNodePlugin extends Plugin {
         const anchorBlockRect = this.currentMovableElement.getBoundingClientRect();
         const anchorX =
             this.currentMovableElement.tagName === "LI"
-                ? anchorBlockRect.x - WIDGET_MOVE_SIZE // Prevent overlap bullets.
+                ? anchorBlockRect.x - WIDGET_MOVE_WIDTH // Prevent overlap bullets.
                 : anchorBlockRect.x;
         let anchorY = anchorBlockRect.y;
         if (this.currentMovableElement.tagName.match(/H[1-6]/)) {
-            anchorY += (anchorBlockRect.height - WIDGET_MOVE_SIZE) / 2;
+            anchorY += (anchorBlockRect.height - WIDGET_MOVE_HEIGHT) / 2;
         }
 
         this.moveWidget = this.document.createElement("div");
@@ -276,8 +277,8 @@ export class MoveNodePlugin extends Plugin {
             moveWidgetOffsetTop = parseInt(style.marginTop, 10) || 0;
         }
 
-        this.moveWidget.style.width = `${WIDGET_MOVE_SIZE}px`;
-        this.moveWidget.style.height = `${WIDGET_MOVE_SIZE}px`;
+        this.moveWidget.style.width = `${WIDGET_MOVE_WIDTH}px`;
+        this.moveWidget.style.height = `${WIDGET_MOVE_HEIGHT}px`;
         this.moveWidget.style.top = `${anchorY - containerRect.y - moveWidgetOffsetTop}px`;
         this.moveWidget.style.left = `${anchorX - containerRect.x - WIDGET_CONTAINER_WIDTH}px`;
 
@@ -376,7 +377,7 @@ export class MoveNodePlugin extends Plugin {
             dropzoneBox.style.top = `${dropzoneRect.top - containerRect.top}px`;
             dropzoneBox.style.left =
                 element.tagName == "LI"
-                    ? `${dropzoneRect.left - containerRect.left - WIDGET_MOVE_SIZE}px`
+                    ? `${dropzoneRect.left - containerRect.left - WIDGET_MOVE_WIDTH}px`
                     : `${dropzoneRect.left - containerRect.left}px`;
             dropzoneBox.style.width = `${dropzoneRect.width}px`;
             dropzoneBox.style.height = `${dropzoneRect.height}px`;
