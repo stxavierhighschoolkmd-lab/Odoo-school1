@@ -434,124 +434,70 @@
                             </header>
 
                             <div t-if="products" class="o_wsale_products_grid_table_wrapper">
-                                <t t-set="grid_md_allow_custom_cols" t-value="hasLeftColumn"/>
-                                <t
-                                    t-set="grid_md_use_3col"
-                                    t-value="(not hasLeftColumn and ppr == 4) or (opt_wsale_fullwidth and ppr > 3)"
-                                />
-
-                                <section
-                                    id="o_wsale_products_grid"
-                                    t-attf-class="o_wsale_products_grid_table grid
-                                        {{grid_md_allow_custom_cols and 'o_wsale_products_grid_table_md'}}
-                                        {{website.shop_opt_products_design_classes}}"
-                                    t-attf-style="--o-wsale-ppr: {{ppr}}; --o-wsale-ppg: {{ppg}}; --o-wsale-products-grid-gap: {{gap}};"
-                                    t-att-data-name="grid_block_name"
-                                >
-                                    <t t-foreach="bins" t-as="tr_product">
-                                        <t t-foreach="tr_product" t-as="td_product">
-                                            <t t-if="td_product">
-                                                <t t-set="col_height" t-value="td_product['y']"/>
-                                                <t t-set="col_width"
-                                                   t-value="12 // ppr * td_product['x']"/>
-                                                <t t-set="col_class" t-valuef="g-col-6"/>
-                                                <t t-set="col_class_lg"
-                                                   t-value="'g-col-lg-' + str(col_width)"/>
-                                                <t t-set="col_class_md"
-                                                   t-value="grid_md_allow_custom_cols and ('g-col-md-' + str(col_width)) or grid_md_use_3col and 'g-col-md-4' or 'g-col-md-6'"/>
-                                                <t t-set="col_is_stretched"
-                                                   t-value="(td_product['x'] &gt;= td_product['y'] * 2)"/>
-                                                <t t-set="col_is_custom_portrait"
-                                                   t-value="not col_is_stretched and (col_height &gt; td_product['x'])"/>
-                                                <t t-set="product" t-value="td_product['product']"/>
-                                                <t t-set="product_variant" t-value="product_variants[product]"/>
-                                                <t t-set="template_price_vals" t-value="get_product_prices(product)"/>
-                                                <t
-                                                    t-set="ribbon"
-                                                    t-value="product._get_ribbon(
-                                                        price_vals=template_price_vals,
-                                                        auto_assign_ribbons=auto_assign_ribbons,
-                                                        variant=product_variants[product],
-                                                    )"
-                                                />
-                                                <div
-                                                    t-attf-class="oe_product {{col_is_custom_portrait and 'oe_product_custom_portrait'}} {{col_class}} {{col_class_md}} {{col_class_lg}} {{col_is_stretched and 'oe_product_size_stretch'}}"
-                                                    t-attf-style="--o-wsale-products-grid-product-col-height: {{col_height}};"
-                                                    t-att-data-colspan="td_product['x'] != 1 and td_product['x']"
-                                                    t-att-data-rowspan="td_product['y'] != 1 and td_product['y']"
-                                                    t-att-data-name="product_block_name"
+                                <t t-call="website_sale.products_grid"/>
+                            </div>
+                            <div t-else="">
+                                <div class="text-center mt128 mb256">
+                                    <t groups="base.group_public">
+                                        <t t-if="not search">
+                                            <div class="mt-5 mb-3">
+                                                <t t-call="website.empty_search_svg"/>
+                                            </div>
+                                            <h3
+                                                class="mt8"
+                                                style="text-align: center;"
+                                            >
+                                                No product defined
+                                            </h3>
+                                            <p
+                                                t-if="category"
+                                                style="text-align: center;"
+                                            >
+                                                No product defined in this category.
+                                            </p>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="mt-5 mb-3">
+                                                <t t-call="website.empty_search_svg"/>
+                                            </div>
+                                            <h3 class="mt8" style="text-align: center;">No results</h3>
+                                            <p style="text-align: center;">
+                                                No results for "<strong t-out='search'/>"<t t-if="category"> in category "<strong t-out="category.display_name"/>"</t>.
+                                            </p>
+                                            <p style="text-align: center;">
+                                                <a
+                                                    t-if="category"
+                                                    t-att-href="keep(shop_path, search=search)"
+                                                    t-attf-title="Search {{search}} globally"
+                                                    class="d-block pb-5"
                                                 >
-                                                    <div t-attf-class="o_wsale_product_grid_wrapper position-relative h-100 o_wsale_product_grid_wrapper_#{td_product['x']}_#{td_product['y']}">
-                                                        <t t-call="website_sale.products_item"
-                                                            design_field="website.shop_opt_products_design_classes"
-                                                            product_href="product._get_product_url(category, product_query_params, grouped_attributes_values)"/>
-                                                    </div>
-                                                </div>
-                                            </t>
+                                                    Search globally
+                                                </a>
+                                            </p>
                                         </t>
                                     </t>
-                                </section>
-                            </div>
-                            <div t-else="" class="text-center mt128 mb256">
-                                <t groups="base.group_public">
-                                    <t t-if="not search">
-                                        <div class="mt-5 mb-3">
-                                            <t t-call="website.empty_search_svg"/>
-                                        </div>
-                                        <h3
-                                            class="mt8"
-                                            style="text-align: center;"
-                                        >
-                                            No product defined
-                                        </h3>
-                                        <p
-                                            t-if="category"
-                                            style="text-align: center;"
-                                        >
-                                            No product defined in this category.
-                                        </p>
-                                    </t>
-                                    <t t-else="">
-                                        <div class="mt-5 mb-3">
-                                            <t t-call="website.empty_search_svg"/>
-                                        </div>
-                                        <h3 class="mt8" style="text-align: center;">No results</h3>
-                                        <p style="text-align: center;">
-                                            No results for "<strong t-out='search'/>"<t t-if="category"> in category "<strong t-out="category.display_name"/>"</t>.
-                                        </p>
-                                        <p style="text-align: center;">
+                                    <t
+                                        t-ignore="true"
+                                        groups="sales_team.group_sale_manager"
+                                    >
+                                        <t t-call="website_sale.shop_page_empty_screen"/>
+                                        <h2 class="h4-fs mt-md-4">
+                                            Create your first product
+                                        </h2>
+                                        <div>
                                             <a
-                                                t-if="category"
-                                                t-att-href="keep(shop_path, search=search)"
-                                                t-attf-title="Search {{search}} globally"
-                                                class="d-block pb-5"
-                                            >
-                                                Search globally
+                                                name="products_manager_button"
+                                                href="/odoo/action-website_sale.product_template_action_website"
+                                                class="btn btn-primary d-md-none mb-3"
+                                                >
+                                                Go to Products Manager
                                             </a>
-                                        </p>
+                                        </div>
                                     </t>
-                                </t>
-                                <t
-                                    t-ignore="true"
-                                    groups="sales_team.group_sale_manager"
-                                >
-                                    <t t-call="website_sale.shop_page_empty_screen"/>
-                                    <h2 class="h4-fs mt-md-4">
-                                        Create your first product
-                                    </h2>
-                                    <div>
-                                        <a
-                                            name="products_manager_button"
-                                            href="/odoo/action-website_sale.product_template_action_website"
-                                            class="btn btn-primary d-md-none mb-3"
-                                            >
-                                            Go to Products Manager
-                                        </a>
-                                    </div>
-                                </t>
-                            </div>
-                            <div id="o_wsale_pager" t-attf-class="products_pager d-flex justify-content-center {{opt_wsale_design_grid and 'py-4' or 'py-5 pb-4'}}">
-                                <t t-call="website.pager"/>
+                                </div>
+                                <div id="o_wsale_pager" t-attf-class="products_pager d-flex justify-content-center {{opt_wsale_design_grid and 'py-4' or 'py-5 pb-4'}}">
+                                    <t t-call="website.pager"/>
+                                </div>
                             </div>
                             <t t-if="category">
                                 <t t-set='footer_editor_message'>
@@ -595,6 +541,69 @@
                 </div>
             </div>
         </t>
+    </template>
+
+    <template id="website_sale.products_grid">
+        <t t-set="grid_md_allow_custom_cols" t-value="hasLeftColumn"/>
+        <t
+            t-set="grid_md_use_3col"
+            t-value="(not hasLeftColumn and ppr == 4) or (opt_wsale_fullwidth and ppr > 3)"
+        />
+
+        <section
+            id="o_wsale_products_grid"
+            t-attf-class="o_wsale_products_grid_table grid
+                {{grid_md_allow_custom_cols and 'o_wsale_products_grid_table_md'}}
+                {{website.shop_opt_products_design_classes}}"
+            t-attf-style="--o-wsale-ppr: {{ppr}}; --o-wsale-ppg: {{ppg}}; --o-wsale-products-grid-gap: {{gap}};"
+            t-att-data-name="grid_block_name"
+        >
+            <t t-foreach="bins" t-as="tr_product">
+                <t t-foreach="tr_product" t-as="td_product">
+                    <t t-if="td_product">
+                        <t t-set="col_height" t-value="td_product['y']"/>
+                        <t t-set="col_width"
+                            t-value="12 // ppr * td_product['x']"/>
+                        <t t-set="col_class" t-valuef="g-col-6"/>
+                        <t t-set="col_class_lg"
+                            t-value="'g-col-lg-' + str(col_width)"/>
+                        <t t-set="col_class_md"
+                            t-value="grid_md_allow_custom_cols and ('g-col-md-' + str(col_width)) or grid_md_use_3col and 'g-col-md-4' or 'g-col-md-6'"/>
+                        <t t-set="col_is_stretched"
+                            t-value="(td_product['x'] &gt;= td_product['y'] * 2)"/>
+                        <t t-set="col_is_custom_portrait"
+                            t-value="not col_is_stretched and (col_height &gt; td_product['x'])"/>
+                        <t t-set="product" t-value="td_product['product']"/>
+                        <t t-set="product_variant" t-value="product_variants[product]"/>
+                        <t t-set="template_price_vals" t-value="get_product_prices(product)"/>
+                        <t
+                            t-set="ribbon"
+                            t-value="product._get_ribbon(
+                                price_vals=template_price_vals,
+                                auto_assign_ribbons=auto_assign_ribbons,
+                                variant=product_variants[product],
+                            )"
+                        />
+                        <div
+                            t-attf-class="oe_product {{col_is_custom_portrait and 'oe_product_custom_portrait'}} {{col_class}} {{col_class_md}} {{col_class_lg}} {{col_is_stretched and 'oe_product_size_stretch'}}"
+                            t-attf-style="--o-wsale-products-grid-product-col-height: {{col_height}};"
+                            t-att-data-colspan="td_product['x'] != 1 and td_product['x']"
+                            t-att-data-rowspan="td_product['y'] != 1 and td_product['y']"
+                            t-att-data-name="product_block_name"
+                        >
+                            <div t-attf-class="o_wsale_product_grid_wrapper position-relative h-100 o_wsale_product_grid_wrapper_#{td_product['x']}_#{td_product['y']}">
+                                <t t-call="website_sale.products_item"
+                                    design_field="website.shop_opt_products_design_classes"
+                                    product_href="product._get_product_url(category, product_query_params, grouped_attributes_values)"/>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </section>
+        <div id="o_wsale_pager" t-attf-class="products_pager d-flex justify-content-center {{opt_wsale_design_grid and 'py-4' or 'py-5 pb-4'}}">
+            <t t-call="website.pager"/>
+        </div>
     </template>
 
     <template id="website_sale.sidebar_dropzone_at_top">
