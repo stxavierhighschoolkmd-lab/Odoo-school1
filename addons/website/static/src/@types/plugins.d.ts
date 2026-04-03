@@ -33,6 +33,7 @@ declare module "plugins" {
     import { theme_options, ThemeTabShared } from "@website/builder/plugins/theme/theme_tab_plugin";
     import { TranslateWebpageOptionShared } from "@website/builder/plugins/translation/options/translate_webpage_option_plugin";
     import { on_nodes_marked_translatable_handlers } from "@website/builder/plugins/translation/translation_plugin";
+    import { invisible_items, VisibilityShared } from "@website/builder/plugins/visibility_plugin";
     import { WebsiteSaveShared } from "@website/builder/plugins/website_save_plugin";
     import { WebsiteSessionShared } from "@website/builder/plugins/website_session_plugin";
 
@@ -61,6 +62,7 @@ declare module "plugins" {
         switchableViews: SwitchableViewsShared;
         themeTab: ThemeTabShared;
         translateWebpageOption: TranslateWebpageOptionShared;
+        visibility: VisibilityShared;
         websiteBackgroundVideoPlugin: WebsiteBackgroundVideoShared;
         websiteFont: WebsiteFontShared;
         websiteFormOption: FormOptionShared;
@@ -94,6 +96,7 @@ declare module "plugins" {
         header_templates_providers: header_templates_providers;
 
         // Data
+        invisible_items: invisible_items;
         searchbar_option_display_items: searchbar_option_display_items;
         searchbar_option_order_by_items: searchbar_option_order_by_items;
         theme_options: theme_options;

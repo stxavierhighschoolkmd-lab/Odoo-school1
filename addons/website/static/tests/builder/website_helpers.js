@@ -56,7 +56,25 @@ class IrUiView extends models.Model {
 export const setupWebsiteBuilderOeId = 539;
 
 export const invisibleEl =
-    '<div class="s_invisible_el o_snippet_invisible" data-name="Invisible Element" data-invisible="1"></div>';
+    '<div class="s_invisible_el" data-name="Invisible Element" style="display: none">Invisible</div>';
+export class TestInvisibleElementPlugin extends Plugin {
+    static id = "testInvisibleElement";
+    resources = {
+        invisible_items: {
+            selector: ".s_invisible_el",
+            toggle: (el, show) => (el.style.display = show ? null : "none"),
+        },
+    };
+}
+export const styleConditionalInvisible = `.o_conditional_hidden { display: none !important; }`;
+export const styleDeviceInvisible = `
+    .d-none { display: none !important; }
+    @media (min-width: 992px) {
+        .d-lg-none { display: none !important; }
+        .d-lg-block { display: block !important; }
+    }
+    .o_snippet_override_invisible { display: block !important; }
+`;
 
 export function defineWebsiteModels() {
     describe.current.tags("desktop");
@@ -537,4 +555,12 @@ export async function insertStructureSnippet(editor, snippetName) {
     const parentEl = editor.editable.querySelector("#wrap") || editor.editable;
     parentEl.append(snippetEl);
     editor.shared.history.addStep();
+}
+
+export async function toggleMobilePreview() {
+    await contains("button[data-action='mobile']").click();
+    // The click above will cause a resize of the iframe containing the builder.
+    // Resize observers that react to that change and update the ui accordingly
+    // will need one more animation frame to have their changes reflected
+    await animationFrame();
 }
