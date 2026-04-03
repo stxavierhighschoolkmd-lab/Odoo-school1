@@ -46,7 +46,7 @@ export class Parallax extends Interaction {
             return;
         }
         this.viewportHeight = document.body.clientHeight;
-        this.parallaxHeight = this.el.getBoundingClientRect().height;
+        this.parallaxHeight = (this.el.classList.contains('carousel-item')) ? this.el.parentElement.getBoundingClientRect().height : this.el.getBoundingClientRect().height;
 
         // The parallax is in the viewport if it is between these two values
         // min : bottom of the parallax in at the top of the page
@@ -70,7 +70,7 @@ export class Parallax extends Interaction {
     }
 
     onScroll() {
-        const currentPosition = this.el.getBoundingClientRect().top;
+        const currentPosition = (this.el.classList.contains('carousel-item')) ? this.el.parentElement.getBoundingClientRect().top : this.el.getBoundingClientRect().top;
         if (
             this.speed === 0 ||
             this.speed === 1 ||
