@@ -113,8 +113,16 @@ export class PosOrderAccounting extends Base {
     }
     get appliedRounding() {
         const total = this.prices.taxDetails.total_amount_no_rounding;
-        const isNegative = this.amountPaid > total;
-        const remaining = total - this.amountPaid;
+        const roundedOverpaid =
+            Math.abs(this.amountPaid) > Math.abs(total) &&
+            this.orderIsRounded &&
+            this.config.rounding_method.round(this.amountPaid) !==
+                this.config.rounding_method.round(total)
+                ? this.amountPaid - this.config.rounding_method.round(total)
+                : 0;
+        const effectivePaid = this.amountPaid - roundedOverpaid;
+        const isNegative = effectivePaid > total;
+        const remaining = total - effectivePaid;
         const amount =
             this.orderIsRounded &&
             this.config.rounding_method.asymmetricRound(total < 0 ? -remaining : remaining) == 0

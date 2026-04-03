@@ -251,8 +251,8 @@ test("[Old Tour] test_cash_rounding_halfup_add_invoice_line_only_round_cash_meth
     order.addPaymentline(cashPm);
     expect(order.payment_ids[1].amount).toBe(15.05);
     expect(order.amountPaid).toBe(15.73);
-    expect(order.appliedRounding).toBe(0.01);
-    expect(order.change).toBe(0.0);
+    expect(order.appliedRounding).toBe(-0.02);
+    expect(order.change).toBe(-0.05);
 
     const order2 = store.addNewOrder();
     order2.pricelist_id = false;
@@ -268,8 +268,8 @@ test("[Old Tour] test_cash_rounding_halfup_add_invoice_line_only_round_cash_meth
     order2.addPaymentline(cashPm);
     expect(order2.payment_ids[1].amount).toBe(-15.05);
     expect(order2.amountPaid).toBe(-15.73);
-    expect(order2.appliedRounding).toBe(-0.01);
-    expect(order2.change).toBe(0.0);
+    expect(order2.appliedRounding).toBe(0.02);
+    expect(order2.change).toBe(0.05);
 });
 
 test("[Old Tour] test_cash_rounding_with_change", async () => {
@@ -286,7 +286,7 @@ test("[Old Tour] test_cash_rounding_with_change", async () => {
     order.addPaymentline(cardPm);
     order.payment_ids[0].setAmount(20);
     expect(order.amountPaid).toBe(20);
-    expect(order.appliedRounding).toBe(0);
+    expect(order.appliedRounding).toBe(-0.02);
     expect(order.change).toBe(-4.3);
 
     const order2 = store.addNewOrder();
@@ -299,7 +299,7 @@ test("[Old Tour] test_cash_rounding_with_change", async () => {
     order2.addPaymentline(cardPm);
     order2.payment_ids[0].setAmount(-20);
     expect(order2.amountPaid).toBe(-20);
-    expect(order2.appliedRounding).toBe(0);
+    expect(order2.appliedRounding).toBe(0.02);
     expect(order2.change).toBe(4.3);
 });
 
@@ -317,7 +317,7 @@ test("[Old Tour] test_cash_rounding_only_cash_method_with_change", async () => {
     order.addPaymentline(cashPm);
     order.payment_ids[0].setAmount(20);
     expect(order.amountPaid).toBe(20);
-    expect(order.appliedRounding).toBe(0);
+    expect(order.appliedRounding).toBe(-0.02);
     expect(order.change).toBe(-4.3);
 
     const order2 = store.addNewOrder();
@@ -330,7 +330,7 @@ test("[Old Tour] test_cash_rounding_only_cash_method_with_change", async () => {
     order2.addPaymentline(cashPm);
     order2.payment_ids[0].setAmount(-20);
     expect(order2.amountPaid).toBe(-20);
-    expect(order2.appliedRounding).toBe(0);
+    expect(order2.appliedRounding).toBe(0.02);
     expect(order2.change).toBe(4.3);
 });
 
