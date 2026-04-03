@@ -253,6 +253,28 @@ You can follow the logs in the file `~/src/odoo/log/pouet.log`.
 At the time of writing, it should work fine with Bubblewrap but still faces minor
 errors with Firejail.
 
+## Known Limitations
+
+### Claude auto-updates break the symlink
+
+`~/.local/bin/claude` is a symlink pointing to the active version under
+`~/.local/share/claude/versions/<version>`. When Claude auto-updates, it downloads
+the new binary into `versions/` but cannot update the symlink because the sandbox
+only exposes the symlink itself, not its parent directory `~/.local/bin/`.
+
+After an update, run the following **outside the sandbox** (in a regular terminal):
+
+```sh
+ln -sf ~/.local/share/claude/versions/<new-version> ~/.local/bin/claude
+```
+
+Replace `<new-version>` with the newly downloaded version. You can list available
+versions with:
+
+```sh
+ls ~/.local/share/claude/versions/
+```
+
 ## Troubleshooting
 
 1. If you get the following error:
