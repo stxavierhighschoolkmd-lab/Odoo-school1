@@ -415,3 +415,7 @@ class StockRoute(models.Model):
         if any(rule.action == 'buy' for rule in self.rule_ids):
             return bool(product.seller_ids)
         return super()._is_valid_resupply_route_for_product(product)
+
+    def _search_routes_with_no_warehouse(self, rule_actions=[]):
+        rule_actions.append('buy')
+        return super()._search_routes_with_no_warehouse(rule_actions)

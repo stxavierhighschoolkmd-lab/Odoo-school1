@@ -1109,7 +1109,8 @@ class StockWarehouse(models.Model):
         return '%s: %s' % (self.name, name)
 
     def _get_all_routes(self):
-        routes = self.mapped('route_ids') | self.mapped('mto_pull_id').mapped('route_id')
+        routes = self.env['stock.route']._search_routes_with_no_warehouse([])
+        routes |= self.mapped('route_ids') | self.mapped('mto_pull_id').mapped('route_id')
         routes |= self.env["stock.route"].with_context(active_test=False).search([('supplied_wh_id', 'in', self.ids)])
         return routes
 
