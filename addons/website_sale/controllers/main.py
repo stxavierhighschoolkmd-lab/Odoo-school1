@@ -1587,9 +1587,12 @@ class WebsiteSale(payment_portal.PaymentPortal):
     # === CHECKOUT FLOW - EXTRA STEP METHODS === #
     def system_page_extra_info(env):  # noqa: N805
         website = env["website"].get_current_website()
-        if website.is_view_active("website_sale.extra_info"):
-            return _lt("Shop Checkout - Extra Information")
-        return False
+        if not website.is_view_active("website_sale.extra_info"):
+            return []
+        return [{
+                "route_title": _lt("Shop Checkout - Extra Information"),
+                "route_url": "/shop/extra_info",
+            }]
 
     @route(
         ["/shop/extra_info"],

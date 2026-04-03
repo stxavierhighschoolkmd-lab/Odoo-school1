@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="website.http_error_403_demo_template">
+    <div class="container mb32 mt32" contenteditable="false">
+        <div class="container o_demo_card">
+            <p>
+                <strong>Error message:</strong>
+            </p>
+            <pre>This will provide technical details about the error encountered by the user. You can hide this card when editing this page.</pre>
+        </div>
+    </div>
+</t>
+
+</templates>
