@@ -7,8 +7,11 @@ BILLABLE_TYPES = [
     ('05_revenues_milestones', 'Revenues (Milestones)'),
     ('07_revenues_manual', 'Revenues (Manual)'),
     ('10_service_revenues', 'Service Revenues'),
-    ('11_other_revenues', 'Other Revenues'),
-    ('12_other_costs', 'Other Costs'),
+    ('11_expense', 'Expense'),
+    ('12_manufacturing_order', 'Manufacturing Order'),
+    ('13_picking_entry', 'Inventory Transfer'),
+    ('14_other_costs', 'Other Costs'),
+    ('15_other_revenues', 'Other Revenues'),
 ]
 
 
@@ -17,6 +20,10 @@ class AccountAnalyticLine(models.Model):
 
     billable_type = fields.Selection(BILLABLE_TYPES, string="Billable Type",
         compute='_compute_project_billable_type', compute_sudo=True, store=True, readonly=True)
+
+    category_report = fields.Selection(
+        [('invoice', 'Customer Invoice'), ('vendor_bill', 'Vendor Bill'), ('other', 'Other')],
+        compute='_compute_project_category_report', compute_sudo=True, store=True, readonly=True)
 
     @api.depends('so_line.product_id', 'amount')
     def _compute_project_billable_type(self):
@@ -36,10 +43,27 @@ class AccountAnalyticLine(models.Model):
                     elif line.product_id.invoice_policy == 'order':
                         invoice_type = '01_revenues_fixed'
                     else:
-                        invoice_type = '11_other_revenues'
+                        invoice_type = '15_other_revenues'
                     line.billable_type = invoice_type
             else:
-                line.billable_type = '12_other_costs'
+                if line.category == 'picking_entry':
+                    line.billable_type = '13_picking_entry'
+                elif line.category == 'manufacturing_order':
+                    line.billable_type = '12_manufacturing_order'
+                elif line.category == 'expense':
+                    line.billable_type = '11_expense'
+                else:
+                    line.billable_type = '15_other_costs'
+
+    @api.depends('category')
+    def _compute_project_category_report(self):
+        for line in self:
+            if line.category == 'invoice':
+                line.category_report = 'invoice'
+            elif line.category == 'vendor_bill':
+                line.category_report = 'vendor_bill'
+            else:
+                line.category_report = 'other'
 
     def action_open_account_analytic_line_origine(self):
         self.ensure_one()
