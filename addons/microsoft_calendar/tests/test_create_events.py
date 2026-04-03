@@ -396,6 +396,9 @@ class TestCreateEvents(TestCommon):
         mock_get_events.return_value = ([], None)
 
         # Synchronize local event with Outlook after updating it locally.
+        # Set user's microsoft_last_sync_date to now() to capture the event with the domain in
+        # _extend_microsoft_domain.
+        self.organizer_user.microsoft_last_sync_date = fields.datetime.now()
         self.organizer_user.with_user(self.organizer_user).sudo()._sync_microsoft_calendar()
         self.call_post_commit_hooks()
         event.invalidate_recordset()
@@ -780,6 +783,72 @@ class TestCreateEvents(TestCommon):
             event.invalidate_recordset()
             mock_insert.assert_called_once()
             self.assertEqual(mock_insert.call_args[0][0]['subject'], event.name)
+
+    @patch.object(MicrosoftCalendarService, 'get_events')
+    @patch.object(MicrosoftCalendarService, 'insert')
+    def test_sync_website_appointments_through_cron(self, mock_insert, mock_get_events):
+        """
+        When creating calendar events through website_appointment, Outlook synchronization cron must sync the event.
+        """
+        CalendarEvent = self.env["calendar.event"].with_user(self.organizer_user)
+        vals_list = self.simple_event_values
+        for date_field in ['start', 'stop']:
+            vals_list[date_field] = vals_list[date_field].replace(year=datetime.now().year)
+
+        # Set up syncing return values.
+        event_id = "123"
+        event_iCalUId = "456"
+        mock_insert.return_value = (event_id, event_iCalUId)
+        mock_get_events.return_value = ([], None)
+
+        # Setup t=0, t=-12h, t=-11h.
+        t_now = datetime.now()
+        t_minus_12h = t_now - timedelta(hours=12)
+        t_minus_11h = t_now - timedelta(hours=11)
+
+        # Create event 12 hours ago and sync, setting microsoft_last_sync_date for the user.
+        # We call restart_microsoft_synchronization() to set a microsoft_last_sync_date for the user.
+        with freeze_time(t_minus_12h):
+            self.organizer_user.with_user(self.organizer_user).restart_microsoft_synchronization()
+            event_t_minus_12h = CalendarEvent.create(vals_list)
+            # clear() the postcommit._funcs deque to not call _microsoft_insert on the same event.
+            self.env.cr.postcommit._funcs.clear()
+            self.organizer_user.with_user(self.organizer_user).sudo()._sync_microsoft_calendar()
+        self.call_post_commit_hooks()
+        event_t_minus_12h.invalidate_recordset()
+
+        # clear() the postcommit._funcs deque again, since it was added by _sync_microsoft_calendar().
+        self.env.cr.postcommit._funcs.clear()
+
+        # We should have called insert only once here on event_t_minus_12h.
+        mock_insert.assert_called_once()
+
+        # Create event 11 hours ago, simulating website_appointment which bypasses _sync_microsoft_calendar().
+        # Do not sync yet by clearing postcommit._funcs.
+        with freeze_time(t_minus_11h):
+            event_t_minus_11h = CalendarEvent.create(vals_list)
+            self.env.cr.postcommit._funcs.clear()
+            self.call_post_commit_hooks()
+
+        # Again, we should have only called assert once here, ignoring the above event.
+        mock_insert.assert_called_once()
+
+        # Create event now to be synced, without clearing postcommit._funcs.
+        event_t_now = CalendarEvent.create(vals_list)
+
+        # We cannot call cron _sync_all_microsoft_calendar due to the method using self.env.cr.commit()
+        # So instead, just call _sync_microsoft_calendar().
+        # This should capture both event_t_minus_11h and event_t_now and sync.
+        self.organizer_user.with_user(self.organizer_user).sudo()._sync_microsoft_calendar()
+        self.call_post_commit_hooks()
+        event_t_minus_11h.invalidate_recordset()
+        event_t_now.invalidate_recordset()
+
+        # This should sync both events, given that no other _sync_microsoft_calendar was called inbetween.
+        error_msg_event_sync_not_successful = "This event should be synced. It was written to after the user's microsoft_last_sync_date."
+
+        self.assertEqual(event_t_minus_11h.microsoft_id, "123", error_msg_event_sync_not_successful)
+        self.assertEqual(event_t_now.microsoft_id, "123", error_msg_event_sync_not_successful)
 
 class TestSyncOdoo2MicrosoftMail(TestCommon, MailCommon):
     @classmethod
