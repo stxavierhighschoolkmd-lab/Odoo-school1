@@ -1046,6 +1046,7 @@ export class MockServer {
                 }
                 model.push(record);
             }
+            model._lastRecId = Math.max(model._lastRecId, ...seenIds, 0);
             model._records = [];
 
             // Records without ID are assigned later to avoid collisions
@@ -1062,7 +1063,7 @@ export class MockServer {
             for (const record of model) {
                 model._applyDefaults(record);
             }
-            model._applyComputesAndValidate();
+            model._applyComputesAndValidate({}, { force: true });
         }
 
         // creation of the ir.model.fields records, required for tracked fields
