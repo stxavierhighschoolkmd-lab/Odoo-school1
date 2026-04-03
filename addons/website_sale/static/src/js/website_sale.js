@@ -275,6 +275,43 @@ export const WebsiteSale = publicWidget.Widget.extend(VariantMixin, cartHandlerM
     _getProductImageContainer: function () {
         return document.querySelector(this._getProductImageContainerSelector());
     },
+    /**
+     * Returns product images in their visual order.
+     *
+     * Reorders grid layout images from column-based DOM order to row-major
+     * order so zoom navigation matches what the user sees. Falls back to DOM
+     * order if no grid is detected.
+     *
+     * @private
+     * @param {HTMLElement} salePage
+     * @returns {HTMLElement[]} <img> elements
+     */
+    _getZoomableImages(salePage) {
+        const gridColumnEls = salePage.querySelectorAll(".o_wsale_product_page_grid_column");
+        if (!gridColumnEls.length) {
+            return Array.from(salePage.querySelectorAll(".product_detail_img"));
+        }
+
+        const imagesContainerEl = salePage.querySelector(".o_wsale_product_images");
+        const maxImages = parseInt(imagesContainerEl.dataset.imageAmount);
+        const numCols = gridColumnEls.length;
+
+        // Reorder column-based DOM images into row-major (visual) order
+        const columnImages = Array.from(gridColumnEls, (col) =>
+            col.querySelectorAll(".product_detail_img")
+        );
+
+        const images = [];
+        for (let i = 0; i < maxImages; i++) {
+            const colIndex = i % numCols;
+            const rowIndex = Math.floor(i / numCols);
+            const image = columnImages[colIndex][rowIndex];
+            if (image) {
+                images.push(image);
+            }
+        }
+        return images;
+    },
     _isEditorEnabled() {
         return document.body.classList.contains("editor_enable");
     },
@@ -319,7 +356,7 @@ export const WebsiteSale = publicWidget.Widget.extend(VariantMixin, cartHandlerM
         // Zoom on click
         if (salePage.dataset.ecomZoomClick) {
             // In this case we want all the images not just the ones that are "zoomables"
-            const images = salePage.querySelectorAll(".product_detail_img");
+            const images = this._getZoomableImages(salePage);
             for (const image of images ) {
                 const handler = () => {
                     if (salePage.dataset.ecomZoomAuto) {
