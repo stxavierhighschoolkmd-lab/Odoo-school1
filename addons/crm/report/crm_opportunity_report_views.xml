@@ -202,6 +202,31 @@
             </field>
         </record>
 
+        <record id="action_crm_opportunity_report_won" model="ir.actions.act_window">
+            <field name="name">Pipeline Analysis</field>
+            <field name="res_model">crm.lead</field>
+            <field name="view_mode">graph,pivot,list,form</field>
+            <field name="search_view_id" ref="crm.crm_opportunity_report_view_search"/>
+            <field name="context">{
+                'search_default_filter_opportunity': 1,
+                'search_default_current': 1,
+                'search_default_filter_won_status_won': 1,
+                'show_lead_gen_button': 1,
+            }</field>
+            <field name="view_ids"
+                   eval="[(5, 0, 0),
+                          (0, 0, {'view_mode': 'graph', 'view_id': ref('crm_opportunity_report_view_graph')}),
+                          (0, 0, {'view_mode': 'pivot', 'view_id': ref('crm_opportunity_report_view_pivot')}),
+                          (0, 0, {'view_mode': 'list', 'view_id': ref('crm_lead_view_tree_opportunity_reporting')})]"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No data found!
+                </p><p>
+                    Use this menu to have an overview of your Pipeline.
+                </p>
+            </field>
+        </record>
+
         <record id="crm_opportunity_report_action_lead" model="ir.actions.act_window">
             <field name="name">Leads Analysis</field>
             <field name="res_model">crm.lead</field>
@@ -212,6 +237,28 @@
                 'search_default_filter_inactive': 1,
                 'search_default_filter_create_date': 1,
             }</field>
+            <field name="view_ids"
+                   eval="[(5, 0, 0),
+                          (0, 0, {'view_mode': 'graph', 'view_id': ref('crm_opportunity_report_view_graph_lead')}),
+                          (0, 0, {'view_mode': 'pivot', 'view_id': ref('crm_opportunity_report_view_pivot_lead')}),
+                          (0, 0, {'view_mode': 'form', 'view_id': ref('crm_lead_view_form')}),
+                          (0, 0, {'view_mode': 'list', 'view_id': ref('crm_lead_view_tree_reporting')}),
+                         ]"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No data found!
+                </p><p>
+                    This analysis shows you how many leads have been created per month.
+                </p>
+            </field>
+        </record>
+
+        <record id="action_crm_lead_report_active_leads" model="ir.actions.act_window">
+            <field name="name">Leads Analysis</field>
+            <field name="res_model">crm.lead</field>
+            <field name="view_mode">graph,pivot,list</field>
+            <field name="search_view_id" ref="crm.crm_opportunity_report_view_search"/>
+            <field name="context">{'search_default_filter_create_date': 1}</field>
             <field name="view_ids"
                    eval="[(5, 0, 0),
                           (0, 0, {'view_mode': 'graph', 'view_id': ref('crm_opportunity_report_view_graph_lead')}),

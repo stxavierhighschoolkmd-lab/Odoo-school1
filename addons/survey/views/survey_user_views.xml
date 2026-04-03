@@ -153,11 +153,21 @@
         </field>
     </record>
 
+    <record id="survey_user_input_view_pivot" model="ir.ui.view">
+        <field name="name">survey.user_input.view.pivot</field>
+        <field name="model">survey.user_input</field>
+        <field name="arch" type="xml">
+            <pivot string="Participants" sample="1">
+                <field name="survey_id" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
     <record model="ir.actions.act_window" id="action_survey_user_input">
         <field name="name">Participants</field>
         <field name="res_model">survey.user_input</field>
         <field name="domain">[('survey_id.survey_type', 'in', ('assessment', 'custom', 'live_session', 'survey'))]</field>
-        <field name="view_mode">list,kanban,form</field>
+        <field name="view_mode">list,kanban,pivot,form</field>
         <field name="view_id" ref="survey_user_input_view_tree"></field>
         <field name="search_view_id" ref="survey_user_input_view_search"/>
         <field name="context">{'search_default_group_by_survey': True}</field>
@@ -173,7 +183,7 @@
     <record id="survey_user_input_action_certified" model="ir.actions.act_window">
         <field name="name">Certified Participants</field>
         <field name="res_model">survey.user_input</field>
-        <field name="view_mode">list,kanban,form</field>
+        <field name="view_mode">list,kanban,pivot,form</field>
         <field name="view_id" ref="survey_user_input_view_tree"></field>
         <field name="search_view_id" ref="survey_user_input_view_search"/>
         <field name="context">{

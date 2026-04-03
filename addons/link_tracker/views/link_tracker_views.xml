@@ -12,6 +12,8 @@
                     <field name="campaign_id"/>
                     <field name="medium_id"/>
                     <field name="source_id"/>
+                    <filter string="Social Media" name="social_media" invisible="1"
+                            domain="[('utm_reference', 'like', 'social.post,%')]"/>
                     <group>
                         <filter string="Campaign" name="groupby_campaign_id" context="{'group_by': 'campaign_id'}"/>
                         <filter string="Medium" name="groupby_medium_id" context="{'group_by': 'medium_id'}"/>
@@ -104,6 +106,20 @@
             <field name="res_model">link.tracker</field>
             <field name="view_mode">list,form,graph</field>
             <field name="view_id" ref="link_tracker_view_tree"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create a link tracker
+                </p><p>
+                    Trackers are used to collect count stat about click on links and generate short URLs.
+                </p>
+            </field>
+        </record>
+
+        <record id="action_link_tracker_social_clicks" model="ir.actions.act_window">
+            <field name="name">Link Tracker</field>
+            <field name="res_model">link.tracker</field>
+            <field name="view_mode">graph,list,form</field>
+            <field name="context">{'search_default_social_media': '1'}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Create a link tracker
