@@ -2,12 +2,12 @@ import { BuilderAction } from "@html_builder/core/builder_action";
 import { Plugin } from "@html_editor/plugin";
 import { registry } from "@web/core/registry";
 
-const VIEW_IN_BROWSER_LINK_SELECTOR = "o_snippet_view_in_browser";
+const VIEW_IN_BROWSER_LINK_CLASS = "o_snippet_view_in_browser";
 const VIEW_IN_BROWSWER_SNIPPET_NAME = "s_mail_block_header_view";
 
 export class ViewInBrowserOptionPlugin extends Plugin {
-    static id = "mass_mailing.ViewInBrowserOptionPlugin";
-    static shared = ["isPresent", "insertViewInBrowserLink", "removeViewInBrowserLink"];
+    static id = "viewInBrowserOptionPlugin";
+    static shared = ["getViewInBrowserLink", "insertViewInBrowserLink", "removeViewInBrowserLink"];
     static dependencies = ["history"];
 
     resources = {
@@ -23,12 +23,8 @@ export class ViewInBrowserOptionPlugin extends Plugin {
         this.snippet.isDisabled = true; // Hide the snippet from the snippet library
     }
 
-    isPresent() {
-        return Boolean(this.linkElement);
-    }
-
     insertViewInBrowserLink() {
-        if (this.isPresent()) {
+        if (this.getViewInBrowserLink()) {
             return;
         }
 
@@ -38,21 +34,22 @@ export class ViewInBrowserOptionPlugin extends Plugin {
     }
 
     removeViewInBrowserLink() {
-        if (!this.isPresent()) {
+        const link = this.getViewInBrowserLink();
+        if (!link) {
             return;
         }
-        this.linkElement.remove();
+        link.remove();
         this.dependencies.history.addStep();
     }
 
-    get linkElement() {
-        return this.editable.querySelector(`.${VIEW_IN_BROWSER_LINK_SELECTOR}`);
+    getViewInBrowserLink() {
+        return this.editable.querySelector(`.${VIEW_IN_BROWSER_LINK_CLASS}`);
     }
 }
 
 export class ToggleViewInBrowserAction extends BuilderAction {
     static id = "mass_mailing.ToggleViewInBrowserAction";
-    static dependencies = ["mass_mailing.ViewInBrowserOptionPlugin"];
+    static dependencies = ["viewInBrowserOptionPlugin"];
 
     setup() {
         this.preview = false;
@@ -60,14 +57,14 @@ export class ToggleViewInBrowserAction extends BuilderAction {
 
     apply() {
         if (!this.isApplied(...arguments)) {
-            this.dependencies["mass_mailing.ViewInBrowserOptionPlugin"].insertViewInBrowserLink();
+            this.dependencies["viewInBrowserOptionPlugin"].insertViewInBrowserLink();
         } else {
-            this.dependencies["mass_mailing.ViewInBrowserOptionPlugin"].removeViewInBrowserLink();
+            this.dependencies["viewInBrowserOptionPlugin"].removeViewInBrowserLink();
         }
     }
 
     isApplied() {
-        return this.dependencies["mass_mailing.ViewInBrowserOptionPlugin"].isPresent();
+        return this.dependencies["viewInBrowserOptionPlugin"].getViewInBrowserLink();
     }
 }
 
