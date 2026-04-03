@@ -608,6 +608,16 @@ class ProductTemplate(models.Model):
 
         return self._create_product_variant(combination, log_warning=True).id or 0
 
+    def _get_first_existing_variant_id(self):
+        """Return the first possible variant id if it already exists.
+
+        Unlike ``_get_first_possible_variant_id``, this method never creates a
+        variant for dynamic templates.
+        """
+        self.ensure_one()
+        combination = self._get_first_possible_combination()
+        return self._get_variant_for_combination(combination).id
+
     def _get_image_holder(self):
         """Returns the holder of the image to use as default representation.
         If the product template has an image it is the product template,
@@ -619,7 +629,7 @@ class ProductTemplate(models.Model):
         self.ensure_one()
         if self.image_128:
             return self
-        variant = self.env['product.product'].browse(self._get_first_possible_variant_id())
+        variant = self.env['product.product'].browse(self._get_first_existing_variant_id())
         # if the variant has no image anyway, spare some queries by using template
         return variant if variant.image_variant_128 else self
 
