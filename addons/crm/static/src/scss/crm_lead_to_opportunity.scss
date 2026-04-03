@@ -1,0 +1,4 @@
+// Hide the create control from the list. We need an editable list for deletion, but we don't want to add records.
+.o_crm_lead_conversion_mass_form tr:has(.o_field_x2many_list_row_add) {
+    display: none;
+}

@@ -468,7 +468,7 @@ class CrmTeam(models.Model):
             # avoid to flush during the search at every assignment
             for lead in leads:
                 if lead not in duplicates_lead_cache:
-                    duplicates_lead_cache[lead] = lead._get_lead_duplicates(email=lead.email_from)
+                    duplicates_lead_cache[lead] = lead._get_lead_duplicates(email_list=[lead.email_from])
 
             teams_data[team] = {
                 "team": team,
@@ -576,7 +576,7 @@ class CrmTeam(models.Model):
 
                 # fill cache if not already done
                 if lead not in duplicates_cache:
-                    duplicates_cache[lead] = lead._get_lead_duplicates(email=lead.email_from)
+                    duplicates_cache[lead] = lead._get_lead_duplicates(email_list=[lead.email_from])
                 lead_duplicates = duplicates_cache[lead].exists()
 
                 if len(lead_duplicates) > 1:

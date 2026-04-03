@@ -721,7 +721,7 @@ class CrmLead(models.Model):
         return False
 
     def _evaluate_context_from_action(self, action):
-        context_str = action.get('context', '{}')
+        context_str = action.get('context', '{}').strip()
         context_str = re.sub(r'\buid\b', str(self.env.uid), context_str)
         context_str = re.sub(r'\bactive_id\b', str(self.id), context_str)
         return literal_eval(context_str)
@@ -1321,6 +1321,14 @@ class CrmLead(models.Model):
         }
         return action
 
+    def action_convert_to_opportunity(self):
+        self.ensure_one()
+        self.convert_opportunity(self.partner_id.id)
+        self._handle_partner_assignment(
+            force_partner_id=self._find_matching_partner().id,
+            create_missing=True
+        )
+
     # ------------------------------------------------------------
     # VIEWS
     # ------------------------------------------------------------
@@ -1838,7 +1846,7 @@ class CrmLead(models.Model):
 
         return True
 
-    def _handle_partner_assignment(self, force_partner_id=False, create_missing=True, with_parent=None):
+    def _handle_partner_assignment(self, force_partner_id=False, create_missing=True):
         """ Update customer (partner_id) of leads. Purpose is to set the same
         partner on most leads; either through a newly created partner either
         through a given partner_id.
@@ -1846,13 +1854,12 @@ class CrmLead(models.Model):
         :param int force_partner_id: if set, update all leads to that customer;
         :param create_missing: for leads without customer, create a new one
           based on lead information;
-        :param with_parent: if set, create the new partner with the given parent
         """
         for lead in self:
             if force_partner_id:
                 lead.partner_id = force_partner_id
             if not lead.partner_id and create_missing:
-                partner = lead._create_customer(with_parent=with_parent)
+                partner = lead._create_customer()
                 lead.partner_id = partner.id
 
     def _handle_salesmen_assignment(self, user_ids=False, team_id=False):
@@ -1886,24 +1893,24 @@ class CrmLead(models.Model):
     # CLASSIFICATION TOOLS
     # --------------------------------------------------
 
-    def _get_lead_duplicates(self, partner=None, email=None, include_lost=False):
+    def _get_lead_duplicates(self, partners=None, email_list=None, include_lost=False):
         """ Search for leads that seem duplicated based on partner / email.
 
-        :param partner : optional customer when searching duplicated
-        :param email: email (possibly formatted) to search
+        :param partners : optional customers when searching duplicated
+        :param email_list: a list of emails (possibly formatted) to search
         :param boolean include_lost: if True, search includes archived opportunities
           (still only active leads are considered). If False, search for active
           and not won leads and opportunities;
         """
-        if not email and not partner:
+        if not email_list and not partners:
             return self.env['crm.lead']
 
         domain = []
-        normalized_emails = email_normalize_all(email)
+        normalized_emails = [e for email in email_list for e in email_normalize_all(email)]
         if normalized_emails:
             domain.append(('email_normalized', 'in', normalized_emails))
-        if partner:
-            domain.append(('partner_id', '=', partner.id))
+        if partners:
+            domain.append(('partner_id', '=', partners.ids))
 
         if not domain:
             return self.env['crm.lead']
@@ -1960,10 +1967,9 @@ class CrmLead(models.Model):
             )
         return partner
 
-    def _create_customer(self, with_parent=None):
+    def _create_customer(self):
         """ Create a partner from lead data and link it to the lead.
 
-        :param with_parent: if set, create the new partner with the given parent
         :return: newly-created partner browse record
         """
         Partner = self.env['res.partner']
@@ -1971,11 +1977,7 @@ class CrmLead(models.Model):
         if not contact_name:
             contact_name = parse_contact_from_email(self.email_from)[0] if self.email_from else False
 
-        if with_parent:
-            partner_company = with_parent
-        elif self.partner_name:
-            partner_company = Partner.create(self._prepare_customer_values(self.partner_name))
-        elif self.partner_id:
+        if self.partner_id:
             partner_company = self.partner_id
         else:
             partner_company = self.env['res.partner']
