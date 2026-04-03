@@ -9,6 +9,7 @@ import {
 import { fillEmpty, unwrapContents } from "@html_editor/utils/dom";
 import {
     isEmptyBlock,
+    isIconElement,
     isRedundantElement,
     isTextNode,
     isWhitespace,
@@ -237,9 +238,24 @@ export class ColorPlugin extends Plugin {
                         .getTargetedNodes()
                         .filter(
                             (n) =>
+<<<<<<< d35ba30578f6b70f0551adfcd55938179b8671a9
                                 isTextNode(n) ||
                                 (mode === "backgroundColor" &&
                                     n.classList.contains("o_selected_td"))
+||||||| 0c59c2b53e31bcdc8bc3dc5b3b746beca1888ac0
+                                (isTextNode(n) ||
+                                    n.matches?.(`t, ${PROTECTED_QWEB_SELECTOR}`) ||
+                                    (mode === "backgroundColor" &&
+                                        n.classList.contains("o_selected_td"))) &&
+                                this.dependencies.selection.isNodeEditable(n)
+=======
+                                (isTextNode(n) ||
+                                    isIconElement(n) ||
+                                    n.matches?.(`t, ${PROTECTED_QWEB_SELECTOR}`) ||
+                                    (mode === "backgroundColor" &&
+                                        n.classList.contains("o_selected_td"))) &&
+                                this.dependencies.selection.isNodeEditable(n)
+>>>>>>> 198a6600192c56077aa2f66234da0b98aee156d1
                         );
                     return hasAnyNodesColor(nodes, mode);
                 };
@@ -351,7 +367,7 @@ export class ColorPlugin extends Plugin {
                     ) ||
                     closestElement(node, "span");
 
-                const faNodes = font?.querySelectorAll(".fa");
+                const faNodes = font ? [...selectElements(font, ".fa")] : [];
                 if (faNodes && Array.from(faNodes).some((faNode) => faNode.contains(node))) {
                     return font;
                 }
