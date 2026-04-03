@@ -401,7 +401,7 @@ export class CalendarCommonRenderer extends Component {
                 info.event.remove();
                 this.props.model.unscheduleEvent(Number(info.event.id));
             }
-            this.props.model.bus.trigger("CALENDAR_EVENT_DRAG", { dragging: false });
+            // this.props.model.bus.trigger("CALENDAR_EVENT_DRAG", { dragging: false });
         }
     }
     onEventDrop(info) {
@@ -412,6 +412,7 @@ export class CalendarCommonRenderer extends Component {
         });
     }
     onEventResize(info) {
+        this.isDragging = true;
         this.fc.api.unselect();
         this.props.model.updateRecord(this.fcEventToRecord(info.event)).catch((e) => {
             info.revert();
