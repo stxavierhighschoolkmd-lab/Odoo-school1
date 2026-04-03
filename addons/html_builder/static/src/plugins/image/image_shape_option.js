@@ -1,6 +1,5 @@
 import { BaseOptionComponent } from "@html_builder/core/base_option_component";
 import { useDomState } from "@html_builder/core/utils";
-import { toRatio } from "@html_builder/utils/utils";
 import { ShapeSelector } from "@html_builder/plugins/shape/shape_selector";
 import { deepCopy } from "@web/core/utils/objects";
 
@@ -18,7 +17,6 @@ export class ImageShapeOption extends BaseOptionComponent {
         super.setup();
         this.customizeTabPlugin = this.dependencies.customizeTab;
         this.imageShapeOption = this.dependencies.imageShapeOption;
-        this.toRatio = toRatio;
         this.state = useDomState((editingElement) => {
             const shape = editingElement.dataset.shape;
             const imageShapeColorNames = [0, 1, 2, 3, 4].map((i) =>

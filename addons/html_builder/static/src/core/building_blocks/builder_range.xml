@@ -25,7 +25,6 @@
                 t-on-change="this.onChangeRange"
                 t-on-input="this.onInputRange"
                 t-on-keydown="this.onKeydownRange"/>
-            <output t-if="this.props.displayRangeValue" t-out="this.displayValueRange" class="ms-1" />
         </div>
         <BuilderNumberInputBase
             t-if="this.props.withNumberInput"
@@ -34,11 +33,12 @@
             value="this.displayValueNumber"
             classes="'o-hb-input-field-number justify-content-end'"
             inputClasses="'o-hb-input-number text-end'"
-            commit="this.commit"
-            preview="this.preview"
-            clampValue.bind="this.clampValue"
+            commit.bind="this.onCommitNumberInput"
+            preview.bind="this.onPreviewNumberInput"
+            clampValue.bind="this.clampValueForInput"
             onKeydown.bind="this.onKeydownNumber"
-            selectTextOnFocus="true">
+            selectTextOnFocus="true"
+            step="step">
             <span class="o-hb-input-field-unit" t-out="this.props.unit"/>
         </BuilderNumberInputBase>
     </BuilderComponent>
