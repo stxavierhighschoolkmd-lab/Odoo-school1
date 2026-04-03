@@ -383,6 +383,11 @@ class Website(Home):
             raise werkzeug.exceptions.NotFound()
         return request.redirect(url, local=False)
 
+    @http.route('/website/cookie-policy', type='http', auth="public", website=True, sitemap=False, readonly=True)
+    def cookie_policy_redirect(self, **kwargs):
+        url = request.website.cookie_policy_id.sudo().url or '/cookie-policy'
+        return request.redirect(url)
+
     @http.route('/website/get_suggested_links', type='jsonrpc', auth="user", website=True, readonly=True)
     def get_suggested_link(self, needle, limit=10):
         current_website = request.website

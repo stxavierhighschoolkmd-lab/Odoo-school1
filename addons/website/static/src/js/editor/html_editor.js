@@ -21,12 +21,14 @@ import { session } from "@web/session";
  * two new props:
  * - inputClass: to change the style of the input element in autocomplete
  * - updateValue: to update the URL of the link element
+ * - readonlyLink: to disable the input when the link is readonly
  */
 export class AutoCompleteInLinkPopover extends AutoComplete {
     static props = {
         ...AutoComplete.props,
         inputClass: { type: String, optional: true },
         updateValue: { type: Function, optional: true },
+        readonlyLink: { type: Boolean, optional: true },
     };
     static template = "website.AutoCompleteInLinkPopover";
 
@@ -62,6 +64,7 @@ patch(LinkPopover.prototype, {
     setup() {
         super.setup();
         this.urlRef = useChildRef();
+        this.readonlyLink = this.props.linkElement.dataset.readonlyLink === "true";
         useLayoutEffect(
             (el) => {
                 if (el && (this.state.isImage || (!this.state.url && this.state.label))) {
