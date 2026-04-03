@@ -152,6 +152,7 @@ export class BuilderOptionsPlugin extends Plugin {
                     i++
                 ) {
                     this.lastContainers[i].folded &&= this.config.initialFolded[i];
+                    this.lastContainers[i].foldedIntent &&= this.config.initialFolded[i];
                 }
             }
         },
@@ -273,7 +274,7 @@ export class BuilderOptionsPlugin extends Plugin {
         return this.lastContainers.map((c) => c.folded);
     }
 
-    updateContainers(target, { forceUpdate = false } = {}) {
+    updateContainers(target, { forceUpdate = false, keepFolded = false } = {}) {
         if (this.dependencies.history.getIsCurrentStepModified()) {
             console.warn(
                 "Should not have any mutations in the current step when you update the container selection"
@@ -293,7 +294,7 @@ export class BuilderOptionsPlugin extends Plugin {
             this.target = connectedContainers.at(-1)?.element;
         }
 
-        const newContainers = this.computeContainers(this.target);
+        const newContainers = this.computeContainers(this.target, { keepFolded });
         if (newContainers.length === 0 && this.lastContainers.length === 0) {
             return;
         }
@@ -342,7 +343,7 @@ export class BuilderOptionsPlugin extends Plugin {
         );
     }
 
-    computeContainers(target) {
+    computeContainers(target, { keepFolded = false } = {}) {
         const mapElementsToOptions = (Options) => {
             const map = new Map();
             for (const Option of Options) {
@@ -381,17 +382,23 @@ export class BuilderOptionsPlugin extends Plugin {
         }
 
         const previousElementToIdAndStateMap = new Map(
-            this.lastContainers.map((c) => [c.element, { id: c.id, folded: c.folded }])
+            this.lastContainers.map((c) => [
+                c.element,
+                { id: c.id, folded: c.folded, foldedIntent: c.foldedIntent },
+            ])
         );
-        const keepUnfolded = this.lastContainers.some((c) => c.element === element);
         let containers = reactive(
             [...elementToOptions]
                 .sort(([a], [b]) => (b.contains(a) ? 1 : -1))
                 .map(([element, Options]) => ({
-                    id: previousElementToIdAndStateMap.get(element)?.id || uniqueId(),
-                    folded: keepUnfolded
-                        ? previousElementToIdAndStateMap.get(element)?.folded ?? true
-                        : true,
+                    element,
+                    Options,
+                    idAndState: previousElementToIdAndStateMap.get(element),
+                }))
+                .map(({ element, Options, idAndState }) => ({
+                    id: idAndState?.id || uniqueId(),
+                    folded: (keepFolded ? idAndState?.folded : idAndState?.foldedIntent) ?? true,
+                    foldedIntent: idAndState?.foldedIntent,
                     element,
                     options: Options,
                     optionTitleComponents: elementToOptionTitleComponents.get(element) || [],
@@ -426,7 +433,7 @@ export class BuilderOptionsPlugin extends Plugin {
                 if (lastContainerWithOptions.element.matches(selector)) {
                     const ancestorContainer = containers.findLast((c) => c.element.matches(target));
                     if (ancestorContainer) {
-                        ancestorContainer.folded = false;
+                        ancestorContainer.folded = ancestorContainer.foldedIntent ?? false;
                     }
                 }
             }
@@ -514,7 +521,7 @@ export class BuilderOptionsPlugin extends Plugin {
         // update them.
         const nextTargetEl = step.extraStepInfos.nextTarget;
         if (nextTargetEl) {
-            this.updateContainers(nextTargetEl, { forceUpdate: true });
+            this.updateContainers(nextTargetEl, { forceUpdate: true, keepFolded: true });
         } else if (nextTargetEl === false) {
             this.deactivateContainers();
         } else {

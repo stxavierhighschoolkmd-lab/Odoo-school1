@@ -352,6 +352,40 @@ test("option with groups restriction not available to user", async () => {
     expect(".options-container").toHaveCount(0);
 });
 
+test("unfolded-by-click option group stay unfolded when changing target", async () => {
+    addBuilderOption(
+        class extends BaseOptionComponent {
+            static selector = ".test-options-target";
+            static template = xml`<BuilderRow label="'Row 1'">A</BuilderRow>`;
+        }
+    );
+    addBuilderOption(
+        class extends BaseOptionComponent {
+            static selector = ".test-options-child";
+            static template = xml`<BuilderRow label="'Row 2'">B</BuilderRow>`;
+        }
+    );
+    await setupHTMLBuilder(
+        `<section class="test-options-target" data-name="Target">
+            <div class="test-options-child first-child" data-name="Child">
+                Text
+            </div>
+            <div class="test-options-child second-child" data-name="Child 2">
+                Text
+            </div>
+        </section>`
+    );
+    await contains(":iframe .test-options-child.first-child").click();
+    expect(".options-container-header i.fa-caret-right").toHaveCount(1);
+    expect(".options-container-header i.fa-caret-down").toHaveCount(1);
+    await contains(".options-container-header:contains('Target') i.fa-caret-right").click();
+    expect(".options-container-header i.fa-caret-right").toHaveCount(0);
+    expect(".options-container-header i.fa-caret-down").toHaveCount(2);
+    await contains(":iframe .test-options-child.second-child").click();
+    expect(".options-container-header i.fa-caret-right").toHaveCount(0);
+    expect(".options-container-header i.fa-caret-down").toHaveCount(2);
+});
+
 test("option that matches several elements", async () => {
     addBuilderOption(
         class extends BaseOptionComponent {
