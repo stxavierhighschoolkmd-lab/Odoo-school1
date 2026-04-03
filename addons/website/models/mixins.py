@@ -5,7 +5,7 @@ import urllib.parse
 
 from odoo import api, fields, models, _
 from odoo.fields import Domain
-from odoo.addons.website.tools import text_from_html
+from odoo.addons.website.tools.helpers import text_from_html
 from odoo.http import request
 from odoo.exceptions import AccessError, UserError
 from odoo.models import Query
@@ -122,6 +122,18 @@ class WebsiteCover_PropertiesMixin(models.AbstractModel):
                 suffix = '?' not in img and "?%s" % suffix or suffix
                 img = img[:-1] + suffix + ')'
         return img
+
+    def _get_background_image_url(self):
+        """Return the absolute URL of the background image, or False."""
+        self.ensure_one()
+        background = self._get_background()
+        if background == 'none' or not background.startswith('url('):
+            return False
+        # CSS background uses url('...') syntax
+        path = background[4:-1].strip().strip('\'"')
+        # Defensive guard for malformed values (manual changes or migration errors)
+        # like url(), url(''), url(""), url(   ), etc.
+        return path if not path or not path.startswith('/') else False
 
     def write(self, vals):
         if 'cover_properties' not in vals:
