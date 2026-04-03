@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import base64
+import logging
 from datetime import datetime
 
 import requests
@@ -9,6 +10,7 @@ from odoo.exceptions import UserError
 from odoo.tools import hash_sign
 
 TIMEOUT = 10
+_logger = logging.getLogger(__name__)
 
 
 class PosPaymentMethod(models.Model):
@@ -18,12 +20,19 @@ class PosPaymentMethod(models.Model):
     consumer_key = fields.Char(string="Consumer Key")
     consumer_secret = fields.Char(string="Consumer Secret")
     business_short_code = fields.Char(string="Business Short Code")
+    safaricom_till_number = fields.Char(string="Till number")
+    safaricom_paybill_number = fields.Char(string="Paybill number")
     passkey = fields.Char(string="Passkey", help="The passkey is used to generate the password for the STK Push")
     safaricom_test_mode = fields.Boolean(string="Test Mode", default=True, help="Use sandbox environment")
     safaricom_payment_type = fields.Selection(
         selection=[('mpesa_express', 'M-PESA Express'), ('lipa_na_mpesa', 'Lipa na M-PESA')],
         string="Payment Type",
         default='mpesa_express',
+    )
+    safaricom_identifier_type = fields.Selection(
+        selection=[('paybill', 'Paybill number'), ('till', 'Till number')],
+        string="Identifier Type",
+        default='till',
     )
 
     def _get_payment_terminal_selection(self):
@@ -124,14 +133,16 @@ class PosPaymentMethod(models.Model):
 
             signed_hash_payload = hash_sign(self.sudo().env, "pos_safaricom", {"payment_method_id": self.id}, expiration_hours=6)
 
+            transactionType, partyB = ('CustomerPayBillOnline', self.safaricom_paybill_number) if self.safaricom_identifier_type == 'paybill' else ('CustomerBuyGoodsOnline', self.safaricom_till_number)
+
             payload = {
                 'BusinessShortCode': self.business_short_code,
                 'Password': password,
                 'Timestamp': timestamp,
-                'TransactionType': 'CustomerPayBillOnline',
+                'TransactionType': transactionType,
                 'Amount': int(data.get('amount', 0)),
                 'PartyA': phone_number,
-                'PartyB': self.business_short_code,
+                'PartyB': partyB,
                 'PhoneNumber': phone_number,
                 'CallBackURL': f"{self.get_base_url()}/pos_safaricom/callback?payload={signed_hash_payload}",
                 'AccountReference': data.get('account_reference', 'POS Payment'),
@@ -143,6 +154,7 @@ class PosPaymentMethod(models.Model):
                 'Content-Type': 'application/json',
             }
 
+            _logger.info('[safaricom] express send payment payload: %s', payload)
             response = requests.post(
                 self._get_express_stkpush_endpoint(),
                 json=payload,
@@ -151,6 +163,7 @@ class PosPaymentMethod(models.Model):
             )
 
             result = response.json()
+            _logger.info('[safaricom] express send payment response status: %s payload: %s', response, result)
 
             if result.get('ResponseCode') == '0':
                 return {
@@ -209,6 +222,12 @@ class PosPaymentMethod(models.Model):
         self.ensure_one()
 
         try:
+            base_url = self.get_base_url()
+            if base_url:
+                base_url = base_url.replace("http://", "https://")
+            else:
+                raise UserError(_("Could not find base url. Please set up web.base.url to a valid https address"))
+
             access_token = self._get_bearer_token()
 
             payload_hash = {
@@ -216,18 +235,21 @@ class PosPaymentMethod(models.Model):
             }
 
             signed_hash_payload = hash_sign(self.sudo().env, "pos_safaricom", payload_hash, expiration_hours=6)
+            shortcode = self.safaricom_paybill_number if self.safaricom_identifier_type == 'paybill' else self.safaricom_till_number
 
             payload = {
-                'ShortCode': self.business_short_code,
+                'ShortCode': shortcode,
                 'ResponseType': 'Completed',
-                'ValidationURL': f"{self.get_base_url()}/c2b/validation/callback?payload={signed_hash_payload}",
-                'ConfirmationURL': f"{self.get_base_url()}/c2b/confirmation/callback?payload={signed_hash_payload}",
+                'ValidationURL': f"{base_url}/c2b/validation/callback?payload={signed_hash_payload}",
+                'ConfirmationURL': f"{base_url}/c2b/confirmation/callback?payload={signed_hash_payload}",
             }
 
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json',
             }
+
+            _logger.info('[safaricom] c2b register url: %s', payload)
 
             response = requests.post(
                 self._get_lipa_na_mpesa_register_endpoint(),
@@ -237,8 +259,10 @@ class PosPaymentMethod(models.Model):
             )
             result = response.json()
 
+            _logger.info('[safaricom] c2b register url response status: %s body: %s', response, result)
+
             if result.get('ResponseCode') != '00000000':
-                raise UserError(_("Failed to register URLs"))
+                raise UserError(_("Failed to register URLs: %s", result.get('errorMessage')))
 
         except (requests.exceptions.RequestException, ValueError):
             raise UserError(_("Failed to register URLs. Check your credentials and try again."))
@@ -275,12 +299,14 @@ class PosPaymentMethod(models.Model):
         try:
             access_token = self._get_bearer_token()
 
+            cpi = self.safaricom_paybill_number if self.safaricom_identifier_type == 'paybill' else self.safaricom_till_number
+
             body = {
                 'MerchantName': data.get('name', self.company_id.name),
                 'RefNo': data.get('ref', ''),
-                'Amount': data.get('amount', 0),
+                'Amount': int(data.get('amount', 0)),
                 'TrxCode': data.get('trxCode', 'BG'),
-                'CPI': data.get('cpi', self.business_short_code),
+                'CPI': data.get('cpi', cpi),
                 'Size': data.get('size', '300'),
             }
 
@@ -288,6 +314,8 @@ class PosPaymentMethod(models.Model):
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json',
             }
+
+            _logger.info('[safaricom] c2b generate qr payload: %s', body)
 
             response = requests.post(
                 self._get_qr_code_endpoint(),
@@ -297,6 +325,8 @@ class PosPaymentMethod(models.Model):
             )
 
             result = response.json()
+
+            _logger.info('[safaricom] c2b generate qr status: %s body: %s', response, result)
 
             qr_code = result.get('QRCode')
             if not qr_code:
