@@ -6,7 +6,7 @@ import secrets
 import uuid
 
 import stdnum
-from stdnum import luhn
+from stdnum import luhn, get_cc_module
 from stdnum.exceptions import InvalidChecksum, InvalidFormat
 from stdnum.util import clean
 
@@ -351,7 +351,7 @@ class ResPartner(models.Model):
 
     def check_vat_al(self, vat):
         """Check Albania VAT number"""
-        number = stdnum.util.get_cc_module('al', 'vat').compact(vat)
+        number = self._extract_vat_without_country_code(vat, 'al')
         return len(number) == 10 and self._check_vat_al_re.match(number)
 
     def check_vat_jp(self, vat):
@@ -627,20 +627,13 @@ class ResPartner(models.Model):
         origin https://github.com/arthurdejong/python-stdnum/blob/master/stdnum/uy/rut.py
         FIXME Can be removed when python-stdnum does a new release. """
 
-        def compact(number):
-            """Convert the number to its minimal representation."""
-            number = clean(number, ' -').upper().strip()
-            if number.startswith('UY'):
-                return number[2:]
-            return number
-
         def calc_check_digit(number):
             """Calculate the check digit."""
             weights = (4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
             total = sum(int(n) * w for w, n in zip(weights, number))
             return str(-total % 11)
 
-        vat = compact(vat)
+        vat = self._extract_vat_without_country_code(vat, 'UY')
 
         return (
             vat.isdigit()  # InvalidFormat
@@ -786,8 +779,7 @@ class ResPartner(models.Model):
 
     def format_vat_hu(self, vat):
         """ We put the - back as we require it for the EDI and the different parts will make it clear to the user"""
-        stdnum_vat_fix_func = stdnum.util.get_cc_module('hu', 'vat').compact
-        vat = stdnum_vat_fix_func(vat)
+        vat = self._extract_vat_without_country_code(vat, 'hu')
         if self._check_tin_hu_companies_re.match(vat):
             vat = vat[:8] + '-' + vat[8] + '-' + vat[9] + vat[10]
         return vat
@@ -893,6 +885,45 @@ class ResPartner(models.Model):
         ):
             vat_required_valid = vat_required_valid and self.vies_valid
         return vat_required_valid
+
+    @api.model
+    def _extract_vat_without_country_code(self, vat, country_code=None):
+        """
+        Return VAT number without country prefix.
+
+        This method is a generic utility that:
+        - Accepts a VAT number as input
+        - Optionally accepts a country code
+        - Uses stdnum when possible for normalization
+        - Falls back to simple prefix stripping
+
+        :param vat: VAT number (string)
+        :param country_code: ISO country code (string, optional)
+        :return: VAT without country prefix (string)
+        """
+        if not vat:
+            return vat
+
+        country_code = (country_code or '').upper()
+
+        # Try stdnum normalization
+        if country_code:
+            try:
+                return get_cc_module(country_code, 'vat').compact(vat)
+            except Exception:  # noqa: BLE001
+                pass
+
+        # Normalize VAT (this replaces .replace logic everywhere)
+        vat = clean(vat, ' .-')
+
+        # Fallback: strip prefix
+        if country_code and vat.upper().startswith(country_code):
+            return vat[len(country_code):].strip()
+
+        if not country_code and vat[:2].isalpha():
+            return vat[2:]
+
+        return vat
 
     @api.model_create_multi
     def create(self, vals_list):
