@@ -11,6 +11,8 @@ import psycopg2.errorcodes
 from odoo.exceptions import ConcurrencyError, ValidationError
 from odoo.sql_db import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
 
+from . import request
+
 if typing.TYPE_CHECKING:
     from collections.abc import Callable
     from odoo.api import Environment
@@ -67,6 +69,7 @@ def retrying[T](func: Callable[[], T], env: Environment) -> T:
                     # We need to reset the `session` attribute of `request`
                     # which may have been modified during the transaction.
                     # The `dbname` remains the same (consistent with the session).
+                    from .router import _set_session_and_dbname  # noqa: PLC0415
                     _set_session_and_dbname(request)
                     # Rewind files in case of failure
                     for filename, file in request.httprequest.files.items():
@@ -114,7 +117,3 @@ def retrying[T](func: Callable[[], T], env: Environment) -> T:
         env.cr.commit()  # effectively commits and execute post-commits
     env.registry.signal_changes()
     return result
-
-
-# ruff: noqa: E402
-from .router import _set_session_and_dbname, request

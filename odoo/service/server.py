@@ -3,6 +3,7 @@
 # -----------------------------------------------------------
 import collections
 import contextlib
+import contextvars
 import errno
 import logging
 import os
@@ -1475,7 +1476,7 @@ class WorkerHTTP(Worker):
     def process_work(self):
         try:
             client, addr = self.multi.socket.accept()
-            self.process_request(client, addr)
+            contextvars.Context().run(self.process_request, client, addr)
         except OSError as e:
             if e.errno not in (errno.EAGAIN, errno.ECONNABORTED):
                 raise
@@ -1546,7 +1547,7 @@ class WorkerCron(Worker):
         self.setproctitle(db_name)
 
         from odoo.addons.base.models.ir_cron import IrCron  # noqa: PLC0415
-        IrCron._process_jobs(db_name)
+        contextvars.Context().run(IrCron._process_jobs, db_name)
 
         # dont keep cursors in multi database mode
         if self.db_count > 1:
