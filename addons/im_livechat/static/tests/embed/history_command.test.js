@@ -3,18 +3,47 @@ import {
     loadDefaultEmbedConfig,
 } from "@im_livechat/../tests/livechat_test_helpers";
 import { click, start, startServer } from "@mail/../tests/mail_test_helpers";
-import { describe, expect, test } from "@odoo/hoot";
+import { describe, expect, mockDate, test } from "@odoo/hoot";
 import { press, waitFor } from "@odoo/hoot-dom";
 import { contains, getService, onRpc, serverState } from "@web/../tests/web_test_helpers";
+
+import { expirableStorage } from "@im_livechat/core/common/expirable_storage";
 
 describe.current.tags("desktop");
 defineLivechatModels();
 
 test("Handle livechat history command", async () => {
+    mockDate("2023-06-07T06:07:00");
     const pyEnv = await startServer();
     await loadDefaultEmbedConfig();
-    onRpc("/im_livechat/history", ({ url }) => {
-        expect.step(new URL(url).pathname);
+    expirableStorage.setItem(
+        "im_livechat_history",
+        JSON.stringify([
+            "/legacy-page",
+            { url: "/superheroes/batman", title: "Batman", visited_at: "2023-06-07 06:07:00" },
+        ]),
+        60 * 60 * 24
+    );
+    onRpc("/im_livechat/history", async (request) => {
+        expect.step(new URL(request.url).pathname);
+        const { params } = await request.json();
+        expect(params.page_history).toEqual([
+            {
+                title: "/legacy-page",
+                url: "/legacy-page",
+                visited_at: null,
+            },
+            {
+                url: "/superheroes/batman",
+                title: "Batman",
+                visited_at: "2023-06-07 06:07:00",
+            },
+            {
+                url: "/",
+                title: "/",
+                visited_at: "2023-06-07 06:07:00",
+            },
+        ]);
         return true;
     });
     await start({ authenticateAs: false });
