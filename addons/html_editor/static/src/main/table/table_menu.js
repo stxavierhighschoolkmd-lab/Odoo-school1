@@ -11,6 +11,7 @@ import { getColumnIndex, getRowIndex } from "@html_editor/utils/table";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { _t } from "@web/core/l10n/translation";
+import { getIframeAdjustedBoundingRect } from "@html_editor/utils/dom_info";
 
 export class TableMenu extends Component {
     static template = "html_editor.TableMenu";
@@ -115,11 +116,11 @@ export class TableMenu extends Component {
         if (frameElement) {
             frameRect = frameElement.getBoundingClientRect();
         }
-        const targetRect = target.getBoundingClientRect();
+        const targetRect = getIframeAdjustedBoundingRect(target, frameRect);
         const container = this.overlayEl.parentElement;
         const containerRect = container.getBoundingClientRect();
-        const top = frameRect.top + targetRect.top - containerRect.top;
-        const left = frameRect.left + targetRect.left - containerRect.left;
+        const top = targetRect.top - containerRect.top;
+        const left = targetRect.left - containerRect.left;
         this.overlayEl.classList.remove("h-100", "w-100");
         if (type === "column") {
             Object.assign(this.overlayEl.style, {
@@ -130,9 +131,7 @@ export class TableMenu extends Component {
             });
         } else {
             const isLTR = direction === "ltr";
-            const inlineStartOffset = isLTR
-                ? left
-                : containerRect.right - (frameRect.left + targetRect.right);
+            const inlineStartOffset = isLTR ? left : containerRect.right - targetRect.right;
             Object.assign(this.overlayEl.style, {
                 position: "absolute",
                 top: `${top}px`,

@@ -1,3 +1,7 @@
+import {
+    getIframeAdjustedBoundingRect,
+    getIframeAdjustedClientCoords,
+} from "@html_editor/utils/dom_info";
 import { closestElement } from "@html_editor/utils/dom_traversal";
 import { getColumnIndex, getRowIndex } from "@html_editor/utils/table";
 import { Component, useRef, useExternalListener, onMounted, onWillUnmount } from "@odoo/owl";
@@ -19,13 +23,25 @@ export class TableDragDrop extends Component {
 
     setup() {
         this.overlayRef = useRef("dragOverlay");
+        let frameRect = { top: 0, left: 0 };
+        let frameElement;
+        try {
+            frameElement = this.props.document.defaultView.frameElement;
+        } catch {
+            // We don't access the frameElement if we don't have access to it.
+            // (i.e. iframe origin or sandbox restriction)
+        }
+        if (frameElement) {
+            frameRect = frameElement.getBoundingClientRect();
+        }
+        this.frameRect = frameRect;
         this.pointerPos = { ...this.props.pointerPos };
         this.tableElement = closestElement(this.props.target, "table");
-        this.tableRect = this.tableElement.getBoundingClientRect();
+        this.tableRect = getIframeAdjustedBoundingRect(this.tableElement, frameRect);
         const targetRect =
             this.props.type === "row"
-                ? this.props.target.parentElement.getBoundingClientRect()
-                : this.props.target.getBoundingClientRect();
+                ? getIframeAdjustedBoundingRect(this.props.target.parentElement, frameRect)
+                : getIframeAdjustedBoundingRect(this.props.target, frameRect);
         this.overlayRect = {
             top: targetRect.top,
             left: targetRect.left,
@@ -35,8 +51,12 @@ export class TableDragDrop extends Component {
         // Compute bounding rects of rows or column cells
         this.itemRects =
             this.props.type === "row"
-                ? [...this.tableElement.rows].map((r) => r.getBoundingClientRect())
-                : [...this.props.target.parentElement.cells].map((c) => c.getBoundingClientRect());
+                ? [...this.tableElement.rows].map((r) =>
+                      getIframeAdjustedBoundingRect(r, frameRect)
+                  )
+                : [...this.props.target.parentElement.cells].map((c) =>
+                      getIframeAdjustedBoundingRect(c, frameRect)
+                  );
 
         useExternalListener(this.props.document, "pointermove", this.onPointerMove);
         useExternalListener(this.props.document, "pointerup", this.onPointerUp);
@@ -114,15 +134,20 @@ export class TableDragDrop extends Component {
                 ? this.tableRect.bottom - this.overlayRect.height / 2 - OVERLAY_CLAMP_OFFSET
                 : this.tableRect.right - this.overlayRect.width / 2 - OVERLAY_CLAMP_OFFSET;
         // Update overlay position on pointer movement, clamped within min/max
+        const { clientX, clientY } = getIframeAdjustedClientCoords(
+            ev,
+            this.frameRect,
+            this.props.document
+        );
         if (this.props.type === "row") {
             this.overlayRect.top = Math.min(
                 max,
-                Math.max(min, this.overlayRect.top + ev.clientY - this.pointerPos.y)
+                Math.max(min, this.overlayRect.top + clientY - this.pointerPos.y)
             );
         } else {
             this.overlayRect.left = Math.min(
                 max,
-                Math.max(min, this.overlayRect.left + ev.clientX - this.pointerPos.x)
+                Math.max(min, this.overlayRect.left + clientX - this.pointerPos.x)
             );
         }
         this.clearBorderHighlights();
@@ -142,8 +167,8 @@ export class TableDragDrop extends Component {
         overlayStyle.top = `${this.overlayRect.top}px`;
         overlayStyle.left = `${this.overlayRect.left}px`;
         // Update stored pointer position for next move
-        this.pointerPos.x = ev.clientX;
-        this.pointerPos.y = ev.clientY;
+        this.pointerPos.x = clientX;
+        this.pointerPos.y = clientY;
     }
 
     onPointerUp() {

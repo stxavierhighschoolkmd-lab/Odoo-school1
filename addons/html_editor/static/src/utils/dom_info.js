@@ -964,3 +964,26 @@ export function isRedundantElement(node) {
 
     return true;
 }
+
+export function getIframeAdjustedBoundingRect(el, frameRect) {
+    let rect = el.getBoundingClientRect();
+    rect = {
+        top: rect.top + frameRect.top,
+        bottom: rect.bottom + frameRect.top,
+        left: rect.left + frameRect.left,
+        right: rect.right + frameRect.left,
+        width: rect.width,
+        height: rect.height,
+    };
+    return rect;
+}
+
+export function getIframeAdjustedClientCoords(ev, frameRect, document) {
+    let clientX = ev.clientX;
+    let clientY = ev.clientY;
+    if (ev.target.ownerDocument === document) {
+        clientX += frameRect.left;
+        clientY += frameRect.top;
+    }
+    return { clientX, clientY };
+}
