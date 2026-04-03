@@ -184,3 +184,29 @@ class ResUsers(models.Model):
         :return: boolean indicating if any synchronization is active.
         """
         return False
+
+    @api.model
+    def _get_user_meeting_statuses(self, partner_id=None):
+        if "calendar.attendee" not in self.env:
+            return {}
+        now = fields.Datetime.now()
+        domain = [
+            ("state", "=", "accepted"),
+            ("event_id.show_as", "=", "busy"),
+            ("event_id.privacy", "not in", ["private", "confidential"]),
+            ("event_id.allday", "=", False),
+            ("event_id.start", "<=", now),
+            ("event_id.stop", ">=", now),
+        ]
+        if partner_id:
+            domain.append(("partner_id", "=", partner_id))
+        attendees = self.env["calendar.attendee"].search(domain)
+        maxtime = max(
+            attendees.mapped("event_id.stop"),
+            default=now
+        )
+        users = attendees.mapped("partner_id.user_ids")
+        return {
+            user.id: {"until": maxtime}
+            for user in users
+        }

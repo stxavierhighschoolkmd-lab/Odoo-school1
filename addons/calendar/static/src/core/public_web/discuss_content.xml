@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.DiscussContent" t-inherit-mode="extension">
+        <xpath expr="//div[@t-if='this.showsChatLocalDateTime']" position="before">
+            <div t-if="this.meetingStatus" class="o-mail-DiscussContent-meetingStatus text-muted smaller ms-1">
+                <i class="fa fa-calendar me-1"/>In a meeting until <t t-out="this.meetingStatus.until"/>
+            </div>
+        </xpath>
+    </t>
+</templates>
