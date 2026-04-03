@@ -864,6 +864,13 @@ class ProductTemplate(models.Model):
         ]
 
     @api.model
+    def _get_ribbon_search_domain(self, ribbon):
+        try:
+            return Domain("website_ribbon_id", "=", int(ribbon))
+        except (ValueError, TypeError):
+            return None
+
+    @api.model
     def _search_get_detail(self, website, _order, options):
         with_image = options["displayImage"]
         with_description = options["displayDescription"]
@@ -897,6 +904,10 @@ class ProductTemplate(models.Model):
             domains.append([("list_price", "<=", max_price)])
         if attribute_value_dict:
             domains.extend(self._get_attribute_value_domain(attribute_value_dict))
+        if ribbon := options.get("ribbon"):
+            ribbon_domain = self._get_ribbon_search_domain(ribbon)
+            if ribbon_domain is not None:
+                domains.append(ribbon_domain)
         search_fields = ["name", "default_code", "variants_default_code"]
         fetch_fields = ["id", "name", "website_url"]
         mapping = {

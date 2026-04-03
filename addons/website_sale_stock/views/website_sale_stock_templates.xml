@@ -25,4 +25,31 @@
         </xpath>
     </template>
 
+    <template
+        id="website_sale_stock.ribbon_filter_in_stock"
+        inherit_id="website_sale.filter_products_ribbons"
+        name="In Stock Ribbon Filter"
+    >
+        <xpath expr="//div[hasclass('ribbon-filters')]" position="inside">
+            <t t-if="show_in_stock_filter">
+                <t t-set="_active" t-value="ribbon_filter == 'in_stock'"/>
+                <input
+                    type="checkbox"
+                    name="attribute_value"
+                    class="btn-check"
+                    t-att-id="in_stock"
+                    t-att-value="in_stock"
+                    t-att-checked="_active"
+                    autocomplete="off"
+                    t-attf-onclick="location.href='#{keep(ribbon=0 if _active else 'in_stock')}';return false;"
+                />
+                <label
+                    t-attf-class="btn border {{'active bg-primary-subtle border-primary text-primary-emphasis' if _active else ''}}"
+                    t-att-for="in_stock"
+                    t-field="In stock"
+                />
+            </t>
+        </xpath>
+    </template>
+
 </odoo>

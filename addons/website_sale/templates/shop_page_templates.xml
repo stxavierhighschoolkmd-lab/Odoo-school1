@@ -239,7 +239,7 @@
                             class="d-none d-lg-block position-sticky align-self-start col clearfix pt-2"
                         >
                             <t t-call="website_sale.sidebar_dropzone_at_top"/>
-                            <div class="o_wsale_products_grid_before_rail vh-100 ms-n2 px-lg-2 ps-2 overflow-y-scroll">
+                            <div class="o_wsale_products_grid_before_rail ms-n2 px-lg-2 ps-2 overflow-y-scroll">
                                 <t
                                     t-set="is_sidebar_collapsible"
                                     t-value="is_view_active('website_sale.products_categories_list_collapsible')"
@@ -256,13 +256,13 @@
                                     t-value="opt_wsale_filter_price and opt_wsale_attributes"
                                 />
                                 <div
-                                    t-if="attrib_values or tags or (
+                                    t-if="attrib_values or tags or ribbon_filter or (
                                         show_price_filter and isFilteringByPrice
                                     )"
                                     class="py-3 border-bottom"
                                 >
                                     <a
-                                        t-att-href="keep(attribute_values=0, tags=0, min_price=0, max_price=0)"
+                                        t-att-href="keep(attribute_values=0, tags=0, min_price=0, max_price=0, ribbon=0)"
                                         t-attf-class="btn btn-{{navClass}} d-flex align-items-center py-1"
                                         title="Clear Filters"
                                     >
@@ -279,6 +279,10 @@
                                     _classes.f="{{is_sidebar_collapsible and 'accordion accordion-flush'}} {{is_sidebar_collapsible and (opt_wsale_categories or len(attributes) > 0) and 'border-top'}}"
                                 >
                                 </t>
+                                <t
+                                    t-if="available_ribbon_filters or show_in_stock_filter"
+                                    t-call="website_sale.filter_products_ribbons"
+                                />
                                 <t t-call="website_sale.sidebar_dropzone_at_bottom"/>
                             </div>
                         </aside>
@@ -1090,11 +1094,17 @@
                    _classes.f="o_wsale_offcanvas_title accordion accordion-flush px-4"
                    _classes_title.f="ms-n1 pt-3 pb-2"
                    isOffcanvas="True"/>
+                <t
+                    t-if="available_ribbon_filters or show_in_stock_filter"
+                    t-call="website_sale.filter_products_ribbons"
+                    _classes.f="o_wsale_offcanvas_title px-4"
+                    isOffcanvas="True"
+                />
             </div>
             <div class="offcanvas-body d-flex justify-content-between flex-grow-0 border-top overflow-hidden">
-                <a t-attf-class="btn btn-{{navClass}} d-flex py-1 mb-2 {{(not attrib_values and not isFilteringByPrice and not tags) and 'disabled' }}"
-                   t-att-aria-disabled="(not attrib_values and not isFilteringByPrice and not tags) and 'true' or 'false'"
-                   t-att-href="keep(attribute_values=0, tags=0, min_price=0, max_price=0)"
+                <a t-attf-class="btn btn-{{navClass}} d-flex py-1 mb-2 {{(not attrib_values and not isFilteringByPrice and not tags and not ribbon_filter) and 'disabled' }}"
+                   t-att-aria-disabled="(not attrib_values and not isFilteringByPrice and not tags and not ribbon_filter) and 'true' or 'false'"
+                   t-att-href="keep(attribute_values=0, tags=0, min_price=0, max_price=0, ribbon=0)"
                    title="Clear Filters">
                     Clear Filters
                 </a>
@@ -1521,19 +1531,19 @@
                 <div class="accordion-item">
                     <div class="accordion-header h6 mb-0">
                         <button
-                            class="accordion-button px-0 bg-transparent shadow-none"
+                            class="accordion-button collapsed px-0 bg-transparent shadow-none"
                             type="button"
                             data-bs-toggle="collapse"
                             t-attf-data-bs-target="#o_wsale_price_range_option_inner"
                             t-attf-aria-controls="o_wsale_price_range_option_inner"
-                            aria-expanded="true"
+                            aria-expanded="false"
                         >
                             <b>Price Range</b>
                         </button>
                     </div>
                     <div
                         id="o_wsale_price_range_option_inner"
-                        class="accordion-collapse collapse show"
+                        class="accordion-collapse collapse"
                     >
                         <input
                             type="range"
@@ -1605,6 +1615,42 @@
                 <label class="form-check-label fw-normal" t-attf-for="tag_#{tag.id}" t-field="tag.name"/>
             </div>
         </t>
+    </template>
+
+    <template id="website_sale.filter_products_ribbons" name="Filter by Ribbons">
+        <t
+            t-set="_ribbon_btn_base"
+            t-value="'text-decoration-none text-white bg-dark border '
+                'border-secondary rounded px-3 py-1 small fw-semibold'"
+        />
+        <t t-set="ribbon_filters_id" t-value="o_wsale_ribbon_filters"/>
+        <t t-if="isOffcanvas">
+            <t t-set="ribbon_filters_id" t-value="o_wsale_ribbon_filters_offcanvas"/>
+        </t>
+        <div
+            t-attf-id="{{ribbon_filters_id}}"
+            class="ribbon-filters"
+            t-attf-class="{{_classes}} mt-3 pt-3 border-top"
+        >
+            <t t-foreach="available_ribbon_filters" t-as="rb">
+                <t t-set="_active" t-value="str(rb.id) == ribbon_filter"/>
+                <input
+                    type="checkbox"
+                    name="attribute_value"
+                    class="btn-check"
+                    t-att-id="rb.id"
+                    t-att-value="rb.id"
+                    t-att-checked="_active"
+                    autocomplete="off"
+                    t-attf-onclick="location.href='#{keep(ribbon=0 if _active else rb.id)}';return false;"
+                />
+                <label
+                    t-attf-class="btn border {{'active bg-primary-subtle border-primary text-primary-emphasis' if _active else ''}}"
+                    t-att-for="rb.id"
+                    t-field="rb.name"
+                />
+            </t>
+        </div>
     </template>
 
     <!-- Enable HTML previews in edition mode. The template is active by default, but can be

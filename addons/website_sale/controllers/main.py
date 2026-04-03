@@ -154,7 +154,9 @@ class WebsiteSale(payment_portal.PaymentPortal):
     def _add_search_subdomains_hook(self, _search):
         return []
 
-    def _get_shop_domain(self, search, category, attribute_value_dict, search_in_description=True):
+    def _get_shop_domain(
+        self, search, category, attribute_value_dict, ribbon=None, search_in_description=True
+    ):
         domains = [request.website.sale_product_domain()]
         if search:
             for srch in search.split(" "):
@@ -180,7 +182,29 @@ class WebsiteSale(payment_portal.PaymentPortal):
                 request.env["product.template"]._get_attribute_value_domain(attribute_value_dict)
             )
 
+        ribbon_domain = self._get_ribbon_filter_domain(ribbon)
+        if ribbon_domain is not None:
+            domains.append(ribbon_domain)
+
         return Domain.AND(domains)
+
+    def _get_out_of_stock_ribbon_ids(self, _auto_assign_ribbons):
+        return set()
+
+    def _has_out_of_stock_products(self, _products):
+        """Return whether any product in the selection is dynamically out of stock.
+
+        Override in stock-aware modules to check actual inventory levels.
+        """
+        return False
+
+    def _get_ribbon_filter_domain(self, ribbon):
+        if not ribbon:
+            return None
+        try:
+            return Domain("website_ribbon_id", "=", int(ribbon))
+        except (ValueError, TypeError):
+            return None
 
     def sitemap_shop(env, _rule, qs):  # noqa: N805
         website = env["website"].get_current_website()
@@ -223,6 +247,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
         min_price=0.0,
         max_price=0.0,
         conversion_rate=1,
+        ribbon=None,
         **post,
     ):
         return {
@@ -239,6 +264,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
             "attribute_value_dict": attribute_value_dict,
             "display_currency": post.get("display_currency"),
             "extra_domain": post.get("extra_domain"),
+            "ribbon": ribbon,
         }
 
     def _shop_lookup_products(self, options, post, search, website):
@@ -251,7 +277,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
         return fuzzy_search_term, product_count, search_result
 
     def _shop_get_query_url_kwargs(
-        self, search, min_price, max_price, order=None, tags=None, **_kwargs
+        self, search, min_price, max_price, order=None, tags=None, ribbon=None, **_kwargs
     ):
         attribute_values = request.session.get("attribute_values", [])
         return {
@@ -260,6 +286,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
             "max_price": max_price,
             "order": order,
             "tags": tags,
+            "ribbon": ribbon,
             "attribute_values": attribute_values,
         }
 
@@ -292,7 +319,17 @@ class WebsiteSale(payment_portal.PaymentPortal):
         # Sends a 404 error in case of any Access error instead of 403.
         handle_params_access_error=lambda e, **_kwargs: NotFound.code,  # noqa: ARG005
     )
-    def shop(self, page=0, category=None, search="", min_price=0.0, max_price=0.0, tags="", **post):
+    def shop(
+        self,
+        page=0,
+        category=None,
+        search="",
+        min_price=0.0,
+        max_price=0.0,
+        tags="",
+        ribbon=None,
+        **post,
+    ):
         if not request.website.has_ecommerce_access():
             return request.redirect(f"/web/login?redirect={request.httprequest.path}")
 
@@ -342,6 +379,12 @@ class WebsiteSale(payment_portal.PaymentPortal):
             else:
                 post["tags"] = None
                 tags = {}
+
+        if ribbon and ribbon not in ("0", "false"):
+            post["ribbon"] = ribbon
+        else:
+            ribbon = None
+            post.pop("ribbon", None)
 
         url = self._get_shop_path(category)
         keep = QueryURL(
@@ -396,7 +439,9 @@ class WebsiteSale(payment_portal.PaymentPortal):
             # TODO Find an alternative way to obtain the domain through the search metadata.
             Product = request.env["product.template"]
             search_term = fuzzy_search_term if fuzzy_search_term else search
-            domain = self._get_shop_domain(search_term, category, attribute_value_dict)
+            domain = self._get_shop_domain(
+                search_term, category, attribute_value_dict, ribbon=ribbon
+            )
 
             # This is ~4 times more efficient than a search for the cheapest and most expensive
             # products
@@ -521,11 +566,26 @@ class WebsiteSale(payment_portal.PaymentPortal):
             .grouped("attribute_id")
         )
 
+        auto_assign_ribbons = self.env["product.ribbon"].sudo().search([("assign", "!=", "manual")])
+        out_of_stock_ribbon_ids = self._get_out_of_stock_ribbon_ids(auto_assign_ribbons)
+        ribbons_in_selection = search_product.sudo().mapped("website_ribbon_id")
+        available_ribbon_filters = ribbons_in_selection - ribbons_in_selection.filtered(
+            lambda r: r.id in out_of_stock_ribbon_ids
+        )
+        has_static_oos = bool(out_of_stock_ribbon_ids & set(ribbons_in_selection.ids))
+        show_in_stock_filter = (
+            ribbon == "in_stock"
+            or has_static_oos
+            or (
+                bool(out_of_stock_ribbon_ids)
+                and self._has_out_of_stock_products(search_product.sudo())
+            )
+        )
         values = {
-            "auto_assign_ribbons": self
-            .env["product.ribbon"]
-            .sudo()
-            .search([("assign", "!=", "manual")]),
+            "auto_assign_ribbons": auto_assign_ribbons,
+            "available_ribbon_filters": available_ribbon_filters,
+            "show_in_stock_filter": show_in_stock_filter,
+            "ribbon_filter": ribbon or "",
             "search": fuzzy_search_term or search,
             "original_search": fuzzy_search_term and search,
             "order": post.get("order", ""),

@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
+from odoo.fields import Domain
 from odoo.http import request
 from odoo.tools import float_round
 from odoo.tools.translate import html_translate
@@ -135,3 +136,17 @@ class ProductTemplate(models.Model):
                     )
                 data["free_qty"] = max_quantity
         return data
+
+    @api.model
+    def _get_ribbon_search_domain(self, ribbon):
+        if ribbon == "in_stock":
+            website = self.env["website"].get_current_website()
+            out_of_stock_ribbon_ids = set(
+                self.env["product.ribbon"].sudo().search([("assign", "=", "out_of_stock")]).ids
+            )
+            products = self.sudo().search(website.sale_product_domain())
+            sold_out_ids = products.filtered(
+                lambda p: p._is_sold_out() or p.website_ribbon_id.id in out_of_stock_ribbon_ids
+            ).ids
+            return Domain("id", "not in", sold_out_ids)
+        return super()._get_ribbon_search_domain(ribbon)
