@@ -229,7 +229,10 @@ export class PaymentScreen extends Component {
 
         this.dialog.add(NumberPopup, {
             title: tip.amount > 0 ? _t("Change Tip") : _t("Add Tip"),
-            startingValue: String(tip.value || amount || 0),
+            startingValue: String(tip.value || amount || 0).replace(
+                ".",
+                this.env.services.localization.decimalPoint
+            ),
             startingType: tip.type || "fixed",
             types: [
                 { name: "fixed", symbol: this.pos.currency.symbol },
