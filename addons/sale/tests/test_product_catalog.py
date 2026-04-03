@@ -43,11 +43,12 @@ class TestProductCatalog(HttpCase, SaleCommon):
         response = self.opener.post(
             url=self.base_url + "/product/catalog/update_order_line_info",
             json={
-                "params": {
+                'params': {
                     "res_model": self.res_model,
                     "order_id": self.res_id,
                     "product_id": product.id,
                     "quantity": quantity,
+                    "uom_id": product.uom_id.id,
                     **kwargs,
                 }
             },

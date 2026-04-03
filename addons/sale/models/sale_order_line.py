@@ -1940,14 +1940,20 @@ class SaleOrderLine(models.Model):
                 'price': float,
                 'readOnly': bool,
                 'uomDisplayName': String,
+                'uomId': int,
+                'productUomFactor': float (optional),
+                'productUomDisplayName': string (optional),
             }
         """
         if len(self) == 1:
             return {
                 "quantity": self.product_uom_qty,
                 "price": self._get_discounted_price(),
-                "readOnly": (self.order_id._is_readonly() or bool(self.combo_item_id)),
-                "uomDisplayName": self.product_uom_id.display_name,
+                "readOnly": (
+                    self.order_id._is_readonly()
+                    or bool(self.combo_item_id)
+                ),
+                **self.order_id._get_product_catalog_uom_data(self.product_id, self[0].product_uom_id),
             }
         if self:
             self.product_id.ensure_one()
