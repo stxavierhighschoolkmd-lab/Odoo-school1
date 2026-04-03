@@ -1,8 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
-from odoo.fields import Command
+from odoo.exceptions import UserError, ValidationError
+from odoo.fields import Command, Domain
 
 
 class SaleOrderTemplate(models.Model):
@@ -69,6 +69,18 @@ class SaleOrderTemplate(models.Model):
         "otherwise the sales journal with the lowest sequence is used.",
     )
 
+    # Section template related fields
+    is_section_template = fields.Boolean(string="Is section template")
+
+    # Access control and visibility fields
+    share_template = fields.Boolean(string="Share", default=True)
+    team_ids = fields.Many2many(string="Sales Team", comodel_name="crm.team")
+    user_has_access = fields.Boolean(
+        string="Can User access",
+        compute="_compute_user_has_access",
+        search="_search_user_has_access",
+    )
+
     # === COMPUTE METHODS ===#
 
     @api.depends("company_id")
@@ -89,6 +101,36 @@ class SaleOrderTemplate(models.Model):
             template.prepayment_percent = (
                 template.company_id or template.env.company
             ).prepayment_percent
+
+    @api.depends("team_ids", "share_template", "team_ids.member_ids", "team_ids.user_id")
+    def _compute_user_has_access(self):
+        for template in self:
+            template.user_has_access = (
+                template.share_template
+                and (
+                    not template.team_ids
+                    or self.env.user in template.team_ids.member_ids
+                    or self.env.user in template.team_ids.user_id
+                )
+            ) or template.create_uid == self.env.user
+
+    def _search_user_has_access(self, operator, value):
+        if operator not in {"=", "!="}:
+            return NotImplemented
+
+        if (operator == "=" and value) or (operator == "!=" and not value):
+            x2many_operator = "in"
+        else:
+            x2many_operator = "not in"
+
+        return (
+            Domain("share_template", operator, value)
+            & (
+                Domain("team_ids", operator, not value)
+                | Domain("team_ids.member_ids", x2many_operator, self.env.user.id)
+                | Domain("team_ids.user_id", x2many_operator, self.env.user.id)
+            )
+        ) | Domain("create_uid", x2many_operator, self.env.user.ids)
 
     # === ONCHANGE METHODS ===#
 
@@ -181,6 +223,12 @@ class SaleOrderTemplate(models.Model):
                         lang=lang.code
                     ).get_product_multiline_description_sale()
 
+    @api.ondelete(at_uninstall=False)
+    def _unlink_if_created_by_user(self):
+        for template in self:
+            if template.create_uid != self.env.user:
+                raise UserError(self.env._("Only the user who created the template can delete it."))
+
     @api.model
     def _demo_configure_template(self):
         demo_template = self.env.ref(
@@ -203,7 +251,9 @@ class SaleOrderTemplate(models.Model):
                 "product_uom_qty": 0,
             }),
             Command.create({
-                "product_id": self.env.ref("product.product_template_dining_table").product_variant_id.id
+                "product_id": self.env.ref(
+                    "product.product_template_dining_table"
+                ).product_variant_id.id
             }),
             Command.create({"product_id": self.env.ref("product.monitor_stand").id}),
             Command.create({
@@ -245,3 +295,46 @@ class SaleOrderTemplate(models.Model):
                 "product_uom_qty": 0,
             }),
         ]
+
+    # === PUBLIC ===#
+
+    @api.model
+    def get_section_templates(self, company_id):
+        """Return section templates created by the current user for the given company and its
+        accessible branches.
+
+        :param int company_id: ID of the company to fetch templates for
+        :return: Section templates
+        :rtype: list[dict]
+        """
+        company = self.env["res.company"].browse(company_id)
+        domain = (
+            Domain("is_section_template", "=", True)
+            & Domain("company_id", "in", tuple(company._accessible_branches().ids))
+            & Domain("user_has_access", "=", True)
+        )
+        return self.with_context(active_test=False).search_read(
+            domain, fields=["id", "name", "create_uid"]
+        )
+
+    def prepare_section_template_order_lines(self, order_changes, fields_spec):
+        """Prepare `sale.order.line` value dicts from a section template.
+
+        Builds order line values from the given section template, applies
+        `sale.order.line` onchange with provided order-level changes, and
+        returns the resulting values ready for insertion.
+
+        :param dict order_changes: Order values to consider for onchange
+        :param dict fields_spec: Fields specification for onchange
+        :return: Prepared sale order line values
+        :rtype: list[dict]
+        """
+        self.ensure_one()
+        result = []
+
+        for line in self.sale_order_template_line_ids:
+            onchange_values = {**line._prepare_order_line_values(), **order_changes}
+            onchange_result = self.env["sale.order.line"].onchange(onchange_values, [], fields_spec)
+            result.append(onchange_result.get("value", {}))
+
+        return result
