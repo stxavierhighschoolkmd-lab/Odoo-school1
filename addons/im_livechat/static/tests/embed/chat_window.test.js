@@ -8,12 +8,13 @@ import {
     inputFiles,
     insertText,
     onRpcBefore,
+    setupChatHub,
     start,
     startServer,
     triggerHotkey,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, test } from "@odoo/hoot";
-import { asyncStep, serverState, waitForSteps } from "@web/../tests/web_test_helpers";
+import { asyncStep, Command, serverState, waitForSteps } from "@web/../tests/web_test_helpers";
 
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { getOrigin } from "@web/core/utils/urls";
@@ -105,4 +106,24 @@ test("can close confirm livechat with keyboard", async () => {
     await triggerHotkey("Enter");
     await waitForSteps(["/im_livechat/visitor_leave_session"]);
     await contains(".o-mail-ChatWindow", { text: "Did we correctly answer your question?" });
+});
+
+test("can start a new live chat when acting as an agent in active live chats", async () => {
+    const pyEnv = await startServer();
+    await loadDefaultEmbedConfig();
+    const guestId = pyEnv["mail.guest"].create({ name: "Visitor" });
+    const channelId = pyEnv["discuss.channel"].create({
+        anonymous_name: "Visitor",
+        channel_member_ids: [
+            Command.create({ partner_id: serverState.partnerId }),
+            Command.create({ guest_id: guestId }),
+        ],
+        channel_type: "livechat",
+        livechat_active: true,
+        livechat_operator_id: serverState.partnerId,
+    });
+    setupChatHub({ opened: [channelId] });
+    await start();
+    await contains(".o-mail-ChatWindow");
+    await contains(".o-livechat-LivechatButton");
 });

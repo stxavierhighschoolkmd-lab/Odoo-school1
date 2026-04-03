@@ -70,8 +70,12 @@ patch(Thread.prototype, {
             eager: true,
         });
         this.storeAsActiveLivechats = fields.One("Store", {
+            /** @this {import("models").Thread} */
             compute() {
-                return this.livechat_active ? this.store : null;
+                return this.livechat_active &&
+                    (this.selfMember?.eq(this.livechatVisitorMember) || this.isTransient)
+                    ? this.store
+                    : null;
             },
         });
         this.requested_by_operator = false;
