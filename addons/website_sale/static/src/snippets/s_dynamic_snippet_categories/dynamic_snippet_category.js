@@ -64,4 +64,12 @@ registry
 
 registry
     .category("public.interactions.preview")
-    .add('website_sale.dynamic_snippet_category', {Interaction: DynamicSnippetCategory});
+    .add('website_sale.dynamic_snippet_category', {
+        Interaction: DynamicSnippetCategory,
+        mixin: (I) => class extends I {
+            getQWebRenderOptions() {
+                const options = super.getQWebRenderOptions(...arguments);
+                return Object.assign(options, { rowSize: `calc(${options.rowSize} / 3)` });
+            }
+        },
+    });
