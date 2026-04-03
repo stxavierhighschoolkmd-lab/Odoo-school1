@@ -979,9 +979,19 @@ class AccountEdiXmlUblTr(models.AbstractModel):
         })
         return partner_vals
 
-    def _import_fill_invoice_form(self, invoice, tree, qty_factor):
+    def _get_document_allowance_charge_xpaths(self):
         # EXTENDS account.edi.xml.ubl_20
-        logs = super()._import_fill_invoice_form(invoice, tree, qty_factor)
+        # UBL-TR does not use document-level allowance/charge nodes as global discounts.
+        # In practice, the AllowanceCharge found at the document root reflects the sum of
+        # line-level discounts, so importing it as a separate global discount would duplicate it.
+
+        res = super()._get_document_allowance_charge_xpaths()
+        res['root'] = './{*}__never_match__'
+        return res
+
+    def _import_fill_invoice(self, invoice, tree, qty_factor):
+        # EXTENDS account.edi.xml.ubl_20
+        logs = super()._import_fill_invoice(invoice, tree, qty_factor)
 
         # ==== Nilvera UUID ====
         if uuid_node := tree.findtext('./{*}UUID'):
