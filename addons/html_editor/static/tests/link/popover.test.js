@@ -17,8 +17,20 @@ import { contains, onRpc, patchWithCleanup } from "@web/../tests/web_test_helper
 import { setupEditor } from "../_helpers/editor";
 import { cleanLinkArtifacts } from "../_helpers/format";
 import { getContent, setContent, setSelection } from "../_helpers/selection";
+<<<<<<< c77ece788eaa0bd8b66f20aa26b6a999e9da2e25
 import { expectElementCount } from "../_helpers/ui_expectations";
 import { insertLineBreak, insertText, splitBlock, undo } from "../_helpers/user_actions";
+||||||| b023ca35040fc5c2d5fde9047e0ac8963913efb5
+import { insertLineBreak, insertText, splitBlock, undo } from "../_helpers/user_actions";
+=======
+import {
+    insertLineBreak,
+    insertSpace,
+    insertText,
+    splitBlock,
+    undo,
+} from "../_helpers/user_actions";
+>>>>>>> 3d2ea930957e0bdff84ebae8b1db0d79985cf2ce
 import { execCommand } from "../_helpers/userCommands";
 
 const base64Img =
@@ -270,7 +282,7 @@ describe("Link creation", () => {
         test("typing valid URL + space should convert to link", async () => {
             const { editor, el } = await setupEditor("<p>[]</p>");
             await insertText(editor, "http://google.co.in");
-            await insertText(editor, " ");
+            await insertSpace(editor);
             expect(cleanLinkArtifacts(getContent(el))).toBe(
                 '<p><a href="http://google.co.in">http://google.co.in</a>&nbsp;[]</p>'
             );
