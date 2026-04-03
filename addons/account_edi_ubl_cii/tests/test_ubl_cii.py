@@ -66,11 +66,6 @@ class TestAccountEdiUblCii(TestUblCiiCommon, HttpCase):
             'ubl_cii_tax_exemption_reason_code': 'VATEX-EU-132-1G'
         })
 
-    def setUp(self):
-        self.addCleanup(self.registry.reset_changes)
-        self.addCleanup(self.registry.clear_all_caches)
-        super().setUp()
-
     def test_export_import_product(self):
         products = self.env['product.product'].create([{
             'name': 'XYZ',

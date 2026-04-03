@@ -255,6 +255,7 @@ class Cursor(_CursorProtocol):
         # avoid the call of close() (by __del__) if an exception
         # is raised by any of the following initializations
         self._closed: bool = True
+        self._closing: bool = False
 
         self.dbname = dbname
         self._cnx = cnx
@@ -306,8 +307,9 @@ class Cursor(_CursorProtocol):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self._closing = True
         try:
-            if exc_type is None:
+            if exc_type is None and not self.closed:
                 self.commit()
         finally:
             self.close()
@@ -467,16 +469,12 @@ class Cursor(_CursorProtocol):
     def close(self) -> None:
         if self._closed:
             return
+        self._closing = True
 
         # Clean the underlying connection, and run rollback hooks and business
         # logic.
         try:
             self.rollback()
-            if self.transaction is not None:
-                self.transaction.default_env = None  # break the cyclic reference
-                self.transaction.reset()
-
-            self.cache.clear()
 
         except psycopg2.InterfaceError:
             # mask 'connection already closed' error
@@ -509,6 +507,9 @@ class Cursor(_CursorProtocol):
             )
             self._cnx.give_back(keep_in_pool=keep_in_pool)
 
+            if self.transaction is not None:
+                self.transaction.default_env = None  # break the cyclic reference
+
     def commit(self) -> None:
         """ Commit the current transaction. """
         self.flush()
@@ -518,7 +519,11 @@ class Cursor(_CursorProtocol):
             self._now = None
         self.prerollback.clear()
         self.postrollback.clear()
-        self.postcommit.run()
+        if self.postcommit:
+            # if we have postcommits to execute, we must reset the transaction
+            # after running them so we can see changes made
+            self.postcommit.run()
+            self.rollback()
 
     def rollback(self) -> None:
         """ Rollback the current transaction. """
