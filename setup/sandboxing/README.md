@@ -96,6 +96,9 @@ cd ~/src/odoo
 firejail --profile=~/.config/firejail/claude.profile --whitelist=$PWD claude
 ```
 
+**Note:** Auto-updates will not work correctly under the sandbox.
+See [Claude auto-updates break the symlink](#claude-auto-updates-break-the-symlink).
+
 **Limitation:** Firejail always creates a PID namespace, which prevents VSCode
 IDE integration (`claude /ide`). Use `bwrap-claude.sh` if you need this
 feature. This limitation does not apply when running the editor itself under
@@ -198,6 +201,9 @@ If VSCode is started, it should appear in the Claude CLI output.
 
 See the script header for the full sandbox layout.
 
+**Note:** Auto-updates will not work correctly under the sandbox.
+See [Claude auto-updates break the symlink](#claude-auto-updates-break-the-symlink).
+
 #### Using OpenRouter
 
 To use [OpenRouter](https://openrouter.ai/) as a proxy for Claude API calls, set the
@@ -253,7 +259,7 @@ You can follow the logs in the file `~/src/odoo/log/pouet.log`.
 At the time of writing, it should work fine with Bubblewrap but still faces minor
 errors with Firejail.
 
-## Known Limitations
+## Troubleshooting
 
 ### Claude auto-updates break the symlink
 
@@ -262,22 +268,18 @@ errors with Firejail.
 the new binary into `versions/` but cannot update the symlink because the sandbox
 only exposes the symlink itself, not its parent directory `~/.local/bin/`.
 
-After an update, run the following **outside the sandbox** (in a regular terminal):
+Old binaries are automatically garbage-collected, so after some time the symlink
+will point to a non-existing executable and Claude will fail to start.
+
+To fix the issue, re-install Claude **outside the sandbox** (no data will be lost):
 
 ```sh
-ln -sf ~/.local/share/claude/versions/<new-version> ~/.local/bin/claude
+rm -f ~/.local/bin/claude && curl -fsSL https://claude.ai/install.sh | bash
 ```
 
-Replace `<new-version>` with the newly downloaded version. You can list available
-versions with:
+### bwrap: setting up uid map: Permission denied
 
-```sh
-ls ~/.local/share/claude/versions/
-```
-
-## Troubleshooting
-
-1. If you get the following error:
+If you get the following error:
 
 ```
 bwrap: setting up uid map: Permission denied

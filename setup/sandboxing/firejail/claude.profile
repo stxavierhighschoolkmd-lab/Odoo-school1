@@ -12,6 +12,14 @@
 #   Firejail always creates a PID namespace, which prevents VSCode IDE
 #   integration (`claude /ide`).
 #   Use bwrap-claude.sh or the provided code.local if you need the feature.
+#
+#   ~/.local/bin/claude is a symlink to ~/.local/share/claude/versions/<version>.
+#   Auto-updates cannot update the symlink because of the sandboxing. Old
+#   binaries are automatically garbage-collected, so after some time the symlink
+#   will point to a non-existing executable. To fix the issue, re-install Claude
+#   outside of the sandbox:
+#     rm -f ~/.local/bin/claude && curl -fsSL https://claude.ai/install.sh | bash
+
 
 # ============================================================================
 # SECURITY HARDENING
@@ -75,11 +83,6 @@ whitelist ${HOME}/.cache/claude
 whitelist ${HOME}/.cache/claude-cli-nodejs
 whitelist ${HOME}/.claude
 whitelist ${HOME}/.claude.json
-# NOTE: ~/.local/bin/claude is a symlink to ~/.local/share/claude/versions/<version>.
-# Claude auto-updates download a new binary under versions/ but cannot update the
-# symlink because the parent directory ~/.local/bin/ is not whitelisted. After an
-# update, fix the symlink manually:
-#   ln -sf ~/.local/share/claude/versions/<new-version> ~/.local/bin/claude
 whitelist ${HOME}/.local/bin/claude
 whitelist ${HOME}/.local/share/claude
 whitelist ${HOME}/.local/state/claude

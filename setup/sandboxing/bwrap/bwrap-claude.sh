@@ -115,6 +115,10 @@ CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.local/bin/claude}"
 # Pre-check: ensure Claude binary exists
 if [[ ! -x "$CLAUDE_BIN" ]]; then
   echo "Claude Code not found at $CLAUDE_BIN" >&2
+  echo "In all likelihood, the Claude executable has been garbage-collected but the" >&2
+  echo "symlink was not updated because of sandboxing restrictions." >&2
+  echo "You can fix the issue by re-installing Claude (no data will be lost):" >&2
+  echo "rm -f $HOME/.local/bin/claude && curl -fsSL https://claude.ai/install.sh | bash" >&2
   exit 1
 fi
 

@@ -43,11 +43,6 @@ whitelist ${HOME}/.cache/claude
 whitelist ${HOME}/.cache/claude-cli-nodejs
 whitelist ${HOME}/.claude
 whitelist ${HOME}/.claude.json
-# NOTE: ~/.local/bin/claude is a symlink to ~/.local/share/claude/versions/<version>.
-# Claude auto-updates download a new binary under versions/ but cannot update the
-# symlink because the parent directory ~/.local/bin/ is not whitelisted. After an
-# update, fix the symlink manually:
-#   ln -sf ~/.local/share/claude/versions/<new-version> ~/.local/bin/claude
 whitelist ${HOME}/.local/bin/claude
 whitelist ${HOME}/.local/share/claude
 whitelist ${HOME}/.local/state/claude
