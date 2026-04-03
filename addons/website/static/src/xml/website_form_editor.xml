@@ -270,7 +270,7 @@
         </div>
     </t>
 
-    <t t-name="website.form_field_many2many_dropdown">
+    <t t-name="website.form_field_many2many_selection">
         <t t-call="website.form_field">
             <t t-if="!field.records">
                 <input
@@ -282,8 +282,9 @@
                     disabled=""
                 />
             </t>
-            <div t-else="" class="s_website_form_m2m_dropdown dropdown">
+            <div t-else="" class="s_website_form_m2m_selection dropdown">
                 <select multiple="multiple" class="s_website_form_input d-none" t-att-id="field.id" t-att-name="field.name" t-att-required="field.required || field.modelRequired || None">
+                    <option t-if="field.allowEmpty" t-out="field.placeholder" class="s_website_form_empty_option" value=""/>
                     <t t-foreach="field.records" t-as="record" t-key="record_index">
                         <option t-out="record.display_name" t-att-id="field.id + record_index" t-att-value="record.id"
                             t-att="{

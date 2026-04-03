@@ -131,7 +131,7 @@
             id="'existing_field_select_type_opt'" preview="false" action="'existingFieldSelectType'"
         >
             <div class="o-hb-select-dropdown-category py-2 ps-2 fst-italic">Multiple Selection</div>
-            <BuilderSelectItem actionValue="'many2many_dropdown'" t-if="this.isExistingFieldSelectTypeMultiple">Dropdown List</BuilderSelectItem>
+            <BuilderSelectItem actionValue="'many2many_selection'" t-if="this.isExistingFieldSelectTypeMultiple">Dropdown List</BuilderSelectItem>
             <BuilderSelectItem actionValue="'many2many'" t-if="this.isExistingFieldSelectTypeMultiple">Checkbox</BuilderSelectItem>
             <div class="o-hb-select-dropdown-category py-2 ps-2 fst-italic">Single Selection</div>
             <BuilderSelectItem actionValue="'many2one'">Dropdown List</BuilderSelectItem>
