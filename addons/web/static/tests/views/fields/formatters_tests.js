@@ -17,6 +17,7 @@ import {
     formatReference,
     formatText,
     formatX2many,
+    formatBinary,
 } from "@web/views/fields/formatters";
 
 QUnit.module("Fields", (hooks) => {
@@ -160,7 +161,10 @@ QUnit.module("Fields", (hooks) => {
         };
         assert.deepEqual(formatMonetary(200, { field, currencyId: 10, data }), "200.00\u00a0€");
         assert.deepEqual(formatMonetary(200, { field, data }), "$\u00a0200.00");
-        assert.deepEqual(formatMonetary(200, { field, currencyField: "c_y", data }), "200.00\u00a0&");
+        assert.deepEqual(
+            formatMonetary(200, { field, currencyField: "c_y", data }),
+            "200.00\u00a0&"
+        );
 
         const floatField = { type: "float" };
         data = {
@@ -195,5 +199,11 @@ QUnit.module("Fields", (hooks) => {
         assert.strictEqual(formatReference(false), "");
         const value = { resModel: "product", resId: 2, displayName: "Chair" };
         assert.strictEqual(formatReference(value), "Chair");
+    });
+
+    QUnit.test("formatBinary", function (assert) {
+        assert.strictEqual(formatBinary("1.5 MB"), "1.5 MB", "binary sizes are not modified");
+        assert.strictEqual(formatBinary("aGVsbG8="), "6 Bytes");
+        assert.strictEqual(formatBinary("a".repeat(3000)), "2.20 kB");
     });
 });
