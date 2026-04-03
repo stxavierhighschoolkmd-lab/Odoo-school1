@@ -17,6 +17,7 @@ export class WebsiteLoader extends Component {
         const initialState = {
             isVisible: false,
             title: "",
+            tipMessage: "",
             flag: false,
             showTips: false,
             selectedFeatures: [],
@@ -131,6 +132,7 @@ export class WebsiteLoader extends Component {
             this.state.isVisible = true;
             for (const prop of [
                 "title",
+                "tipMessage",
                 // FIXME: website user/interactive tours are not properly
                 // working at the moment. This disables the "follow the tips"
                 // message in the website loader while waiting for a fix.
