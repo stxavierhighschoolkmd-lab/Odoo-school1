@@ -212,6 +212,22 @@ class TestSelector(TransactionCase):
         self.assertEqual({(None, 'module', None, None, None), }, tags.include)  # all in module
         self.assertEqual({('standard', None, None, None, None), }, tags.exclude)  # exept standard ones
 
+        tags = TagsSelector('-standard,.test_method')
+        self.assertEqual({(None, None, None, 'test_method', None)}, tags.include)
+        self.assertEqual({('standard', None, None, None, None)}, tags.exclude)
+
+        tags = TagsSelector('-standard,/module:class.method')
+        self.assertEqual({(None, 'module', 'class', 'method', None)}, tags.include)
+        self.assertEqual({('standard', None, None, None, None)}, tags.exclude)
+
+        tags = TagsSelector('-standard,:class')
+        self.assertEqual({(None, None, 'class', None, None)}, tags.include)
+        self.assertEqual({('standard', None, None, None, None)}, tags.exclude)
+
+        tags = TagsSelector('-standard,/module')
+        self.assertEqual({(None, 'module', None, None, None)}, tags.include)
+        self.assertEqual({('standard', None, None, None, None)}, tags.exclude)
+
 
 @tagged('nodatabase')
 class TestSelectorSelection(TransactionCase):
@@ -348,6 +364,31 @@ class TestSelectorSelection(TransactionCase):
 
         tags = TagsSelector('slow,-standard')
         self.assertFalse(tags.check(multiple_tags_standard_obj))
+
+    def test_selector_minus_standard_with_specific_tag(self):
+        """Test that -standard combined with specific selectors works"""
+
+        @tagged('-standard')
+        class Test_NonStd(TransactionCase):
+            pass
+
+        class Test_Std(TransactionCase):
+            pass
+
+        non_std = Test_NonStd('test_selector_minus_standard_with_specific_tag')
+        std = Test_Std('test_selector_minus_standard_with_specific_tag')
+
+        tags = TagsSelector('-standard,.test_selector_minus_standard_with_specific_tag')
+        self.assertTrue(tags.check(non_std))
+        self.assertFalse(tags.check(std))
+
+        tags = TagsSelector('-standard,/base:Test_NonStd.test_selector_minus_standard_with_specific_tag')
+        self.assertTrue(tags.check(non_std))
+        self.assertFalse(tags.check(std))
+
+        tags = TagsSelector('-standard,:Test_NonStd')
+        self.assertTrue(tags.check(non_std))
+        self.assertFalse(tags.check(std))
 
         # Mimic the real post_install use case
         # That uses a second tags selector
