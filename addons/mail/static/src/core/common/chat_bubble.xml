@@ -20,6 +20,9 @@
                 <MessageSeenIndicator t-if="message.showSeenIndicator(this.channel.thread)" message="message"/>
                 <t t-out="message.previewText" />
             </div>
+            <div t-else="" class="text-truncate small mx-2 px-1 text-muted">
+                This is the start of your conversation
+            </div>
         </div>
     </t>
 
