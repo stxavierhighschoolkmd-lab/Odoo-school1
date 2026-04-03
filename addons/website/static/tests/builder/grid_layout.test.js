@@ -87,7 +87,8 @@ test("Add an image to a grid", async () => {
         class extends Plugin {
             static id = "test";
             resources = {
-                on_will_save_media_dialog_handlers: (el) => waitUntil(() => el[0].complete).then(tick),
+                on_will_save_media_dialog_handlers: (el) =>
+                    waitUntil(() => el[0].complete).then(tick),
             };
         }
     );
@@ -96,18 +97,19 @@ test("Add an image to a grid", async () => {
         <section>
             <div class="container">
                 <div class="row o_grid_mode" data-row-count="1">
-                    <div class="o_grid_item g-height-1 g-col-lg-7 col-lg-7" style="grid-area: 1 / 1 / 2 / 8; z-index: 1;">
-                        <p style="height: 50px;">TEST</p>
-                    </div>
+                    <div class="o_grid_item g-height-1 g-col-lg-7 col-lg-7" style="grid-area: 1 / 1 / 2 / 8; z-index: 1;"/>
                 </div>
             </div>
         </section>
     `
     );
-    await contains(":iframe .o_grid_mode").click();
-    await contains("button[data-action-id=addGridElement][data-action-param=image]").click();
-    await contains(".o_existing_attachment_cell .o_button_area").click();
 
+    const { moveTo, drop } = await contains(
+        ".o-website-builder_sidebar [name='Image'] .o_snippet_thumbnail"
+    ).drag();
+    await moveTo(":iframe div.container .row.o_grid_mode");
+    await drop(getDragHelper());
+    await contains(".o_existing_attachment_cell .o_button_area").click();
     await waitFor(":iframe .o_grid_mode .o_grid_item img");
     expect(":iframe .o_grid_mode .o_grid_item img").toHaveCount(1);
 });

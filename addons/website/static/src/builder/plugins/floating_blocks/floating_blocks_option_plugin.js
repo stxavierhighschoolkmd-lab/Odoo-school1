@@ -11,7 +11,17 @@ export class FloatingBlocksOptionPlugin extends Plugin {
             FloatingBlocksRoundnessAction,
             AddFloatingBlockCardAction,
         },
+        on_prepare_drag_handlers: this.prepareDrag.bind(this),
     };
+
+    prepareDrag() {
+        const floatingBlocksEls = this.editable.querySelectorAll(".s_floating_blocks");
+        floatingBlocksEls.forEach((el) => el.classList.add("o_disable_cards_overlap"));
+        const restore = () => {
+            floatingBlocksEls.forEach((el) => el.classList.remove("o_disable_cards_overlap"));
+        };
+        return restore;
+    }
 }
 
 export class FloatingBlocksRoundnessAction extends BuilderAction {
