@@ -11,6 +11,9 @@ export class X2ManyMediaViewer extends X2ManyField {
     static props = {
         ...X2ManyField.props,
         convertToWebp: { type: Boolean, optional: true },
+        forceCreate: { type: Boolean, optional: true },
+        setAttachmentId: { type: Boolean, optional: true },
+        onlyImage: { type: Boolean, optional: true },
     };
 
     setup() {
@@ -32,7 +35,7 @@ export class X2ManyMediaViewer extends X2ManyField {
         return {
             save: (el) => {}, // Simple rebound to fake its execution
             multiImages: true,
-            visibleTabs: ["IMAGES", "VIDEOS"],
+            visibleTabs: this.props.onlyImage ? ["IMAGES"] : ["IMAGES", "VIDEOS"],
             imageSave: this.onImageSave.bind(this),
             videoSave: this.onVideoSave.bind(this),
         };
@@ -52,6 +55,8 @@ export class X2ManyMediaViewer extends X2ManyField {
             targetRecord: this.props.record,
             targetFieldName: this.props.name,
             convertToWebp: this.props.convertToWebp,
+            forceCreate: this.props.forceCreate,
+            setAttachmentId: this.props.setAttachmentId,
         });
     }
 
@@ -74,6 +79,9 @@ export const x2ManyMediaViewer = {
         return {
             ...x2ManyFieldProps,
             convertToWebp: options.convert_to_webp,
+            forceCreate: options.force_create,
+            setAttachmentId: options.set_attachment_id,
+            onlyImage: options.only_image,
         };
     },
 };

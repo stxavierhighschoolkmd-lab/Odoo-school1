@@ -23,19 +23,7 @@ export class Many2ManyCheckboxesField extends Component {
         this.specialData = useSpecialData((orm, props) => {
             const { relation } = props.record.fields[props.name];
             const domain = getFieldDomain(props.record, props.name, props.domain);
-            return orm
-                .call(relation, "name_search", ["", domain], {
-                    context: this.props.context || {},
-                })
-                .catch((error) => {
-                    if (error instanceof ConnectionLostError) {
-                        return this.props.record.data[this.props.name].records.map((r) => [
-                            r.resId,
-                            r.data.display_name,
-                        ]);
-                    }
-                    throw error;
-                });
+            return this.fetchSpecialData(orm, relation, domain);
         });
         // these two sets track pending changes in the relation, and allow us to
         // batch consecutive changes into a single replaceWith, thus saving
@@ -45,6 +33,26 @@ export class Many2ManyCheckboxesField extends Component {
         this.debouncedCommitChanges = debounce(this.commitChanges.bind(this), 500);
         useBus(this.props.record.model.bus, "NEED_LOCAL_CHANGES", this.commitChanges.bind(this));
         onWillUnmount(this.commitChanges.bind(this));
+    }
+
+    /**
+     * Fetch the special data for the field
+     * (by default perform a name search).
+     */
+    async fetchSpecialData(orm, relation, domain) {
+        return orm
+            .call(relation, "name_search", ["", domain], {
+                context: this.props.context || {},
+            })
+            .catch((error) => {
+                if (error instanceof ConnectionLostError) {
+                    return this.props.record.data[this.props.name].records.map((r) => [
+                        r.resId,
+                        r.data.display_name,
+                    ]);
+                }
+                throw error;
+            });
     }
 
     get items() {
