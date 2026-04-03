@@ -15,14 +15,14 @@ export class MassMailingLinkPlugin extends LinkPlugin {
         ],
     };
 
-    getProps(originalArgs) {
+    getLinkPopoverProps(originalArgs) {
         const { linkElement, applyCallback } = originalArgs;
         const applyCallbackExtended = (...args) => {
             const [url, label, classes, linkTarget, attachmentId, relValue, noTrackingVal] = args;
             applyCallback(url, label, classes, linkTarget, attachmentId, relValue);
             linkElement.setAttribute("data-no-tracking", noTrackingVal);
         };
-        return super.getProps({
+        return super.getLinkPopoverProps({
             ...originalArgs,
             applyCallback: applyCallbackExtended,
         });

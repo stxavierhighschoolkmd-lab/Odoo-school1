@@ -47,13 +47,10 @@ class TestMailRenderMixin(MassMailCommon):
         root_untracked = html.fromstring(result_html_untracked)
         tracked_links = root_tracked.xpath("//a")
         untracked_links = root_untracked.xpath("//a")
-
-        # Assert
-        self._assert_all_link_tracking(tracked_links, untracked_links)
-
-    def _assert_all_link_tracking(self, tracked_links, untracked_links):
         untracked_link_1_href = untracked_links[0].get("href")
         untracked_link_2_href = untracked_links[1].get("href")
+
+        # Assert
         self.assertNotIn('/r/', untracked_link_1_href)
         self.assertNotIn('/r/', untracked_link_2_href)
         self.assertEqual('https://example.com/page1', untracked_link_1_href)
