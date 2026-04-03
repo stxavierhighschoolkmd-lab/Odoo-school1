@@ -101,6 +101,7 @@ _tz_mapping = {
     "ROK": "Asia/Seoul",
     "Singapore": "Asia/Singapore",
     "Türkiye": "Europe/Istanbul",
+    "Turkey": "Europe/Istanbul",
     "UCT": "Etc/UTC",
     "Universal": "Etc/UTC",
     "US/Alaska": "America/Anchorage",
