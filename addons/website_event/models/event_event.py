@@ -639,7 +639,7 @@ class EventEvent(models.Model):
             'search_extra': search_in_address,
             'fetch_fields': fetch_fields,
             'mapping': mapping,
-            'icon': 'fa-ticket',
+            'icon': 'confirmation_number',
             # for website_event main controller:
             'dates': dates,
             'current_date': current_date,
@@ -656,7 +656,7 @@ class EventEvent(models.Model):
                 begin = self.env['ir.qweb.field.date'].record_to_html(event, 'date_begin', {})
                 end = self.env['ir.qweb.field.date'].record_to_html(event, 'date_end', {})
                 data['range'] = (
-                    Markup('{} <i class="fa fa-long-arrow-right"></i> {}').format(begin, end)
+                    Markup('{} <i class="oi" data-icon="east"></i> {}').format(begin, end)
                     if begin != end else begin
                 )
             data['tag_ids'] = event.tag_ids.read(['name'])
