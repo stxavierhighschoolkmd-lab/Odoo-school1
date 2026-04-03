@@ -73,7 +73,7 @@ export class Attachment extends FileModelMixin(Record) {
         if (this.message && this.store.self.main_user_id?.share !== false) {
             return this.message.editable;
         }
-        return true;
+        return this.thread?.hasWriteAccess ?? true;
     }
 
     get monthYear() {

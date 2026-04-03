@@ -126,7 +126,7 @@ class TestPortalAttachment(AccountTestInvoicingHttpCommon):
         )
         self.assertEqual(res.status_code, 200)
         self.assertTrue(self.env['ir.attachment'].sudo().search([('id', '=', create_res['id'])]))
-        self.assertIn("The requested URL was not found on the server.", res.text)
+        self.assertEqual("odoo.exceptions.AccessError", res.json()["error"]["data"]["name"])
 
         # Test attachment can be removed with token if "pending" state
         res = self.url_open(
