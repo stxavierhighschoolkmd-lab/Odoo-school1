@@ -355,6 +355,9 @@ class ProductProduct(models.Model):
         last_in_domain = Domain([('is_in', '=', True), ('product_id', '=', self.id)])
         if date:
             last_in_domain &= Domain([('date', '<=', date)])
+        lot_id = self.env.context.get('lot_id')
+        if lot_id:
+            last_in_domain &= Domain([('move_line_ids.lot_id', '=', lot_id)])
         last_in = self.env['stock.move'].search(last_in_domain, order='date desc, id desc', limit=1)
         return last_in
 
@@ -523,10 +526,12 @@ class ProductProduct(models.Model):
         """ Returns the value for the next outgoing product base on the qty give as argument."""
         self.ensure_one()
         if self.uom_id.compare(quantity, 0) <= 0:
+            fallback_price = lot.standard_price if lot else self.standard_price
             if at_date:
-                last_in = self._get_last_in(at_date)
-                return quantity * (last_in._get_price_unit() if last_in else self.standard_price)
-            return quantity * self.standard_price
+                product = self.with_context(lot_id=lot.id) if lot else self
+                last_in = product._get_last_in(at_date)
+                return quantity * (last_in._get_price_unit() if last_in else fallback_price)
+            return quantity * fallback_price
         external_location = location and location.is_valued_external
 
         fifo_cost = 0
@@ -618,7 +623,11 @@ class ProductProduct(models.Model):
         products_by_cost_method = defaultdict(set)
         for product in self:
             if product.lot_valuated:
-                product.sudo().with_context(disable_auto_revaluation=True).standard_price = product.avg_cost
+                # Skip updating standard price if any quantity is negative, else might get weird negative values. This method of checing if any quantity is negative might be a bit slow, is there a better way to do this?
+                # The todo mentions using extra kwargs which could help in this scenario...
+                lots = self.env['stock.lot'].sudo().search([('product_id', '=', product.id)])
+                if product.qty_available and not any(l.product_qty < 0 for l in lots):
+                    product.sudo().with_context(disable_auto_revaluation=True).standard_price = product.avg_cost
                 continue
             products_by_cost_method[product.cost_method].add(product.id)
         for cost_method, product_ids in products_by_cost_method.items():
