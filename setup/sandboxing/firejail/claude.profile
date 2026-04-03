@@ -17,14 +17,16 @@
 # SECURITY HARDENING
 # ============================================================================
 
+# Drop capabilities and protocols
+# unix is necessary for commnication with postgres through the socket
 caps.drop all
 nonewprivs
 noroot
 seccomp
-seccomp.drop @reboot,@swap,@clock,@module
 restrict-namespaces
-shell none
+protocol unix,inet,inet6
 
+# No need for this
 nodvd
 nosound
 no3d
@@ -33,9 +35,9 @@ nou2f
 novideo
 nogroups
 
+# Avoid fingerprinting
 machine-id
 hostname claude-sandbox
-protocol inet,inet6
 
 # ============================================================================
 # FILESYSTEM ISOLATION
@@ -56,7 +58,6 @@ include disable-programs.inc
 
 private-tmp
 private-dev
-# private-etc alternatives,ca-certificates,host.conf,hostname,hosts,ld.so.cache,ld.so.conf,ld.so.conf.d,ld.so.preload,localtime,login.defs,nsswitch.conf,passwd,resolv.conf,ssl
 private-etc @network,@tls-ca
 
 disable-mnt
@@ -68,7 +69,6 @@ disable-mnt
 mkdir ${HOME}/.cache/claude
 mkdir ${HOME}/.cache/claude-cli-nodejs
 mkdir ${HOME}/.claude
-mkdir ${HOME}/.local/share/claude
 mkdir ${HOME}/.local/state/claude
 
 whitelist ${HOME}/.cache/claude
@@ -78,13 +78,6 @@ whitelist ${HOME}/.claude.json
 whitelist ${HOME}/.local/bin/claude
 whitelist ${HOME}/.local/share/claude
 whitelist ${HOME}/.local/state/claude
-
-# ============================================================================
-# NETWORK
-# ============================================================================
-
-# Network access is REQUIRED for Claude API calls.
-# Do not add: net none
 
 # ============================================================================
 # D-BUS
