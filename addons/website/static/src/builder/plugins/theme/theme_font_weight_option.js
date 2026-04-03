@@ -72,7 +72,6 @@ export class FontWeightPicker extends BaseOptionComponent {
         level: { type: Number, optional: true },
         disabled: { type: Boolean, optional: true },
         tooltip: { type: String, optional: true },
-        slots: { type: Object, optional: true },
     };
     static defaultProps = {
         level: 0,

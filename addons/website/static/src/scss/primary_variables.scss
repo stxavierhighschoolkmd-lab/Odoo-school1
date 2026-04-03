@@ -2161,12 +2161,12 @@ $o-base-website-values-palette: (
     'buttons-font': null,
 
     // Font weight mappings by context.
-    'font-weight-normal': null,
-    'lead-font-weight': null,
-    'font-weight-bolder': null,
-    'headings-font-weight': null,
+    'font-weight-normal': null, // Default to BS
+    'lead-font-weight': null, // Default to BS
+    'font-weight-bolder': null, // Default to BS
+    'headings-font-weight': null, // Default to BS
     'headings-font-weight-bold': null,
-    'btn-font-weight': null,
+    'btn-font-weight': null, // Default to BS
     'btn-font-weight-bold': null,
 
     // Gradients

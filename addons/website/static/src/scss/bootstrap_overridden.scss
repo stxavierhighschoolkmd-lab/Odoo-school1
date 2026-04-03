@@ -193,22 +193,12 @@ $headings-color: o-color('o-cc1-headings') !default;
 
 $lead-font-size: $font-size-base * $o-lead-ratio !default;
 
-@if o-website-value('lead-font-weight') {
-    $lead-font-weight: o-website-value('lead-font-weight');
-}
-@if o-website-value('font-weight-normal') {
-    $font-weight-normal: o-website-value('font-weight-normal');
-}
-@if o-website-value('font-weight-bolder') {
-    $font-weight-bolder: o-website-value('font-weight-bolder');
-}
-@if o-website-value('headings-font-weight') {
-    $headings-font-weight: o-website-value('headings-font-weight');
-    $display-font-weight: o-website-value('headings-font-weight');
-}
-@if o-website-value('btn-font-weight') {
-    $btn-font-weight: o-website-value('btn-font-weight');
-}
+$lead-font-weight: o-website-value('lead-font-weight') !default;
+$font-weight-normal: o-website-value('font-weight-normal') !default;
+$font-weight-bolder: o-website-value('font-weight-bolder') !default;
+$headings-font-weight: o-website-value('headings-font-weight') !default;
+$display-font-weight: o-website-value('headings-font-weight') !default;
+$btn-font-weight: o-website-value('btn-font-weight') !default;
 
 $text-muted: mute-color($body-color) !default;
 

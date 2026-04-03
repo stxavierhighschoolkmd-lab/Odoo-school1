@@ -20,34 +20,28 @@
                 </BuilderSelectItem>
             </t>
         </BuilderSelect>
-        <t t-slot="collapse"/>
     </BuilderRow>
 </t>
 
 <t t-name="website.ThemeFontWeightOption">
-    <t t-if="this.state.availableWeights?.length">
-        <FontWeightPicker
-            label.translate="Font weight"
-            variable="this.props.regularVariable"
-            weights="this.state.availableWeights">
-            <t t-set-slot="collapse">
-                <FontWeightPicker
-                    t-if="this.props.lightVariable"
-                    label.translate="Light"
-                    level="1"
-                    variable="this.props.lightVariable"
-                    weights="this.state.availableWeights"/>
-                <FontWeightPicker
-                    t-if="this.props.boldVariable"
-                    label.translate="Bold"
-                    level="1"
-                    variable="this.props.boldVariable"
-                    weights="this.state.availableWeights"
-                    disabled="this.isBoldDisabled"
-                    tooltip="this.boldTooltip"/>
-            </t>
-        </FontWeightPicker>
-    </t>
+    <FontWeightPicker
+        label.translate="Font weight"
+        variable="this.props.regularVariable"
+        weights="this.state.availableWeights"/>
+    <FontWeightPicker
+        t-if="this.props.lightVariable"
+        label.translate="Light"
+        level="1"
+        variable="this.props.lightVariable"
+        weights="this.state.availableWeights"/>
+    <FontWeightPicker
+        t-if="this.props.boldVariable"
+        label.translate="Bold"
+        level="1"
+        variable="this.props.boldVariable"
+        weights="this.state.availableWeights"
+        disabled="this.isBoldDisabled"
+        tooltip="this.boldTooltip"/>
 </t>
 
 </templates>
