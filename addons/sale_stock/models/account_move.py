@@ -159,19 +159,26 @@ class AccountMoveLine(models.Model):
         self.ensure_one()
         return self.move_type != 'entry' and self.display_type != 'cogs' and super()._sale_can_be_reinvoice()
 
-    def _get_cogs_qty(self):
+    def _get_cogs_lines(self):
+        """Get all the COGS AML related to the SaleOrderLine of the current invoice line."""
         self.ensure_one()
         valuation_account = self.product_id.product_tmpl_id.get_product_accounts(fiscal_pos=self.move_id.fiscal_position_id)['stock_valuation']
-        posted_cogs_qty = sum(self.sale_line_ids.order_id.invoice_ids.filtered(lambda m: m.move_type == 'out_invoice').line_ids.filtered(
-            lambda line: line.product_id == self.product_id and line.display_type == 'cogs' and line.account_id == valuation_account
-        ).mapped('quantity'))
-        posted_cogs_qty_prod_uom = self.product_uom_id._compute_quantity(posted_cogs_qty, self.product_id.uom_id)
+        invoice_lines = self.sale_line_ids.invoice_lines.filtered(lambda line: line.product_id == self.product_id and line.move_id.move_type == 'out_invoice')
+        cog_lines = invoice_lines.move_id.line_ids.filtered(
+            lambda line: line.account_id == valuation_account and line.cogs_origin_id in invoice_lines
+        )
+        return cog_lines
+
+    def _get_cogs_qty(self):
+        self.ensure_one()
+        cogs_lines = self._get_cogs_lines()
+        posted_cogs_qty_prod_uom = sum(cogs_lines.mapped(
+            lambda line: line.product_uom_id._compute_quantity(line.quantity, line.product_id.uom_id)
+        ))
         return posted_cogs_qty_prod_uom + super()._get_cogs_qty()
 
     def _get_posted_cogs_value(self):
         self.ensure_one()
-        valuation_account = self.product_id.product_tmpl_id.get_product_accounts(fiscal_pos=self.move_id.fiscal_position_id)['stock_valuation']
-        posted_cogs_value = - sum(self.sale_line_ids.order_id.invoice_ids.filtered(lambda m: m.move_type == 'out_invoice').line_ids.filtered(
-            lambda line: line.product_id == self.product_id and line.display_type == 'cogs' and line.account_id == valuation_account
-        ).mapped('balance'))
+        cogs_lines = self._get_cogs_lines()
+        posted_cogs_value = -sum(cogs_lines.mapped("balance"))
         return posted_cogs_value + super()._get_posted_cogs_value()
