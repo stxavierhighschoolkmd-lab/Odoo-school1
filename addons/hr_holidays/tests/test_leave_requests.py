@@ -1698,3 +1698,44 @@ class TestLeaveRequests(TestHrHolidaysCommon):
         })
 
         self.assertEqual(leave.number_of_hours, 13.0)
+
+    @freeze_time('2026-04-01')
+    def test_timeoff_duration_employee_without_calendar(self):
+        """ Test time off duration for employees without resource_calendar_id. """
+        employee_no_calendar = self.env['hr.employee'].create({
+            'name': 'Employee Without Calendar',
+        })
+        employee_no_calendar.resource_calendar_id = False
+        leave = self.env['hr.leave'].create({
+            'name': 'Time Off Request',
+            'employee_id': employee_no_calendar.id,
+            'holiday_status_id': self.holidays_type_1.id,
+            'request_date_from': date(2026, 4, 6),
+            'request_date_to': date(2026, 4, 10),
+        })
+
+        self.assertEqual(leave.number_of_days, 5)
+        # Calculate expected hours (5 days * 21 hours per day = 105 hours)
+        expected_hours = 105.0
+        self.assertAlmostEqual(leave.number_of_hours, expected_hours, places=2)
+        # Assert that leave_type_increases_duration is False
+        # This field should be False because the calculated days match the requested days
+        self.assertFalse(leave.leave_type_increases_duration)
+
+    @freeze_time('2026-04-01')
+    def test_timeoff_single_day_employee_without_calendar(self):
+        """ Test single-day time off for employees without resource_calendar_id. """
+        employee_no_calendar = self.env['hr.employee'].create({
+            'name': 'Employee Without Calendar Single Day',
+        })
+        employee_no_calendar.resource_id.calendar_id = False
+        leave = self.env['hr.leave'].create({
+            'name': 'Single Day Off',
+            'employee_id': employee_no_calendar.id,
+            'holiday_status_id': self.holidays_type_1.id,
+            'request_date_from': date(2026, 4, 6),
+            'request_date_to': date(2026, 4, 6),
+        })
+
+        self.assertEqual(leave.number_of_days, 1)
+        self.assertFalse(leave.leave_type_increases_duration)

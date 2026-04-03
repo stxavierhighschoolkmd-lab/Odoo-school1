@@ -5,6 +5,7 @@ from collections import defaultdict
 from pytz import utc
 
 from odoo import api, fields, models
+from datetime import timedelta
 from .utils import timezone_datetime
 
 
@@ -121,7 +122,19 @@ class ResourceMixin(models.AbstractModel):
                 intervals = calendar._attendance_intervals_batch(from_datetime, to_datetime, calendar_resources)
 
             for calendar_resource in calendar_resources:
-                result[calendar_resource.id] = calendar._get_attendance_intervals_days_data(intervals[calendar_resource.id])
+                if not calendar_resource.calendar_id:
+                    # Fully flexible: count calendar days in the intervals
+                    total_days = 0
+                    total_hours = 0
+                    for start, stop, meta in intervals[calendar_resource.id]:
+                        delta = stop - start
+                        total_hours += delta.total_seconds() / 3600
+
+                        days_diff = (stop.date() - start.date()).days
+                        total_days += days_diff + 1 if days_diff > 0 else 1
+                    result[calendar_resource.id] = {'days': total_days, 'hours': total_hours}
+                else:
+                    result[calendar_resource.id] = calendar._get_attendance_intervals_days_data(intervals[calendar_resource.id])
 
         # convert "resource: result" into "employee: result"
         return {mapped_employees[r.id]: result[r.id] for r in resources}
@@ -209,8 +222,21 @@ class ResourceMixin(models.AbstractModel):
                 intervals = all_intervals[record.resource_id.id]
                 record_result = defaultdict(float)
                 for start, stop, meta in intervals:
+                    start_date = start.date()
+                    stop_date = stop.date()
+                    day_diff = (stop_date - start_date).days
+
                     if calendar.flexible_hours:
                         record_result[start.date()] = meta.duration_hours
+                    # Check if this is a fully flexible resource (single interval spanning multiple days)
+                    elif not record.resource_calendar_id and day_diff > 0:
+                        # Fully flexible resource: split the single interval into per-day entries
+                        total_days = day_diff + 1
+                        hours_per_day = meta.duration_hours / total_days
+
+                        while start_date <= stop_date:
+                            record_result[start_date] += hours_per_day
+                            start_date += timedelta(days=1)
                     else:
                         record_result[start.date()] += (stop - start).total_seconds() / 3600
                 result[record.id] = sorted(record_result.items())
