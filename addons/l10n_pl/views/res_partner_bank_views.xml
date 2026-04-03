@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_partner_bank_form_inherit_l10n_pl" model="ir.ui.view">
+            <field name="name">res.partner.bank.form.inhert</field>
+            <field name="model">res.partner.bank</field>
+            <field name="inherit_id" ref="base.view_partner_bank_form"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//notebook" position="before">
+                    <group invisible="l10n_pl_bank_verification_status == 'not_required'">
+                        <field name="l10n_pl_bank_verification_status"/>
+                        <field name="l10n_pl_bank_verification_timestamp"/>
+                        <field name="l10n_pl_bank_verification_request_id" invisible="not l10n_pl_bank_verification_request_id"/>
+                        <field name="l10n_pl_bank_verification_fail_reason" invisible="l10n_pl_bank_verification_status != 'failed'"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
