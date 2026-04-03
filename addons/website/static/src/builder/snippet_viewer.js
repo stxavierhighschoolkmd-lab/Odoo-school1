@@ -30,4 +30,11 @@ patch(SnippetViewer.prototype, {
             onWillUnmount(stopPreview);
         }
     },
+
+    getNbColumns() {
+        if (this.props.state.isMobilePreviewMode) {
+            return 3;
+        }
+        return super.getNbColumns();
+    },
 });

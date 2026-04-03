@@ -1,6 +1,7 @@
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { SnippetModel } from "@html_builder/snippets/snippet_service";
+import { WebsiteAddSnippetDialog } from "./website_add_snippet_dialog";
 
 export class WebsiteSnippetModel extends SnippetModel {
     /**
@@ -39,6 +40,13 @@ export class WebsiteSnippetModel extends SnippetModel {
             label = fullScreenHeightLabel;
         }
         return label;
+    }
+
+    /**
+     * @override
+     */
+    getAddSnippetDialogClass() {
+        return WebsiteAddSnippetDialog;
     }
 
     cleanSnippetForSave(snippetCopyEl, cleanForSaveProcessors) {
