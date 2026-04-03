@@ -39,15 +39,27 @@ class LivechatChatbotScriptController(http.Controller):
         if not discuss_channel:
             return None
 
+        user, guest = self.env["res.users"]._get_current_persona()
+        store = Store(bus_channel=user or guest)
+        store.data_id = data_id
+        # sudo: discuss.channel - checking whether there is an agent is allowed
+        if discuss_channel.sudo().livechat_agent_partner_ids:
+            # the chatbot should already be stopped,
+            # update the members to avoid more steps to be triggered
+            store.add(discuss_channel, ["member_count"])
+            # sudo: discuss.channel.member - visitor can access members of their channel
+            store.add(discuss_channel.sudo().channel_member_ids, "_store_member_fields")
+            # sudo: im_livechat.channel.member.history - visitor can access members history of their channel
+            store.add(
+                discuss_channel.sudo().livechat_channel_member_history_ids, "_store_member_history_fields"
+            )
+            store.resolve_data_request()
+            store.bus_send()
+            return None
+
         next_step = False
         # sudo: chatbot.script.step - visitor can access current step of the script
         if current_step := discuss_channel.sudo().chatbot_current_step_id:
-            if (
-                current_step.step_type == "forward_operator"
-                # sudo: discuss.channel - checking whether there is an agent is allowed
-                and discuss_channel.sudo().livechat_agent_partner_ids
-            ):
-                return None
             chatbot = current_step.chatbot_script_id
             domain = [
                 ("author_id", "!=", chatbot.operator_partner_id.id),
@@ -61,9 +73,6 @@ class LivechatChatbotScriptController(http.Controller):
             chatbot = request.env['chatbot.script'].sudo().browse(chatbot_script_id).with_context(lang=chatbot_language)
             if chatbot.exists():
                 next_step = chatbot.script_step_ids[:1]
-        user, guest = self.env["res.users"]._get_current_persona()
-        store = Store(bus_channel=user or guest)
-        store.data_id = data_id
         if not next_step:
             # sudo - discuss.channel: marking the channel as closed as part of the chat bot flow
             discuss_channel.sudo().livechat_end_dt = fields.Datetime.now()

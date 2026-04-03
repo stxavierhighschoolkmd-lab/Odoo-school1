@@ -12,17 +12,10 @@ export class Chatbot extends Record {
     // completed.
     static MULTILINE_STEP_DEBOUNCE_DELAY = 10000;
 
-    forwarded;
     isTyping = false;
     isProcessingAnswer = false;
     script = fields.One("chatbot.script");
-    currentStep = fields.One("ChatbotStep", {
-        onUpdate() {
-            if (this.currentStep?.operatorFound) {
-                this.forwarded = true;
-            }
-        },
-    });
+    currentStep = fields.One("ChatbotStep");
     steps = fields.Many("ChatbotStep");
     channel_id = fields.One("discuss.channel", {
         inverse: "chatbot",
@@ -93,7 +86,7 @@ export class Chatbot extends Record {
      */
     async processAnswer(message) {
         if (
-            this.forwarded ||
+            this.channel_id.livechat_agent_history_ids.length ||
             this.channel_id.notEq(message.thread.channel) ||
             !this.currentStep?.expectAnswer
         ) {
@@ -134,7 +127,8 @@ export class Chatbot extends Record {
         return (
             this.currentStep?.isLast ||
             this.currentStep?.operatorFound ||
-            this.channel_id.livechat_end_dt
+            this.channel_id.livechat_end_dt ||
+            this.channel_id.livechat_agent_history_ids.length > 0
         );
     }
 
@@ -151,20 +145,38 @@ export class Chatbot extends Record {
         }
         if (this.steps.at(-1)?.eq(this.currentStep)) {
             const dataRequest = this.store.DataResponse.createRequest();
-            await rpc("/chatbot/step/trigger", {
-                channel_id: this.channel_id.id,
-                chatbot_script_id: this.script.id,
-                data_id: dataRequest.id,
-            });
-            await dataRequest._resultResolvers.promise;
-            if (this.currentStep.isLast) {
-                return;
+            try {
+                await rpc("/chatbot/step/trigger", {
+                    channel_id: this.channel_id.id,
+                    chatbot_script_id: this.script.id,
+                    data_id: dataRequest.id,
+                });
+                await dataRequest._resultResolvers.promise;
+                this.resetFailedState();
+                if (this.currentStep.isLast) {
+                    return;
+                }
+                if (dataRequest.chatbot_step) {
+                    this.steps.push(dataRequest.chatbot_step);
+                }
+            } catch (error) {
+                dataRequest._resultResolvers.reject(error);
+                this.channel_id.hasLoadingFailed = true;
+                this.channel_id.hasLoadingFailedError = error;
+                this.channel_id.hasLoadingFailedStepTrigger = true;
             }
-            this.steps.push(dataRequest.chatbot_step);
         } else {
             const nextStepIndex = this.steps.lastIndexOf(this.currentStep) + 1;
             this.currentStep = this.steps[nextStepIndex];
             this.currentStep.selectedAnswer = null;
+        }
+    }
+
+    resetFailedState() {
+        if (this.channel_id.hasLoadingFailedStepTrigger) {
+            this.channel_id.hasLoadingFailed = false;
+            this.channel_id.hasLoadingFailedError = null;
+            this.channel_id.hasLoadingFailedStepTrigger = false;
         }
     }
 
@@ -177,7 +189,8 @@ export class Chatbot extends Record {
         if (
             !this.currentStep ||
             this.completed ||
-            (this.currentStep.expectAnswer && !this.currentStep.completed)
+            (this.currentStep.expectAnswer && !this.currentStep.completed) ||
+            this.channel_id.hasLoadingFailedStepTrigger
         ) {
             return;
         }
