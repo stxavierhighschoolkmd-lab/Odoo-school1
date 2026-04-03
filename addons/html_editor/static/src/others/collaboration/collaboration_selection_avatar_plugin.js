@@ -142,7 +142,7 @@ export class CollaborationSelectionAvatarPlugin extends Plugin {
             const size = infos.size;
             if (size > 1) {
                 const [left, top] = overlapKey.split("|").map((n) => parseInt(n, 10));
-                const div = document.createElement("div");
+                const div = this.document.createElement("div");
                 div.className = "oe-overlapping-counter";
                 div.style.left = left + 10 + "px";
                 div.style.top = top + 10 + "px";

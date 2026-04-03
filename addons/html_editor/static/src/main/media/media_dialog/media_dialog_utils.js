@@ -27,6 +27,7 @@ export async function renderAndSaveMedia({
     extraClassesToAdd,
     extraClassesToRemove,
     multiImages,
+    document,
     saveFunction,
     aiChannelId = null,
 }) {
@@ -39,6 +40,7 @@ export async function renderAndSaveMedia({
         extraClassesToAdd,
         extraClassesToRemove,
         aiChannelId,
+        document,
     });
     if (multiImages) {
         await saveFunction(elements, selectedMedia, activeTab, oldMediaNode);
@@ -62,6 +64,7 @@ export async function renderMedia({
     orm,
     activeTab,
     availableTabs,
+    document,
     oldMediaNode,
     selectedMedia,
     extraClassesToAdd,
@@ -70,6 +73,7 @@ export async function renderMedia({
 }) {
     const elements = await availableTabs[activeTab].Component.createElements(selectedMedia, {
         orm: orm,
+        document,
     });
     elements.forEach((element) => {
         if (oldMediaNode) {

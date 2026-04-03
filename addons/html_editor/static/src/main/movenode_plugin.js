@@ -136,7 +136,7 @@ export class MoveNodePlugin extends Plugin {
             elementsToGarbageCollect.delete(element);
             let hookElement = this.elementHookMap.get(element);
             if (!hookElement) {
-                hookElement = document.createElement("div");
+                hookElement = this.document.createElement("div");
                 this.elementHookMap.set(element, hookElement);
                 hookElement.classList.add("oe-dropzone-hook");
                 hookElement.addEventListener("mouseenter", () => {
@@ -320,7 +320,7 @@ export class MoveNodePlugin extends Plugin {
                     const container =
                         movableElement.tagName === "LI"
                             ? movableElement.parentElement.cloneNode(false)
-                            : document.createElement("div");
+                            : this.document.createElement("div");
                     if (container.tagName === "OL") {
                         const originalIndex = childNodeIndex(movableElement) + 1;
                         container.setAttribute("start", originalIndex);
@@ -371,7 +371,7 @@ export class MoveNodePlugin extends Plugin {
                 originalRect.height + marginTop + marginBottom
             );
 
-            const dropzoneBox = document.createElement("div");
+            const dropzoneBox = this.document.createElement("div");
             dropzoneBox.className = `oe-dropzone-box`;
             dropzoneBox.style.top = `${dropzoneRect.top - containerRect.top}px`;
             dropzoneBox.style.left =
@@ -381,7 +381,7 @@ export class MoveNodePlugin extends Plugin {
             dropzoneBox.style.width = `${dropzoneRect.width}px`;
             dropzoneBox.style.height = `${dropzoneRect.height}px`;
 
-            const dropzoneHintBox = document.createElement("div");
+            const dropzoneHintBox = this.document.createElement("div");
             dropzoneHintBox.className = `oe-dropzone-box`;
             dropzoneHintBox.style.top = `${dropzoneHintRect.top - containerRect.top}px`;
             dropzoneHintBox.style.left = `${dropzoneHintRect.left - containerRect.left}px`;
@@ -478,7 +478,7 @@ export class MoveNodePlugin extends Plugin {
                     previousParent.remove();
                 } else {
                     const baseContainer = this.dependencies.baseContainer.createBaseContainer();
-                    const br = document.createElement("br");
+                    const br = this.document.createElement("br");
                     baseContainer.append(br);
                     previousParent.append(baseContainer);
                 }

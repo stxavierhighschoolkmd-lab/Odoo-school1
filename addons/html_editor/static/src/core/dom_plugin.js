@@ -487,7 +487,7 @@ export class DomPlugin extends Plugin {
                     isBlock(nodeToInsert) &&
                     this.dependencies.split.isUnsplittable(nodeToInsert)
                 ) {
-                    const br = document.createElement("br");
+                    const br = this.document.createElement("br");
                     currentNode[
                         isEmptyBlock(currentNode) || !isTangible(currentNode) ? "before" : "after"
                     ](br);
@@ -672,7 +672,7 @@ export class DomPlugin extends Plugin {
     // --------------------------------------------------------------------------
 
     insertFontAwesome({ faClass = "fa fa-star" } = {}) {
-        const fontAwesomeNode = document.createElement("i");
+        const fontAwesomeNode = this.document.createElement("i");
         fontAwesomeNode.className = faClass;
         this.insert(fontAwesomeNode);
         this.dependencies.history.addStep();

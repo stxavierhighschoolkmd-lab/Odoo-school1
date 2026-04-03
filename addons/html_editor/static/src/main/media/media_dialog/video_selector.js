@@ -88,10 +88,7 @@ export class VideoSelector extends Component {
             autoplay: {
                 label: _t("Autoplay"),
                 description: _t("Videos are muted when autoplay is enabled"),
-                platforms: [
-                    this.PLATFORMS.youtube,
-                    this.PLATFORMS.vimeo,
-                ],
+                platforms: [this.PLATFORMS.youtube, this.PLATFORMS.vimeo],
                 urlParameter: () => "autoplay=1",
             },
             loop: {
@@ -101,10 +98,7 @@ export class VideoSelector extends Component {
             },
             hide_controls: {
                 label: _t("Hide player controls"),
-                platforms: [
-                    this.PLATFORMS.youtube,
-                    this.PLATFORMS.vimeo,
-                ],
+                platforms: [this.PLATFORMS.youtube, this.PLATFORMS.vimeo],
                 urlParameter: () => "controls=0",
             },
             hide_fullscreen: {
@@ -311,7 +305,7 @@ export class VideoSelector extends Component {
     /**
      * Utility method, called by the MediaDialog component.
      */
-    static createElements(selectedMedia) {
+    static createElements(selectedMedia, { document }) {
         return selectedMedia.map((video) => {
             const div = document.createElement("div");
             div.dataset.oeExpression = video.src;
