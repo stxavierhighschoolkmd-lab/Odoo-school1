@@ -2078,6 +2078,7 @@ class TestFields(TransactionCaseWithUserDemo, TransactionExpressionCase):
         # this invalidates the caches but the prefetching remains the same
         deleted.unlink()
 
+        records.invalidate_model(['categories'])
         # this should not trigger a MissingError
         existing.categories
 
@@ -2095,7 +2096,6 @@ class TestFields(TransactionCaseWithUserDemo, TransactionExpressionCase):
             #                          -> ONE QUERY to read ['name', ...] of records
             #                          -> ONE QUERY for deleted.exists() / code: forbidden = missing.exists()
             #      -> ONE QUERY for records.exists() / MissingError during _check_access
-            #  -> ONE QUERY for records.exists()
             #  -> records._fetch_field(<categories>)
             #      -> records.fetch(['categories'])
             #              -> ONE QUERY to read the many2many of existing
@@ -5238,7 +5238,6 @@ class TestPrecompute(TransactionCase):
 
         fnames = [fname for fname, field in currency._fields.items() if field.prefetch]
         QUERIES = [
-            'SELECT "res_currency"."id" FROM "res_currency" WHERE "res_currency"."id" IN %s',  # env.ref for currency
             select(currency, *fnames),
             insert(model, 'amount', 'currency_id'),
             select(model, 'currency_id'),
