@@ -406,6 +406,7 @@ class MailRenderMixin(models.AbstractModel):
                         _('Only members of %(group_name)s group are allowed to edit templates containing sensible placeholders',
                            group_name=group.name)
                     ) from e
+<<<<<<< db8d61cf889f65b3154ffcbf9eef6de9e3118bd8
 
                 error_details = str(e)
                 error_traceback = traceback.format_exc()
@@ -442,6 +443,54 @@ class MailRenderMixin(models.AbstractModel):
                 )
 
                 # Raise a cleaner error for the UI
+||||||| 40154112fce057fe9157fbfe25ed63bdf679dab6
+                _logger.info("Failed to render template: %s", template_src, exc_info=True)
+=======
+                elif isinstance(e, QWebError):
+                    # We extract the message before the template dump to clean out the full template
+                    # source, since it will be added later again
+                    error_details = str(e).split('\nTemplate:')[0].strip()
+                else:
+                    error_details = str(e)
+                error_traceback = traceback.format_exc()
+
+                # Identify the template safely
+                template_label = _("Template name not identified")
+
+                if self._name == 'mail.template' and self.id:
+                    template_label = _("Mail Template: '%(name)s' (ID: %(record_id)s)",
+                                       name=self.name or _("Unnamed Mail Template"),
+                                       record_id=self.id)
+                    is_identified = True
+                elif self._name == 'mail.compose.message' and self.mass_mailing_id:
+                    template_label = _("Mass Mailing Template: '%(name)s' (ID: %(record_id)s)",
+                                       name=self.mass_mailing_id.display_name or _("Unnamed Mailing"),
+                                       record_id=self.mass_mailing_id.id)
+                    is_identified = True
+                else:
+                    # if we can't name the template, we output the full template src, so that we
+                    # can try to find the failing template by it's src
+                    template_label = _("Template name not identified")
+                    is_identified = False
+
+                # Truncation of the source to prevent log bloat
+                truncated_src = template_src
+                if len(template_src) > 1000 and is_identified:
+                    truncated_src = f"{template_src[:500]}\n[...] (content truncated) [...]\n{template_src[-500:]}"
+
+                lang_context = self.env.context.get('lang', _("No language detected in context"))
+                _logger.error(
+                    "Failed to render QWeb template for %s - Context language:%s\nTarget Model: %s\nError: %s\n%s",
+                    template_label, lang_context, model, error_details, truncated_src
+                )
+                # Log the full technical traceback for the sysadmin/developer
+                _logger.debug(
+                    "Failed to render QWeb template for %s - Context language:%s\nTarget Model: %s\nError: %s\n%s",
+                    template_label, lang_context, model, error_details, error_traceback
+                )
+
+                # Raise a cleaner error for the UI
+>>>>>>> e47ce8be0e423e3a21bb0af9ae7a8a85560acae3
                 raise UserError(
                     _("Failed to render QWeb template for %(template_label)s\n"
                     "Target Model: %(model_name)s\n"
