@@ -122,20 +122,9 @@
                     'alert-danger'}"
                 role="alert"
             >
-                <a
-                    title="Edit"
-                    class="btn btn-sm btn-link text-dark float-end"
-                    role="button"
-                    groups="base.group_system"
-                    target="_blank"
-                    aria-label="Edit"
-                    t-attf-href="/odoo/action-payment.action_payment_provider/{{tx_sudo.provider_id.id}}"
-                >
-                    <i class="fa fa-pencil"/>
-                </a>
                 <div>
                     <t t-if="tx_sudo.state == 'pending'">
-                        <t t-out="tx_sudo.provider_id.sudo().pending_msg"/>
+                        <t t-out="tx_sudo.provider_id.sudo()._get_pending_msg()"/>
                     </t>
                     <t t-if="tx_sudo.state == 'done'">
                         <span t-if='tx_sudo.provider_id.sudo().done_msg' t-out="tx_sudo.provider_id.sudo().done_msg"/>
@@ -156,8 +145,8 @@
                     </t>
                 </div>
                 <t t-if="tx_sudo.provider_code == 'custom'">
-                    <div id="order_reference" t-if="order.reference" class="mt-2">
-                        <b>Communication: </b><span t-out='order.reference'/>
+                    <div id="custom_payment_instructions">
+                        <t t-call="payment_custom.custom_payment_instructions" tx="tx_sudo"/>
                     </div>
                     <div t-if="tx_sudo.provider_id.sudo().qr_code">
                         <t t-set="qr_code" t-value="tx_sudo.company_id.partner_id.bank_ids[:1].build_qr_code_base64(order.amount_total,tx_sudo.reference, None, tx_sudo.currency_id, tx_sudo.partner_id)"/>

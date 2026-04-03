@@ -64,17 +64,49 @@
                 <div class="card flex-grow-1">
                     <div id="o_payment_status_message_details" class="card-body">
                         <t>$0</t>
-                        <t t-if="tx._get_communication()">
-                            <hr class="w-100"/>
-                            <strong class="mt-auto">Communication: </strong>
-                            <span t-out="tx._get_communication()"/>
-                        </t>
+                        <t t-call="payment_custom.custom_payment_instructions"/>
                     </div>
                 </div>
             </div>
             <t t-else="">$0</t>
         </xpath>
 
+    </template>
+
+    <template id="custom_payment_instructions">
+        <div class="d-flex flex-column gap-3 pt-2 pb-3">
+            <t
+                t-set="bank_details"
+                t-value="tx.provider_id.sudo()._get_custom_provider_bank_details()"
+            />
+            <t t-if="bank_details">
+                <div>
+                    <b>Beneficiary: </b>
+                    <pre
+                        class="user-select-all d-inline"
+                        t-out="bank_details['beneficiary']"
+                    />
+                </div>
+                <div>
+                    <b>Bank Account: </b>
+                    <pre
+                        class="user-select-all d-inline"
+                        t-out="bank_details['bank_account']"
+                    />
+                </div>
+            </t>
+            <div>
+                <b>Amount: </b>
+                <pre class="user-select-all d-inline" t-field="tx.amount"/>
+            </div>
+            <t t-set="communication" t-value="tx._get_communication()"/>
+            <t t-if="communication">
+                <div>
+                    <b>Communication: </b>
+                    <pre class="user-select-all d-inline" t-out="communication"/>
+                </div>
+            </t>
+        </div>
     </template>
 
 </odoo>
