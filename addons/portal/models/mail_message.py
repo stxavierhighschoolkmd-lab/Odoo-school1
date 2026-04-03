@@ -131,14 +131,15 @@ class MailMessage(models.Model):
             values.update(
                 {
                     "reactions": reaction_groups,
-                    "author": {
-                        "id": message.author_id.id,
-                        "name": message.author_id.name,
-                        "type": "partner",
-                    },
                     "thread": {"model": values["model"], "id": values["res_id"]},
                 }
             )
+            if message.author_id:
+                values["author"] = {
+                        "id": message.author_id.id,
+                        "name": message.author_id.name,
+                        "type": "partner",
+                    }
         return vals_list
 
     def _portal_message_format_attachments(self, attachment_values):

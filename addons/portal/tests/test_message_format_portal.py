@@ -39,3 +39,23 @@ class TestMessageFormatPortal(common.TransactionCase):
         formatted_result = message_note.portal_message_format()
         # subtype is note -> should return True
         self.assertTrue(formatted_result[0].get('is_message_subtype_note'))
+
+    def test_portal_message_format_on_deleted_user(self):
+        user = self.env['res.users'].create({
+            'name': 'Test User',
+            'login': 'testuser',
+            'email': 'test@example.com',
+        })
+        partner = user.partner_id
+        message = self.env['mail.message'].create([{
+                'model': 'res.partner',
+                'res_id': self.env.user.partner_id.id,
+                'author_id': partner.id,
+                'body': 'A message from Test User',
+        }])
+        result = message.portal_message_format()
+        self.assertTrue(result[0].get('author'))
+        user.sudo().unlink()
+        partner.sudo().unlink()
+        result = message.portal_message_format()
+        self.assertFalse(result[0].get('author'))
