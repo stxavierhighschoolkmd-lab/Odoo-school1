@@ -30,6 +30,7 @@ class IrRule(models.Model):
     name = fields.Char()
     active = fields.Boolean(default=True, help="If you uncheck the active field, it will disable the record rule without deleting it (if you delete a native record rule, it may be re-created when you reload the module).")
     model_id = fields.Many2one('ir.model', string='Model', index=True, required=True, ondelete="cascade")
+    model_name = fields.Char(related='model_id.model', string='Model Name')
     groups = fields.Many2many('res.groups', 'rule_group_rel', 'rule_group_id', 'group_id', ondelete='restrict')
     domain_force = fields.Text(string='Domain')
     perm_read = fields.Boolean(string='Read', default=True)
@@ -97,7 +98,7 @@ class IrRule(models.Model):
         record_ids = for_records.ids
         eval_context = self._eval_context()
         failing_ids = set()
-        all_rules = self._get_rules(Model._name)[mode]
+        all_rules = self._get_rules(Model._name, mode)
 
         # first check if the group rules fail for any record (aka if
         # searching on (records, group_rules) filters out some of the records)
@@ -123,21 +124,31 @@ class IrRule(models.Model):
         return self.browse(id_ for r in all_rules if (id_ := r.rule_id) in failing_ids)
 
     @api.model
-    @tools.ormcache('model_name', cache='stable')
-    def _get_rules(self, model_name: str) -> dict[str, tuple[RuleInfo, ...]]:
+    def _get_rules(self, model_name: str, mode: str) -> tuple[RuleInfo, ...]:
+        prefix, _, _ = model_name.partition('.')
+        rules = self._get_rules_by_prefix(prefix).get(model_name)
+        if not rules:
+            if mode not in self._MODES:
+                raise KeyError(mode)
+            return ()
+        return rules[mode]
+
+    @api.model
+    @tools.ormcache('prefix', cache='stable')
+    def _get_rules_by_prefix(self, prefix: str) -> dict[str, dict[str, tuple[RuleInfo, ...]]]:
         """ Returns all the rules matching the model for the mode for the
         current user.
         """
-        model = self.sudo().env[model_name]
         all_rules = self.sudo().search_fetch(
             [
                 ('active', '=', True),
-                ('model_id.model', '=', model_name),
+                ('model_name', '=like', f'{prefix}%'),
             ],
-            ['groups', 'domain_force', *(f'perm_{mode}' for mode in self._MODES)],
+            ['model_name', 'groups', 'domain_force', *(f'perm_{mode}' for mode in self._MODES)],
             order='id',
         )
         domains = {}
+        env = self.env(su=True)
         for rule in all_rules:
             domain = (rule.domain_force or '').strip()
             try:
@@ -148,15 +159,19 @@ class IrRule(models.Model):
             except ValueError:
                 domains[rule] = domain
             else:
-                domains[rule] = Domain(domain).optimize(model)
+                domains[rule] = Domain(domain).optimize(env[rule.model_name])
         return frozendict({
-            mode: tuple(
-                RuleInfo(rule.id, group.id, domains[rule])
-                for rule in all_rules.filtered(f'perm_{mode}')
-                # iterate over all rules, or just once with an empty groups recordset for global rules
-                for group in rule.groups or (rule.groups,)
-            )
-            for mode in self._MODES
+            model_name: frozendict({
+                mode: tuple(
+                    RuleInfo(rule.id, group.id, domains[rule])
+                    for rule in model_rules
+                    if rule[f'perm_{mode}']
+                    # iterate over all rules, or just once with an empty groups recordset for global rules
+                    for group in rule.groups or (rule.groups,)
+                )
+                for mode in self._MODES
+            })
+            for model_name, model_rules in all_rules.grouped('model_name').items()
         })
 
     @api.model
@@ -178,7 +193,7 @@ class IrRule(models.Model):
                     global_domains.append(Domain(parent_field_name, 'any', domain))
 
         # fetch the rules
-        all_rules = self._get_rules(model_name)[mode]
+        all_rules = self._get_rules(model_name, mode)
         group_domains: list[Domain] = []
         if all_rules:
             # filter rules which apply
