@@ -1239,7 +1239,7 @@
                                                     'list_view_ref': 'account.view_account_list_from_entry',
                                                     'from_bill': move_type == 'in_invoice',
                                                }"
-                                               widget="m2o_cell_with_extra_m2o_fields"
+                                               widget="m2o_cell_with_extra_fields"
                                                groups="account.group_account_readonly"
                                                options="{'no_quick_create': True}"
                                                domain="[('company_ids', 'parent_of', company_id), ('account_type', 'not in', ('asset_receivable', 'liability_payable', 'off_balance'))]"
@@ -1266,15 +1266,17 @@
                                                }"
                                                options="{'no_create': True}"
                                                optional="show"/>
-                                        <field name="deductible_amount"
+                                        <field name="deductible_percentage"
                                                column_invisible="parent.move_type not in ('in_invoice', 'in_refund', 'in_receipt')"
-                                               string="Professional %"
+                                               string="Professional"
                                                optional="hide"
+                                               widget="percentage"
                                                groups="!account.group_partial_purchase_deductibility"/>
-                                        <field name="deductible_amount"
+                                        <field name="deductible_percentage"
                                                column_invisible="parent.move_type not in ('in_invoice', 'in_refund', 'in_receipt')"
-                                               string="Professional %"
+                                               string="Professional"
                                                optional="show"
+                                               widget="percentage"
                                                groups="account.group_partial_purchase_deductibility"/>
                                         <field name="price_subtotal"
                                                column_invisible="parent.move_type not in ['in_invoice', 'in_refund', 'in_receipt'] and parent.company_price_include == 'tax_included'"

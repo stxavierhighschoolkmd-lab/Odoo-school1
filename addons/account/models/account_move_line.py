@@ -423,6 +423,9 @@ class AccountMoveLine(models.Model):
     tax_calculation_rounding_method = fields.Selection(
         related='company_id.tax_calculation_rounding_method',
         string='Tax calculation rounding method', readonly=True)
+    deductible_percentage = fields.Float("Deductibility percentage",
+        compute="_compute_deductible_percentage",
+        inverse="_inverse_deductible_percentage")
     deductible_amount = fields.Float("Deductibility", default=100)
 
     # === Invoice sync fields === #
@@ -1520,6 +1523,16 @@ class AccountMoveLine(models.Model):
             move = aml.move_id
             if move.is_invoice():
                 move.no_followup = aml.no_followup
+
+    @api.depends('deductible_amount')
+    def _compute_deductible_percentage(self):
+        for aml in self:
+            aml.deductible_percentage = aml.deductible_amount / 100
+
+    @api.onchange('deductible_percentage')
+    def _inverse_deductible_percentage(self):
+        for aml in self:
+            aml.deductible_amount = aml.deductible_percentage * 100
 
     def _search_payment_date(self, operator, value):
         # FIXME this is not in line with the compute method! (it could be removed)
