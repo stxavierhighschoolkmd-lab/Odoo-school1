@@ -48,3 +48,14 @@ class TestUi(odoo.tests.HttpCase):
         })
 
         self.start_tour('/odoo', 'project_task_last_history_steps_tour', login='admin')
+
+    def test_project_private_task_tour(self):
+        """Tour verifying that a Private task (To-Do with no project) opened in the
+        Project app retains its "Private" placeholder and is not treated as required.
+        """
+        self.env['project.task'].create({
+            'name': 'Private Task Test',
+            'project_id': False,
+            'user_ids': [self.env.ref('base.user_admin').id],
+        })
+        self.start_tour('/odoo/my-tasks', 'project_private_task_tour', login='admin')
