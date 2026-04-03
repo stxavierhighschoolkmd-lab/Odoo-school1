@@ -1093,6 +1093,13 @@ class AccountEdiUBL(models.AbstractModel):
             'cac:FinancialInstitutionBranch': self._ubl_get_payment_means_payee_financial_account_institution_branch_node_from_partner_bank(vals, partner_bank),
         }
 
+    def _ubl_get_payment_means_payer_financial_account_node_from_payer_mandate(self, mandate):
+        return {
+            'cbc:ID': {
+                '_text': sanitize_account_number(mandate.partner_bank_id.account_number)
+            }
+        }
+
     def _ubl_add_payment_means_nodes(self, vals):
         vals['document_node']['cac:PaymentMeans'] = []
 

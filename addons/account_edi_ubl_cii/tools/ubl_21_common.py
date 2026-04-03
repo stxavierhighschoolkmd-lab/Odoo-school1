@@ -189,6 +189,13 @@ FinancialAccount = {
     }
 }
 
+PaymentMandate = {
+    'cbc:ID': {},
+    'cac:PayerFinancialAccount': {
+        'cbc:ID': {},
+    },
+}
+
 PaymentMeans = {
     'cbc:ID': {},
     'cbc:PaymentMeansCode': {},
@@ -197,6 +204,7 @@ PaymentMeans = {
     'cbc:InstructionNote': {},
     'cbc:PaymentID': {},
     'cac:PayeeFinancialAccount': FinancialAccount,
+    'cac:PaymentMandate': PaymentMandate,
 }
 
 PaymentTerms = {

@@ -2,7 +2,7 @@
 from markupsafe import Markup
 from typing import Literal
 
-from odoo import _, api, models
+from odoo import _, api, models, fields
 from odoo.tools import html2plaintext
 from odoo.tools.misc import formatLang, NON_BREAKING_SPACE
 from odoo.addons.account.tools import dict_to_xml
@@ -329,6 +329,14 @@ class AccountEdiXmlUbl_Bis3(models.AbstractModel):
             node['cac:FinancialInstitution'] = None
         return node
 
+    def _ubl_add_payment_mandate_nodes(self, payment_means_node, payer_mandate):
+        payment_means_node['cac:PaymentMandate'] = {
+            'cbc:ID': {
+                '_text': payer_mandate.name,
+            },
+            'cac:PayerFinancialAccount': super()._ubl_get_payment_means_payer_financial_account_node_from_payer_mandate(payer_mandate),
+        }
+
     def _ubl_add_payment_means_nodes(self, vals):
         # EXTENDS account.edi.xml.ubl
         super()._ubl_add_payment_means_nodes(vals)
@@ -337,8 +345,21 @@ class AccountEdiXmlUbl_Bis3(models.AbstractModel):
         if not invoice:
             return
 
+        def get_customer_active_sdd_mandate(invoice):
+            if not self.module_installed('account_sepa_direct_debit'):
+                return None
+            return invoice.commercial_partner_id.sdd_mandate_ids.search([
+                ('company_id', '=', invoice.company_id.id),
+                ('state', '=', 'active'),
+                ('start_date', '<=', fields.Date.today())
+            ], limit=1)
+
+        payer_mandate = get_customer_active_sdd_mandate(invoice)
+
         if invoice.move_type == 'out_invoice':
-            if invoice.partner_bank_id:
+            if payer_mandate:
+                payment_means_code, payment_means_name = 59, 'sepa direct debit'
+            elif invoice.partner_bank_id:
                 payment_means_code, payment_means_name = 30, 'credit transfer'
             else:
                 payment_means_code, payment_means_name = 'ZZZ', 'mutually defined'
@@ -365,6 +386,9 @@ class AccountEdiXmlUbl_Bis3(models.AbstractModel):
             payment_means_node['cac:PayeeFinancialAccount'] = self._ubl_get_payment_means_payee_financial_account_node_from_partner_bank(vals, partner_bank)
         else:
             payment_means_node['cac:PayeeFinancialAccount'] = None
+
+        if payer_mandate:
+            self._ubl_add_payment_mandate_nodes(payment_means_node, payer_mandate)
 
         nodes.append(payment_means_node)
 

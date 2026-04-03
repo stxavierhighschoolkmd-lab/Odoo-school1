@@ -1,4 +1,4 @@
-from odoo import Command
+from odoo import Command, fields
 from odoo.addons.account_edi_ubl_cii.tests.common import TestUblBis3Common, TestUblCiiBECommon
 from odoo.addons.base.tests.files import DOCX_RAW, XLSX_RAW
 
@@ -45,6 +45,36 @@ class TestUblExportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
 
         self._generate_invoice_ubl_file(invoice)
         self._assert_invoice_ubl_file(invoice, 'test_invoice_payee_financial_account')
+
+    def test_invoice_payeer_financial_account(self):
+        self.ensure_installed('account_sepa_direct_debit')
+
+        company_id = self.env.company.id
+        partner_bank = self.env['res.partner.bank'].create({
+            'account_number': 'BE68539007547034',
+            'partner_id': self.partner_be.id,
+            'company_id': company_id,
+        })
+        mandate = self.env['sdd.mandate'].create({
+            'name': 'mandate_partner_be',
+            'partner_bank_id': partner_bank.id,
+            'start_date': fields.Date.today(),
+            'partner_id': self.partner_be.id,
+            'company_id': company_id,
+        })
+        mandate.action_validate_mandate()
+
+        tax_21 = self.percent_tax(21.0)
+        product = self._create_product(lst_price=100.0, taxes_id=tax_21)
+
+        invoice = self._create_invoice_one_line(
+            product_id=product,
+            partner_id=self.partner_be,
+            post=True,
+        )
+
+        self._generate_invoice_ubl_file(invoice)
+        self._assert_invoice_ubl_file(invoice, 'test_invoice_payer_financial_account')
 
     def test_invoice_negative_price_unit(self):
         """ Ensure the price_unit and the quantity sign are inversed during the generation of the
