@@ -51,7 +51,6 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
             'code': 'cash.basis.transfer.account',
             'name': 'cash_basis_transfer_account',
             'account_type': 'income',
-            'reconcile': True,
         })
 
         cls.tax_account_1 = cls.env['account.account'].create({
@@ -175,7 +174,7 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
         self.assertRecordValues(lines, [{
             'amount_residual': 0.0,
             'amount_residual_currency': 0.0,
-            'reconciled': bool(line.account_id.reconcile),
+            'reconciled': True,
         } for line in lines])
 
     def assertFullReconcileAccount(self, full_reconcile, account):
@@ -1858,7 +1857,6 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
         })
 
         non_rec_pay_account = self.company_data['default_account_revenue'].copy()
-        non_rec_pay_account.reconcile = True
         self.assertFalse(non_rec_pay_account.account_type in ('asset_receivable', 'liability_payable'))
         rec_pay_account = self.company_data['default_account_receivable'].copy()
         self.assertTrue(rec_pay_account.reconcile)
@@ -1955,7 +1953,6 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
         })
 
         non_rec_pay_account = self.company_data['default_account_revenue'].copy()
-        non_rec_pay_account.reconcile = True
         self.assertFalse(non_rec_pay_account.account_type in ('asset_receivable', 'liability_payable'))
         rec_pay_account = self.company_data['default_account_receivable'].copy()
         self.assertTrue(rec_pay_account.reconcile)
@@ -4160,7 +4157,6 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
             'code': '209.01.01',
             'name': 'Cash Basis Transition Account',
             'account_type': 'liability_current',
-            'reconcile': True,
         })
         self.cash_basis_tax_a_third_amount.write({
             'cash_basis_transition_account_id': cash_basis_transition_account.id,
@@ -4408,8 +4404,6 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
     def test_reconcile_cash_basis_revert(self):
         ''' Ensure the cash basis journal entry can be reverted. '''
         self.env.company.tax_exigibility = True
-        self.cash_basis_transfer_account.reconcile = True
-        self.tax_account_1.reconcile = True
         self.cash_basis_tax_a_third_amount.cash_basis_transition_account_id = self.tax_account_1
 
         invoice_move = self.env['account.move'].with_context(skip_invoice_sync=True).create({
@@ -4819,9 +4813,6 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
         """ Test the reconciliation of tax lines (when using a reconcilable tax account)
         for cases mixing taxes exigible on payment and on invoices.
         """
-
-        # Make the tax account reconcilable
-        self.tax_account_1.reconcile = True
         self.env.company.tax_exigibility = True
 
         # Create a tax using the same accounts as the CABA one
@@ -4924,9 +4915,6 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
         This test is especially useful to check the implementation of the use case tested by
         test_reconciliation_cash_basis_foreign_currency_low_values does not have unwanted side effects.
         """
-
-        # Make the tax account reconcilable
-        self.tax_account_1.reconcile = True
         self.env.company.tax_exigibility = True
 
         # Create an invoice with a CABA tax using the same tax account and pay half of it
@@ -5069,9 +5057,6 @@ class TestAccountMoveReconcile(AccountTestInvoicingCommon):
         a tax group
         """
         self.env.company.tax_exigibility = True
-
-        # Make the tax account reconcilable
-        self.tax_account_1.reconcile = True
 
         # Create an invoice with a CABA tax using 'Include in analytic cost'
         move_form = Form(self.env['account.move'].with_context(default_move_type='in_invoice'))

@@ -5609,17 +5609,15 @@ class AccountMove(models.Model):
         '''
         for move, reverse_move in zip(self, reverse_moves):
             group = (move.line_ids + reverse_move.line_ids) \
-                .filtered(lambda l: not l.reconciled) \
-                .sorted(lambda l: l.account_type not in ('asset_receivable', 'liability_payable')) \
+                .filtered(lambda l: not l.reconciled and (
+                    l.is_account_reconcile or
+                    l.move_id.tax_cash_basis_origin_move_id
+                )) \
                 .grouped(lambda l: (l.account_id, l.currency_id))
-            for (account, _currency), lines in group.items():
-                if (
-                    all(not line.reconciled for line in lines) # if it was reconciled due to a previous group
-                    and account.reconcile or account.account_type in ('asset_cash', 'liability_credit_card')
-                ):
+            for lines in group.values():
+                if all(not line.reconciled for line in lines):  # if it was reconciled due to a previous group
                     lines.with_context(move_reverse_cancel=move_reverse_cancel).reconcile()
         return reverse_moves
-
 
     def _reverse_moves(self, default_values_list=None, cancel=False):
         ''' Reverse a recordset of account.move.
@@ -6290,7 +6288,7 @@ class AccountMove(models.Model):
         '''
         self.ensure_one()
         partial = self.env['account.partial.reconcile'].browse(partial_id)
-        return partial.unlink()
+        (partial.credit_move_id + partial.debit_move_id).remove_move_reconcile()
 
     def check_selected_moves(self):
         self.env['account.move'].browse(self.env.context.get('active_ids', [])).set_moves_checked()
