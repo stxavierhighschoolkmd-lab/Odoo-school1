@@ -9,10 +9,10 @@ class HrEmployeeDeparture(models.Model):
     do_unassign_equipment = fields.Boolean("Free Equiments", default=True, help="Unassign Employee from Equipments")
 
     def action_register(self):
-        super().action_register()
+        res = super().action_register()
         departure_with_unassign = self.filtered(lambda dep: dep.do_unassign_equipment)
         if not departure_with_unassign:
-            return
+            return res
         all_equipments = departure_with_unassign.employee_id.equipment_ids
         for departure in departure_with_unassign:
             equipments = departure.employee_id.equipment_ids
@@ -32,3 +32,4 @@ class HrEmployeeDeparture(models.Model):
                     departure.employee_id.name,
                 ))
         all_equipments.sudo().write({'employee_id': False})
+        return res

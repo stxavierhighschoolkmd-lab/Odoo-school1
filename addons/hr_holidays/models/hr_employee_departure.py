@@ -14,10 +14,10 @@ class HrEmployeeDeparture(models.Model):
         help="Set the running allocations validity's end and delete future time off.")
 
     def action_register(self):
-        super().action_register()
+        res = super().action_register()
         cancel_leave_departures = self.filtered(lambda d: d.do_cancel_time_off_requests)
         if not cancel_leave_departures:
-            return
+            return res
         all_leaves_sudo = self.sudo().env['hr.leave'].search([
             ('employee_id', 'in', cancel_leave_departures.employee_id.ids),
             ('date_to', '>', min(cancel_leave_departures.mapped('departure_date'))),
@@ -82,3 +82,4 @@ class HrEmployeeDeparture(models.Model):
                 to_modify.date_to = departure.departure_date
 
             departure.employee_id.message_post(body=self.env._("Time off and allocation requests have been cleaned for %s", departure.employee_id.name))
+        return res

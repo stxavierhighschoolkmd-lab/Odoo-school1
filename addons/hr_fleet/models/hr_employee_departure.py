@@ -12,8 +12,9 @@ class HrEmployeeDeparture(models.Model):
     )
 
     def action_register(self):
-        super().action_register()
+        res = super().action_register()
         self.filtered('do_unassign_company_car')._unassign_company_car()
+        return res
 
     def _unassign_company_car(self):
         """Find all fleet.vehicle.assignation.log records that link to the employee, if there is no
