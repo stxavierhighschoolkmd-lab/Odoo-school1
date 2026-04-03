@@ -39,7 +39,7 @@
             <field name="model">crm.lead</field>
             <field name="priority">60</field>
             <field name="arch" type="xml">
-                <pivot string="Leads Analysis" sample="1">
+                <pivot string="Leads Analysis" js_class="crm_pivot" sample="1">
                     <field name="create_date" interval="month" type="row"/>
                     <field name="team_id" type="col"/>
                     <field name="color" invisible="1"/>
@@ -81,7 +81,7 @@
             <field name="model">crm.lead</field>
             <field name="priority">20</field>
             <field name="arch" type="xml">
-                <graph string="Leads Analysis" sample="1">
+                <graph string="Leads Analysis" js_class="crm_graph" sample="1">
                     <field name="create_date" interval="month"/>
                     <field name="team_id"/>
                     <field name="color" invisible="1"/>

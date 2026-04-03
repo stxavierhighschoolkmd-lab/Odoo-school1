@@ -239,7 +239,7 @@ export class LeadGenerationDropdown extends Component {
     }
 
     redirectToImport() {
-        const { context, resModel } = this.env.searchModel;
+        const { context, resModel } = this.env.model.config;
         this.action.doAction({
             type: "ir.actions.client",
             tag: "import",

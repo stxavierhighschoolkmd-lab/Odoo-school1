@@ -17,3 +17,14 @@
 .o_settings_container .mt16:has(.crm_settings_block) {
     margin-top: 0 !important;
 }
+
+// Truncate selected sale team name in team switcher button
+.o_cp_team_switcher {
+    @include media-breakpoint-up(xl) {
+        max-width: 20ch;
+    }
+}
+// Truncate sales team names in dropdown
+.crm_team_switcher_dropdown.o_popover {
+    max-width: 20rem !important;
+}

@@ -994,8 +994,11 @@ class CrmLead(models.Model):
         # - OR ('fold', '=', False): add default columns that are not folded
         # - OR ('team_ids', '=', team_id), ('fold', '=', False) if team_id: add team columns that are not folded
         team_id = self.env.context.get('default_team_id')
-        team_ids = self.env.user.crm_team_ids._ids if self.env.context.get('show_user_team_stages') else ()
-        team_ids += (team_id,) if team_id else ()
+        team_ids = (team_id,) if team_id else ()
+        # Only show the user team stages on the My Pipeline view if there's no specific team selected in the team switcher.
+        # If there's a team selected, the selected team will be set in the context "default_team_id" and its stages will be considered.
+        if self.env.context.get('show_user_team_stages') and not self.env.context.get('has_team_switcher_selection'):
+            team_ids += self.env.user.crm_team_ids._ids
         search_domain = ['|', ('id', 'in', stages.ids), ('team_ids', '=', False)]
         if team_ids:
             search_domain = ['|', ('id', 'in', stages.ids), '|', ('team_ids', '=', False), ('team_ids', 'in', team_ids)]

@@ -19,6 +19,7 @@ patch(LeadGenerationDropdown.prototype, {
 
     async openLeadGenerationForm() {
         const action = await this.orm.call("crm.lead", "action_generate_leads", []);
+        Object.assign(action.context, this.env.model.config.context);
         this.action.doAction(action);
     }
 });

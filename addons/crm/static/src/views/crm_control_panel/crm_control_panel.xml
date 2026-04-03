@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="crm.ControlPanel" t-inherit="web.ControlPanel">
+        <xpath expr="//button[@name='embedded_actions']" position="before">
+            <t t-call="crm.CrmTeamSwitcher"/>
+        </xpath>
+    </t>
+
+    <t t-name="crm.CrmTeamSwitcher">
+        <Dropdown t-if="showTeamSwitcher" menuClass="'crm_team_switcher_dropdown'">
+            <button class="o_cp_team_switcher btn btn-secondary text-truncate" t-att-title="selectedTeamName">
+                <i class="fa fa-users"/>
+                <span class="d-none d-xl-inline ms-2" t-out="selectedTeamName"/>
+            </button>
+            <t t-set-slot="content">
+                <DropdownItem onSelected="() => this.onClickTeam(null)" class="'text-truncate ' + (!state.selectedTeamId ? 'selected' : '')">
+                    <t t-out="allTeamsLabel"/>
+                </DropdownItem>
+                <t t-foreach="accessibleTeams" t-as="team" t-key="team_index">
+                    <DropdownItem onSelected="() => this.onClickTeam(team.id)" class="'text-truncate ' + (state.selectedTeamId === team.id ? 'selected' : '')">
+                        <t t-out="team.name"/>
+                    </DropdownItem>
+                </t>
+            </t>
+        </Dropdown>
+    </t>
+
+</templates>

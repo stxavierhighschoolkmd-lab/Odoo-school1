@@ -1,0 +1,171 @@
+import { defineMailModels } from "@mail/../tests/mail_test_helpers";
+import {
+    contains,
+    defineActions,
+    defineModels,
+    fields,
+    getService,
+    models,
+    mountWithCleanup,
+    switchView,
+} from "@web/../tests/web_test_helpers";
+import { WebClient } from "@web/webclient/webclient";
+import { expect, test } from "@odoo/hoot";
+
+class Users extends models.Model {
+    name = fields.Char();
+
+    _records = [
+        { id: 1, name: "Mario" },
+        { id: 2, name: "Luigi" },
+        { id: 3, name: "Link" },
+        { id: 4, name: "Zelda" },
+    ];
+}
+
+class Team extends models.Model {
+    _name = "crm.team";
+
+    name = fields.Char();
+    member_ids = fields.Many2many({ string: "Members", relation: "users" });
+
+    _records = [
+        { id: 1, name: "Mushroom Kingdom", member_ids: [1, 2] },
+        { id: 2, name: "Hyrule", member_ids: [3, 4] },
+    ];
+}
+
+class Stage extends models.Model {
+    _name = "crm.stage";
+
+    name = fields.Char();
+    is_won = fields.Boolean({ string: "Is won" });
+    team_ids = fields.Many2many({ relation: "crm.team" });
+
+    _records = [
+        { id: 1, name: "Start" },
+        { id: 2, name: "Middle" },
+        { id: 3, name: "Middle Hyrule", team_ids: [2] },
+        { id: 4, name: "Won", is_won: true },
+    ];
+}
+
+class Lead extends models.Model {
+    _name = "crm.lead";
+
+    name = fields.Char();
+    stage_id = fields.Many2one({ string: "Stage", relation: "crm.stage" });
+    team_id = fields.Many2one({ string: "Sales Team", relation: "crm.team" });
+    user_id = fields.Many2one({ string: "Salesperson", relation: "users" });
+
+    _records = [
+        {
+            id: 1,
+            name: "Lead 1",
+            stage_id: 1,
+            team_id: 1,
+            user_id: 1,
+        },
+        {
+            id: 2,
+            name: "Lead 2",
+            stage_id: 1,
+            team_id: 2,
+            user_id: 2,
+        },
+        {
+            id: 3,
+            name: "Lead 3",
+            stage_id: 2,
+            team_id: 1,
+            user_id: 3,
+        },
+        {
+            id: 4,
+            name: "Lead 4",
+            stage_id: 2,
+            team_id: 2,
+            user_id: 4,
+        },
+        {
+            id: 5,
+            name: "Lead 5",
+            stage_id: 3,
+            team_id: 2,
+            user_id: 1,
+        },
+            {
+            id: 6,
+            name: "Lead 6",
+            stage_id: 4,
+            team_id: 1,
+            user_id: 4,
+        },
+            {
+            id: 7,
+            name: "Lead 7",
+            stage_id: 4,
+            team_id: 2,
+            user_id: 2,
+        },
+    ];
+
+    _views = {
+        kanban: `
+            <kanban js_class="crm_kanban" default_group_by="stage_id">
+                <templates>
+                    <t t-name="card">
+                        <field name="name"/>
+                    </t>
+                </templates>
+            </kanban>
+        `,
+        list: `
+            <list js_class="crm_list">
+                <field name="id"/>
+                <field name="name"/>
+            </list>
+        `,
+    };
+}
+
+defineModels([Users, Team, Stage, Lead]);
+defineMailModels();
+defineActions([
+    {
+        id: 1,
+        name: "Pipeline",
+        res_model: "crm.lead",
+        type: "ir.actions.act_window",
+        views: [
+            [false, "kanban"],
+            [false, "list"],
+        ],
+    },
+]);
+
+test.tags("desktop");
+test("crm team switcher rendering", async () => {
+    await mountWithCleanup(WebClient);
+    await getService("action").doAction(1);
+    // Changing the selected team should update the displayed stages and records
+    await contains(".o_cp_team_switcher").click();
+    await contains(".o_popover .dropdown-item:text('All')").click();
+    // All: 7 records, 4 stages (Start, Middle, Won, Hyrule Stage)
+    expect(".o_kanban_record").toHaveCount(7);
+    expect(".o_kanban_group").toHaveCount(4);
+    await contains(".o_cp_team_switcher").click();
+    await contains(".o_popover .dropdown-item:text('Mushroom Kingdom')").click();
+    // Mushroom Kingdom: 3 records, 3 stages (Start, Middle, Won)
+    expect(".o_kanban_record").toHaveCount(3);
+    expect(".o_kanban_group").toHaveCount(3);
+    await contains(".o_cp_team_switcher").click();
+    await contains(".o_popover .dropdown-item:text('Hyrule')").click();
+    // Hyrule: 4 records, 4 stages (Start, Middle, Won, Hyrule Stage)
+    expect(".o_kanban_record").toHaveCount(4);
+    expect(".o_kanban_group").toHaveCount(4);
+    // Switching view should keep the current team selection
+    await switchView("list");
+    expect(".o_cp_team_switcher").toHaveText("Hyrule");
+    expect("tr.o_data_row").toHaveCount(4);
+});
