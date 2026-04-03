@@ -4,6 +4,7 @@ import {
     openDiscuss,
     openFormView,
     setupChatHub,
+    scroll,
     start,
     startServer,
 } from "@mail/../tests/mail_test_helpers";
@@ -211,4 +212,38 @@ test("livechat: non-member can close immediately", async () => {
     await contains(".o-mail-ChatWindow");
     await click("[title*='Close Chat Window']");
     await contains(".o-mail-ChatWindow", { count: 0 });
+});
+
+test.tags("desktop");
+test("Mark conversation as read when session ends and agent scrolls to bottom", async () => {
+    const pyEnv = await startServer();
+    const guestId = pyEnv["mail.guest"].create({ name: "Visitor" });
+    const channelId = pyEnv["discuss.channel"].create({
+        channel_member_ids: [
+            Command.create({ partner_id: serverState.partnerId, livechat_member_type: "agent" }),
+            Command.create({ guest_id: guestId, livechat_member_type: "visitor" }),
+        ],
+        channel_type: "livechat",
+    });
+    await start();
+    for (let i = 0; i < 2; i++) {
+        await withGuest(guestId, () =>
+            rpc("/mail/message/post", {
+                post_data: {
+                    body: "test message".repeat(100),
+                    message_type: "comment",
+                    subtype_xmlid: "mail.mt_comment",
+                },
+                thread_id: channelId,
+                thread_model: "discuss.channel",
+            })
+        );
+    }
+    await contains(".o-mail-ChatWindow .o-mail-Message", { count: 2 });
+    await withGuest(guestId, () => rpc("/im_livechat/visitor_leave_session", { channel_id: channelId }));
+    await contains("span", { text: "This livechat conversation has ended." });
+    await contains(".o-mail-Thread-banner", { text: "2 new messages" });
+    await scroll(".o-mail-Thread", "bottom");
+    await contains(".o-mail-Thread", { scroll: "bottom" });
+    await contains(".o-mail-Thread-banner", { count: 0 });
 });

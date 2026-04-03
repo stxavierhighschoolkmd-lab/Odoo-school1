@@ -30,6 +30,13 @@ patch(Thread.prototype, {
             () => [this.props.thread.livechatVisitorMember?.im_status]
         );
     },
+    /** @override */
+    applyScrollContextually(thread) {
+        super.applyScrollContextually(...arguments);
+        if (thread.composerDisabled && this.isAtBottom && !thread.markedAsUnread && !thread.markingAsRead) {
+            thread.markAsRead();
+        }
+    },
     get showVisitorDisconnected() {
         return (
             this.store.self.notEq(this.props.thread.livechatVisitorMember?.persona) &&
