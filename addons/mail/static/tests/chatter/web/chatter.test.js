@@ -750,3 +750,24 @@ test("Update primary email in recipient without saving", async () => {
     document.querySelector("div[name='email_cc'] input").blur();
     await contains(".o-mail-RecipientsInput .o_tag_badge_text", { text: "test@test.be" });
 });
+
+test("should send notifications to users with names containing HTML entities", async () => {
+    const pyEnv = await startServer();
+    const partnerRaw = {
+        email: "tim.ascii@example.com",
+        name: "' !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~",
+    };
+    const partnerId = pyEnv["res.partner"].create(partnerRaw);
+    pyEnv["res.users"].create({ partner_id: partnerId });
+    await start();
+    await openFormView("res.partner", serverState.partnerId);
+    await click("button", { textContent: "Log note" });
+    await insertText(".o-mail-Composer-input", "@'");
+    await click(".o-mail-Composer-suggestion");
+    await click("button", { textContent: "Log" });
+    await contains(".o_mail_redirect", { text: `@${partnerRaw.name}` });
+    await click(".o-mail-Message-notification");
+    await contains(".o-mail-MessageNotificationPopover span", {
+        text: `${partnerRaw.name} (${partnerRaw.email})`,
+    });
+});

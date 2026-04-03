@@ -1343,3 +1343,37 @@ test("Mention with @-role trigger one RPC only", async () => {
         "/web/dataset/call_kw/res.partner/get_mention_suggestions_from_channel",
     ]);
 });
+
+test.tags("html composer");
+test("should send notifications to users with names containing HTML entities", async () => {
+    const pyEnv = await startServer();
+    const partnerRaw = {
+        email: "tim.ascii@example.com",
+        name: "' !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~",
+    };
+    const partnerId = pyEnv["res.partner"].create(partnerRaw);
+    pyEnv["res.users"].create({ partner_id: partnerId });
+    const channelId = pyEnv["discuss.channel"].create({
+        name: "general",
+        channel_member_ids: [
+            Command.create({ partner_id: serverState.partnerId }),
+            Command.create({ partner_id: partnerId }),
+        ],
+    });
+    await start();
+    getService("mail.composer").setHtmlComposer();
+    await openDiscuss(channelId);
+    await contains(".o-mail-Composer-html.odoo-editor-editable");
+    const editor = {
+        document,
+        editable: document.querySelector(".o-mail-Composer-html.odoo-editor-editable"),
+    };
+    await htmlInsertText(editor, "@'");
+    await click(".o-mail-Composer-suggestion");
+    await click("button[aria-label='Send']");
+    await contains(".o_mail_redirect", { text: `@${partnerRaw.name}` });
+    await click(".o-mail-Message-notification");
+    await contains(".o-mail-MessageNotificationPopover span", {
+        text: `${partnerRaw.name} (${partnerRaw.email})`,
+    });
+});
