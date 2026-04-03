@@ -11,5 +11,4 @@ class WebsiteMenu(models.Model):
         shop_menus = self.filtered(lambda m: m.url[:5] == "/shop")
         for menu in shop_menus:
             menu.is_visible = menu.website_id.has_ecommerce_access()
-
         return super(WebsiteMenu, self - shop_menus)._compute_visible()
