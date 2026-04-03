@@ -271,13 +271,14 @@ export class ListController extends Component {
     }
 
     get isNewButtonAvailableOffline() {
-        if (
-            !this.archInfo.editable &&
-            this.offlineService.isAvailableOffline(this.env.config.actionId, "form", false)
-        ) {
-            return true;
+        if (this.archInfo.editable) {
+            return this.offlineService.isAvailableOffline(
+                this.env.config.actionId,
+                "list_quick_create",
+                false
+            );
         }
-        return false;
+        return this.offlineService.isAvailableOffline(this.env.config.actionId, "form", false);
     }
 
     getExportableFields() {
@@ -346,7 +347,15 @@ export class ListController extends Component {
             }
             await list.leaveEditMode();
             if (!list.editedRecord) {
-                await (group || list).addNewRecord(this.editable === "top");
+                if (group) {
+                    await group.addNewRecord();
+                } else {
+                    const viewConfig = {
+                        actionId: this.env.config.actionId,
+                        viewType: "list_quick_create",
+                    };
+                    await list.addNewRecord(this.editable === "top", viewConfig);
+                }
             }
             render(this);
         } else {

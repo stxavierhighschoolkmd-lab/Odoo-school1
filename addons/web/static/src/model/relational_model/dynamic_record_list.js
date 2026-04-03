@@ -53,14 +53,14 @@ export class DynamicRecordList extends DynamicList {
      * @param {boolean} [atFirstPosition=false]
      * @returns {Promise<Record>}
      */
-    addNewRecord(atFirstPosition = false) {
+    addNewRecord(atFirstPosition = false, viewConfig = {}) {
         return this.model.mutex.exec(async () => {
             if (this.model.useSampleModel) {
                 // leave sample mode
                 this._setData({ records: [], length: 0 });
                 this.model.useSampleModel = false;
             }
-            return this._addNewRecord(atFirstPosition);
+            return this._addNewRecord(atFirstPosition, viewConfig);
         });
     }
 
@@ -103,13 +103,18 @@ export class DynamicRecordList extends DynamicList {
     // Protected
     // -------------------------------------------------------------------------
 
-    async _addNewRecord(atFirstPosition) {
-        const values = await this.model._loadNewRecord({
-            resModel: this.resModel,
-            activeFields: this.activeFields,
-            fields: this.fields,
-            context: this.context,
-        });
+    async _addNewRecord(atFirstPosition, viewConfig) {
+        const values = await this.model._loadNewRecord(
+            {
+                resModel: this.resModel,
+                activeFields: this.activeFields,
+                fields: this.fields,
+                context: this.context,
+                isMonoRecord: true,
+            },
+            {},
+            viewConfig
+        );
         const record = this._createRecordDatapoint(values, "edit");
         this._addRecord(record, atFirstPosition ? 0 : this.records.length);
         return record;

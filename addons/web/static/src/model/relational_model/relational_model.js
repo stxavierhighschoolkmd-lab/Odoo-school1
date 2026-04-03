@@ -210,7 +210,7 @@ export class RelationalModel extends Model {
         }
         this.hooks.onWillLoadRoot(config);
         const { promise, resolve } = Promise.withResolvers();
-        const cache = this._getCacheParams(config, promise);
+        const cache = this._getCacheParams(config, promise, this.env.config);
         let data;
         try {
             data = await this.keepLast.add(this._loadData(config, cache));
@@ -296,7 +296,7 @@ export class RelationalModel extends Model {
         return new this.constructor.DynamicRecordList(this, config, data);
     }
 
-    _getCacheParams(config, rootLoadProm) {
+    _getCacheParams(config, rootLoadProm, viewConfig) {
         if (!this.withCache) {
             return;
         }
@@ -312,7 +312,7 @@ export class RelationalModel extends Model {
             update: "always",
             noCache,
             callback: async (result, hasChanged) => {
-                this._setAvailableOffline(config, result);
+                this._setAvailableOffline(config, result, viewConfig);
                 if (!hasChanged) {
                     return;
                 }
@@ -656,8 +656,14 @@ export class RelationalModel extends Model {
      * @param {Partial<RelationalModelParams>} [params={}]
      * @returns {Promise<Record<string, unknown>>}
      */
-    async _loadNewRecord(config, params = {}) {
-        return this._onchange(config, params);
+    async _loadNewRecord(config, params = {}, viewConfig = {}) {
+        let cache = params.cache;
+        if (!cache && Object.keys(viewConfig).length) {
+            const promise = Promise.resolve({ root: this.root });
+            cache = { ...this._getCacheParams(config, promise, viewConfig), noCache: false };
+        }
+        const data = await this._onchange(config, { ...params, cache });
+        return data;
     }
 
     /**
@@ -717,8 +723,8 @@ export class RelationalModel extends Model {
      * @param {RelationalModelConfig} config
      * @param {Object} result the data loaded with the given config (rpc result)
      */
-    _setAvailableOffline(config, result) {
-        const { actionId, viewType } = this.env.config;
+    _setAvailableOffline(config, result, viewConfig = {}) {
+        const { actionId, viewType } = viewConfig;
         let markAsAvailableOffline = actionId;
         if (!config.isMonoRecord) {
             const hasRecords = config.groupBy.length
@@ -802,7 +808,7 @@ export class RelationalModel extends Model {
             if (tmpConfig.isRoot) {
                 this.hooks.onWillLoadRoot(tmpConfig);
                 ({ promise: rootLoadProm, resolve: rootLoadResolve } = Promise.withResolvers());
-                cache = this._getCacheParams(tmpConfig, rootLoadProm);
+                cache = this._getCacheParams(tmpConfig, rootLoadProm, this.env.config);
             }
             if (tmpConfig.groupBy?.length && "groups" in patch) {
                 // usecase: @_toggleAllGroups
