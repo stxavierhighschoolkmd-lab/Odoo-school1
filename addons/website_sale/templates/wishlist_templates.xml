@@ -65,6 +65,12 @@
                                                     name="product_list_price"
                                                 />
                                             </small>
+                                            <small
+                                                t-if="combination_info.get('base_unit_price')"
+                                                class="o_product_price_unit text-muted d-block"
+                                            >
+                                                <t t-call="website_sale.base_unit_price" base_unit_price="combination_info['base_unit_price']"/>
+                                            </small>
                                         </div>
                                     </t>
                                     <t t-set="product_actions">

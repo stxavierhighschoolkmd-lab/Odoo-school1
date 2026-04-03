@@ -363,6 +363,9 @@ class ProductTemplate(models.Model):
         comparison_prices_enabled = self.env["res.groups"]._is_feature_enabled(
             "website_sale.group_product_price_comparison"
         )
+        product_reference_price_enabled = self.env["res.groups"]._is_feature_enabled(
+            "product.group_show_uom_price"
+        )
 
         res = {}
         for template in self:
@@ -395,6 +398,11 @@ class ProductTemplate(models.Model):
             if not base_price and comparison_prices_enabled and template.compare_list_price:
                 template_price_vals["base_price"] = template.currency_id._convert(
                     template.compare_list_price, currency, self.env.company, date, round=False
+                )
+
+            if product_reference_price_enabled:
+                template_price_vals["base_unit_price"] = template._get_base_unit_price(
+                    template_price_vals["price_reduce"]
                 )
 
             res[template.id] = template_price_vals

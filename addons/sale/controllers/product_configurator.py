@@ -350,6 +350,15 @@ class SaleProductConfiguratorController(Controller):
             exclusions=attribute_exclusions["exclusions"],
             archived_combinations=attribute_exclusions["archived_combinations"],
         )
+
+        if request.env["res.groups"]._is_feature_enabled("product.group_show_uom_price"):
+            price_per_product_uom = uom._compute_price(
+                price=values["price"], to_unit=product_or_template.uom_id
+            )
+            values.update({
+                "base_unit_name": product_or_template.base_unit_name,
+                "base_unit_price": product_or_template._get_base_unit_price(price_per_product_uom),
+            })
         # Shouldn't be sent client-side
         values.pop("pricelist_rule_id", None)
         return values
