@@ -22,9 +22,8 @@ class StockWarehouseOrderpoint(models.Model):
     )
 
     def _inverse_route_id(self):
-        for orderpoint in self:
-            if not orderpoint.route_id:
-                orderpoint.bom_id = False
+        orderpoints_to_update = self.filtered(lambda o: o.bom_id and not o.route_id)
+        orderpoints_to_update.bom_id = False
         super()._inverse_route_id()
 
     def _get_replenishment_order_notification(self):
@@ -90,7 +89,7 @@ class StockWarehouseOrderpoint(models.Model):
     def _inverse_bom_id(self):
         for orderpoint in self:
             if not orderpoint.route_id and orderpoint.bom_id:
-                orderpoint.route_id = self.env['stock.rule'].search([('action', '=', 'manufacture')])[0].route_id
+                orderpoint.route_id = orderpoint._get_default_route()
 
     @api.depends('effective_route_id', 'bom_id', 'rule_ids', 'product_id.bom_ids')
     def _compute_bom_id_placeholder(self):
@@ -124,10 +123,7 @@ class StockWarehouseOrderpoint(models.Model):
         return res
 
     def _get_default_route(self):
-        route_ids = self.env['stock.rule'].search([
-            ('action', '=', 'manufacture')
-        ]).route_id
-        route_id = self.rule_ids.route_id & route_ids
+        route_id = self.rule_ids.filtered(lambda r: r.action == 'manufacture').route_id
         if self.product_id.bom_ids and route_id:
             return route_id[0]
         return super()._get_default_route()

@@ -212,7 +212,7 @@ class StockWarehouseOrderpoint(models.Model):
     def _inverse_supplier_id(self):
         for orderpoint in self:
             if not orderpoint.route_id and orderpoint.supplier_id:
-                orderpoint.route_id = self.env['stock.rule'].search([('action', '=', 'buy')])[0].route_id
+                orderpoint.route_id = orderpoint._get_default_route()
 
     @api.depends('effective_route_id', 'supplier_id', 'rule_ids', 'product_id.seller_ids', 'product_id.seller_ids.delay')
     def _compute_supplier_id_placeholder(self):
@@ -262,10 +262,7 @@ class StockWarehouseOrderpoint(models.Model):
         return result
 
     def _get_default_route(self):
-        route_ids = self.env['stock.rule'].search([
-            ('action', '=', 'buy')
-        ]).route_id
-        route_id = self.rule_ids.route_id & route_ids
+        route_id = self.rule_ids.filtered(lambda r: r.action == 'buy').route_id
         if self.product_id.seller_ids and route_id:
             return route_id[0]
         return super()._get_default_route()
