@@ -573,6 +573,8 @@ class WebsiteSale(payment_portal.PaymentPortal):
                 indent=2,
             )
         values.update(self._get_additional_shop_values(values, **post))
+        if post.get("is_ajax") == "true":
+            return request.render("website_sale.products_grid", values)
         return request.render("website_sale.products", values)
 
     @route(

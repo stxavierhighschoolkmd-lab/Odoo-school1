@@ -47,7 +47,7 @@ export class ShopPage extends Interaction {
      *
      * @param {Event} ev
      */
-    onChangeAttribute(ev) {
+    async onChangeAttribute(ev) {
         const productGrid = this.el.querySelector('.o_wsale_products_grid_table_wrapper');
         if (productGrid) {
             productGrid.classList.add('opacity-50');
@@ -80,7 +80,20 @@ export class ShopPage extends Interaction {
         if (tags.size) {
             searchParams.set('tags', [...tags].join(','));
         }
-        redirect(`${url.pathname}?${searchParams.toString()}`);
+        searchParams.append('is_ajax', 'true');
+        const response = await fetch(`${url.pathname}?${searchParams.toString()}`)
+        const html = await response.text()
+        const newGrid = document.createElement('div');
+        newGrid.innerHTML = html;
+
+        if (productGrid && newGrid) {
+            productGrid.innerHTML = newGrid.innerHTML;
+            productGrid.classList.remove('opacity-50');
+        }
+
+        searchParams.delete('is_ajax');
+        const cleanUrl = `${url.pathname}?${searchParams.toString()}`;
+        window.history.pushState({ path: cleanUrl }, '', cleanUrl);
     }
 
     /**
