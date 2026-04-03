@@ -256,6 +256,10 @@ class PurchaseOrderLine(models.Model):
                     "partner_category_id": line.order_id.partner_id.category_id.ids,
                     "company_id": line.company_id.id,
                 })
+                if distribution and line.analytic_distribution and {
+                    acc for k in distribution for acc in k.split(',')}.issubset({
+                    acc for k in line.analytic_distribution for acc in k.split(',')}):
+                    return
                 line.analytic_distribution = distribution or line.analytic_distribution
 
     @api.onchange('product_id')

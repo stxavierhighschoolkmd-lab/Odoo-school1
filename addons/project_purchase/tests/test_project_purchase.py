@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import Command
+from odoo.tests import Form
 
 from odoo.addons.project_purchase.tests.test_project_profitability import TestProjectPurchaseProfitability
 
@@ -97,6 +98,13 @@ class TestProjectPurchase(TestProjectPurchaseProfitability):
             f"{self.analytic_account.id},{self.project1.account_id.id}": 100,
         }
         self.assertEqual(purchase_order.order_line.analytic_distribution, expected_distribution_project)
+
+        # the analytic distribution shouldn't change on items added after setting a project on the PO
+        line = self.env['purchase.order.line'].new({
+            'order_id': self.purchase_order.id,
+            'product_id': self.product_order.id,
+        })
+        self.assertEqual(line.analytic_distribution, expected_distribution_project)
 
     def test_compute_purchase_orders_count(self):
         self.project1.account_id = self.analytic_account  # Project with analytics
