@@ -1,51 +1,67 @@
-import { setDatasetIfUndefined } from "@website/builder/plugins/options/dynamic_snippet_option_plugin";
 import { Plugin } from "@html_editor/plugin";
 import { registry } from "@web/core/registry";
+import { KeepLast } from "@web/core/utils/concurrency";
 
 /**
  * @typedef { Object } DynamicSnippetBlogPostsOptionShared
- * @property { DynamicSnippetBlogPostsOptionPlugin['fetchBlogs'] } fetchBlogs
+ * @property { DynamicSnippetBlogPostsOptionPlugin['fetchAuthors'] } fetchAuthors
  * @property { DynamicSnippetBlogPostsOptionPlugin['getModelNameFilter'] } getModelNameFilter
  */
 
 export class DynamicSnippetBlogPostsOptionPlugin extends Plugin {
     static id = "dynamicSnippetBlogPostsOption";
     static dependencies = ["dynamicSnippetOption"];
-    static shared = ["fetchBlogs", "getModelNameFilter"];
+    static shared = ["fetchAuthors", "getModelNameFilter"];
     modelNameFilter = "blog.post";
     /** @type {import("plugins").WebsiteResources} */
     resources = {
         on_snippet_dropped_handlers: this.onSnippetDropped.bind(this),
     };
     setup() {
-        this.blogs = undefined;
+        this.keepLast = new KeepLast();
     }
     getModelNameFilter() {
         return this.modelNameFilter;
     }
     async onSnippetDropped({ snippetEl }) {
         if (snippetEl.matches(".s_dynamic_snippet_blog_posts")) {
-            setDatasetIfUndefined(snippetEl, "filterByBlogId", -1);
             await this.dependencies.dynamicSnippetOption.setOptionsDefaultValues(
                 snippetEl,
                 this.modelNameFilter
             );
         }
     }
-    async fetchBlogs() {
-        if (!this.blogs) {
-            this.blogs = this._fetchBlogs();
+    async fetchAuthors(searchString, selectedItems) {
+        const websiteDomain = [...this._websiteDomain()];
+        if (searchString) {
+            websiteDomain.push(["author_name", "ilike", searchString]);
         }
-        return this.blogs;
+        if (selectedItems && selectedItems.length) {
+            websiteDomain.push(["author_id", "not in", selectedItems.map((item) => item.id)]);
+        }
+
+        const authors = await this.keepLast
+            .add(
+                this.services.orm.formattedReadGroup(
+                    "blog.post",
+                    websiteDomain,
+                    ["author_id"],
+                    [],
+                    { limit: 10 }
+                )
+            )
+            .then((results) =>
+                results.map((r) => ({
+                    id: r.author_id[0],
+                    name: r.author_id[1],
+                }))
+            );
+
+        return authors;
     }
-    async _fetchBlogs() {
-        // TODO put in an utility function
-        const websiteDomain = [
-            "|",
-            ["website_id", "=", false],
-            ["website_id", "=", this.services.website.currentWebsite.id],
-        ];
-        return this.services.orm.searchRead("blog.blog", websiteDomain, ["id", "name"]);
+    _websiteDomain() {
+        const websiteId = this.services.website.currentWebsite.id;
+        return ["|", ["website_id", "=", false], ["website_id", "=", websiteId]];
     }
 }
 
