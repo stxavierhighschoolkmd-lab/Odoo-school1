@@ -352,12 +352,12 @@ class TestDomainComplement(TransactionExpressionCase):
     def test_inequalities_float(self):
         Model = self.env['test_orm.mixed']
         Model.create([{}])
-        Model.create([{'number2': n} for n in (-5, -3.3, 0.0, 0.1, 3, 4.5)])
-        self._search(Model, [('number2', '>', 2)])
-        self._search(Model, [('number2', '>', -2)])
-        self._search(Model, [('number2', '>', 3)])
-        self._search(Model, [('number2', '<', 1)])
-        self._search(Model, [('number2', '<=', 1)])
+        Model.create([{'float_precision': n} for n in (-5, -3.3, 0.0, 0.1, 3, 4.5)])
+        self._search(Model, [('float_precision', '>', 2)])
+        self._search(Model, [('float_precision', '>', -2)])
+        self._search(Model, [('float_precision', '>', 3)])
+        self._search(Model, [('float_precision', '<', 1)])
+        self._search(Model, [('float_precision', '<=', 1)])
 
     def test_inequalities_char(self):
         Model = self.env['test_orm.empty_char']
@@ -372,12 +372,12 @@ class TestDomainComplement(TransactionExpressionCase):
     def test_inequalities_datetime(self):
         Model = self.env['test_orm.mixed']
         Model.create([{}])
-        Model.create([{'moment': datetime(2000, 5, n)} for n in range(5, 10)])
-        self._search(Model, [('moment', '>', datetime(2000, 5, 3))])
-        self._search(Model, [('moment', '>', datetime(2000, 5, 8))])
-        self._search(Model, [('moment', '>', datetime(2000, 5, 20))])
-        self._search(Model, [('moment', '<', datetime(2000, 5, 7))])
-        self._search(Model, [('moment', '<=', datetime(2000, 5, 7))])
+        Model.create([{'datetime': datetime(2000, 5, n)} for n in range(5, 10)])
+        self._search(Model, [('datetime', '>', datetime(2000, 5, 3))])
+        self._search(Model, [('datetime', '>', datetime(2000, 5, 8))])
+        self._search(Model, [('datetime', '>', datetime(2000, 5, 20))])
+        self._search(Model, [('datetime', '<', datetime(2000, 5, 7))])
+        self._search(Model, [('datetime', '<=', datetime(2000, 5, 7))])
 
     def test_inequalities_m2o(self):
         Model = self.env['test_orm.model_active_field']
@@ -397,7 +397,7 @@ class TestDomainComplement(TransactionExpressionCase):
 
 @tagged('at_install', '-post_install')  # LEGACY at_install
 class TestDomainOptimize(TransactionCase):
-    number_domain = Domain('number', '>', 5)
+    number_domain = Domain('float_numeric', '>', 5)
 
     def test_bool_optimize(self):
         model = self.env['test_orm.mixed']
@@ -525,7 +525,7 @@ class TestDomainOptimize(TransactionCase):
 
     def test_condition_optimize_any_non_relational(self):
         model = self.env['test_orm.mixed']
-        domain = Domain('number', 'any', Domain('id', '>', 0))
+        domain = Domain('float_numeric', 'any', Domain('id', '>', 0))
         with self.assertRaises(ValueError):
             domain.optimize(model)
 
@@ -659,120 +659,120 @@ class TestDomainOptimize(TransactionCase):
     def test_condition_optimize_datetime(self):
         model = self.env['test_orm.mixed'].with_context(tz='UTC')
         self.assertEqual(
-            Domain('moment', '=', date(2024, 1, 5)).optimize(model),
-            Domain('moment', '<', datetime(2024, 1, 5, second=1))
-            & Domain('moment', '>=', datetime(2024, 1, 5)),
+            Domain('datetime', '=', date(2024, 1, 5)).optimize(model),
+            Domain('datetime', '<', datetime(2024, 1, 5, second=1))
+            & Domain('datetime', '>=', datetime(2024, 1, 5)),
         )
         self.assertEqual(
-            Domain('moment', '=', '2024-01-05').optimize(model),
-            Domain('moment', '<', datetime(2024, 1, 5, second=1))
-            & Domain('moment', '>=', datetime(2024, 1, 5)),
+            Domain('datetime', '=', '2024-01-05').optimize(model),
+            Domain('datetime', '<', datetime(2024, 1, 5, second=1))
+            & Domain('datetime', '>=', datetime(2024, 1, 5)),
         )
         self.assertEqual(
-            Domain('moment', '=like', '2024%').optimize(model),
-            Domain('moment', '=like', '2024%'),
+            Domain('datetime', '=like', '2024%').optimize(model),
+            Domain('datetime', '=like', '2024%'),
         )
         self.assertEqual(
-            Domain('moment', '>', '2024-01-01 10:00:00').optimize(model),
-            Domain('moment', '>=', datetime(2024, 1, 1, 10, second=1)),
+            Domain('datetime', '>', '2024-01-01 10:00:00').optimize(model),
+            Domain('datetime', '>=', datetime(2024, 1, 1, 10, second=1)),
         )
         self.assertEqual(
-            Domain('moment', '>', '2024-01-01').optimize(model),
-            Domain('moment', '>=', datetime(2024, 1, 2)),
+            Domain('datetime', '>', '2024-01-01').optimize(model),
+            Domain('datetime', '>=', datetime(2024, 1, 2)),
         )
         self.assertEqual(
-            Domain('moment', '<', '2024-01-01').optimize(model),
-            Domain('moment', '<', datetime(2024, 1, 1)),
+            Domain('datetime', '<', '2024-01-01').optimize(model),
+            Domain('datetime', '<', datetime(2024, 1, 1)),
         )
         self.assertEqual(
-            Domain('moment', '<=', '2024-01-01').optimize(model),
-            Domain('moment', '<', datetime(2024, 1, 2)),
+            Domain('datetime', '<=', '2024-01-01').optimize(model),
+            Domain('datetime', '<', datetime(2024, 1, 2)),
         )
         self.assertEqual(
-            Domain('moment', '>', False).optimize(model),
+            Domain('datetime', '>', False).optimize(model),
             Domain.FALSE,
         )
         self.assertEqual(
-            Domain('moment', 'not in', ['2024-01-05', datetime(2023, 1, 1)]).optimize(model),
+            Domain('datetime', 'not in', ['2024-01-05', datetime(2023, 1, 1)]).optimize(model),
             (
-                Domain('moment', 'in', OrderedSet([False]))
-                | Domain('moment', '<', datetime(2024, 1, 5))
-                | Domain('moment', '>=', datetime(2024, 1, 5, second=1))
+                Domain('datetime', 'in', OrderedSet([False]))
+                | Domain('datetime', '<', datetime(2024, 1, 5))
+                | Domain('datetime', '>=', datetime(2024, 1, 5, second=1))
             ) & (
-                Domain('moment', 'in', OrderedSet([False]))
-                | Domain('moment', '<', datetime(2023, 1, 1))
-                | Domain('moment', '>=', datetime(2023, 1, 1, second=1))
+                Domain('datetime', 'in', OrderedSet([False]))
+                | Domain('datetime', '<', datetime(2023, 1, 1))
+                | Domain('datetime', '>=', datetime(2023, 1, 1, second=1))
             ),
         )
 
         with self.assertRaises(ValueError):
-            Domain('moment', '>', 'hello').optimize(model)
+            Domain('datetime', '>', 'hello').optimize(model)
 
         with freeze_time('2024-01-05 13:05:00'):
-            domain = Domain('moment', '>=', 'today')
+            domain = Domain('datetime', '>=', 'today')
             self.assertEqual(domain.optimize(model), domain)
-            self.assertEqual(domain.optimize_full(model), Domain('moment', '>=', datetime(2024, 1, 5)))
-            self.assertEqual(Domain('moment', '>=', '+12H').optimize_full(model), Domain('moment', '>=', datetime(2024, 1, 6, 1, 5)))
-            today_domain = Domain('moment', '=', 'today').optimize_full(model)
+            self.assertEqual(domain.optimize_full(model), Domain('datetime', '>=', datetime(2024, 1, 5)))
+            self.assertEqual(Domain('datetime', '>=', '+12H').optimize_full(model), Domain('datetime', '>=', datetime(2024, 1, 6, 1, 5)))
+            today_domain = Domain('datetime', '=', 'today').optimize_full(model)
             self.assertIn(datetime(2024, 1, 5), [v for cond in today_domain.iter_conditions() for v in ([cond.value] if isinstance(cond.value, datetime) else cond.value)])
 
     def test_condition_optimize_datetime_timezone(self):
         model = self.env['test_orm.mixed'].with_context(tz='Europe/Brussels')
         self.assertEqual(
-            Domain('moment', '>=', '2024-01-01 10:00:00').optimize(model),
-            Domain('moment', '>=', datetime(2024, 1, 1, 10)),
+            Domain('datetime', '>=', '2024-01-01 10:00:00').optimize(model),
+            Domain('datetime', '>=', datetime(2024, 1, 1, 10)),
             "Timezone should have no effect on datetime"
         )
         self.assertEqual(
-            Domain('moment', '>=', '2024-07-02').optimize(model),
-            Domain('moment', '>=', datetime(2024, 7, 1, 22)),
+            Domain('datetime', '>=', '2024-07-02').optimize(model),
+            Domain('datetime', '>=', datetime(2024, 7, 1, 22)),
             "Date should consider timezone of the user"
         )
         self.assertEqual(
-            Domain('moment', '>=', '2024-01-02').optimize(model),
-            Domain('moment', '>=', datetime(2024, 1, 1, 23)),
+            Domain('datetime', '>=', '2024-01-02').optimize(model),
+            Domain('datetime', '>=', datetime(2024, 1, 1, 23)),
             "Date should consider timezone of the user"
         )
 
     def test_condition_optimize_datetime_millisecond(self):
         model = self.env['test_orm.mixed'].with_context(tz='UTC')
         self.assertEqual(
-            Domain('moment', '=', '2024-01-05').optimize(model),
-            Domain('moment', '<', datetime(2024, 1, 5, second=1))
-            & Domain('moment', '>=', datetime(2024, 1, 5)),
+            Domain('datetime', '=', '2024-01-05').optimize(model),
+            Domain('datetime', '<', datetime(2024, 1, 5, second=1))
+            & Domain('datetime', '>=', datetime(2024, 1, 5)),
         )
         self.assertEqual(
-            Domain('moment', '=', '2024-01-05 11:06:02.123').optimize(model),
-            Domain('moment', '<', datetime(2024, 1, 5, 11, 6, 3))
-            & Domain('moment', '>=', datetime(2024, 1, 5, 11, 6, 2)),
+            Domain('datetime', '=', '2024-01-05 11:06:02.123').optimize(model),
+            Domain('datetime', '<', datetime(2024, 1, 5, 11, 6, 3))
+            & Domain('datetime', '>=', datetime(2024, 1, 5, 11, 6, 2)),
         )
         self.assertEqual(
-            Domain('moment', '=', '2024-01-05 11:06:02').optimize(model),
-            Domain('moment', '<', datetime(2024, 1, 5, 11, 6, 3))
-            & Domain('moment', '>=', datetime(2024, 1, 5, 11, 6, 2)),
+            Domain('datetime', '=', '2024-01-05 11:06:02').optimize(model),
+            Domain('datetime', '<', datetime(2024, 1, 5, 11, 6, 3))
+            & Domain('datetime', '>=', datetime(2024, 1, 5, 11, 6, 2)),
         )
         self.assertEqual(
-            Domain('moment', '=', datetime(2024, 1, 5, 11, 6, 2)).optimize(model),
-            Domain('moment', '<', datetime(2024, 1, 5, 11, 6, 3))
-            & Domain('moment', '>=', datetime(2024, 1, 5, 11, 6, 2)),
+            Domain('datetime', '=', datetime(2024, 1, 5, 11, 6, 2)).optimize(model),
+            Domain('datetime', '<', datetime(2024, 1, 5, 11, 6, 3))
+            & Domain('datetime', '>=', datetime(2024, 1, 5, 11, 6, 2)),
         )
         self.assertEqual(
-            Domain('moment', '>=', '2024-01-05 11:06:02.123').optimize(model),
-            Domain('moment', '>=', datetime(2024, 1, 5, 11, 6, 2)),
+            Domain('datetime', '>=', '2024-01-05 11:06:02.123').optimize(model),
+            Domain('datetime', '>=', datetime(2024, 1, 5, 11, 6, 2)),
         )
         self.assertEqual(
-            Domain('moment', '>=', '2024-01-05 11:06:02').optimize(model),
-            Domain('moment', '>=', datetime(2024, 1, 5, 11, 6, 2)),
+            Domain('datetime', '>=', '2024-01-05 11:06:02').optimize(model),
+            Domain('datetime', '>=', datetime(2024, 1, 5, 11, 6, 2)),
         )
 
     def test_condition_optimize_maybe_eq(self):
         model = self.env['test_orm.mixed']
         self.assertEqual(
-            Domain('number', '=?', 5).optimize(model),
-            Domain('number', '=', 5).optimize(model),
+            Domain('float_numeric', '=?', 5).optimize(model),
+            Domain('float_numeric', '=', 5).optimize(model),
         )
         self.assertEqual(
-            Domain('number', '=?', 0).optimize(model),
+            Domain('float_numeric', '=?', 0).optimize(model),
             Domain.TRUE,
         )
 
@@ -792,9 +792,9 @@ class TestDomainOptimize(TransactionCase):
     def test_condition_optimize_access(self):
         model = self.env['test_orm.mixed']
         records = model.create([
-            {'number': 11},
-            {'number': 22},
-            {'number': 23, 'currency_id': self.env.ref('base.USD').id},
+            {'float_numeric': 11},
+            {'float_numeric': 22},
+            {'float_numeric': 23, 'currency_id': self.env.ref('base.USD').id},
         ])
         user_group = self.ref('base.group_user')
         elevated_group = self.ref('base.group_allow_export')
@@ -822,7 +822,7 @@ class TestDomainOptimize(TransactionCase):
         rules.create([{
             'model_id': self.env['ir.model']._get_id(model._name),
             'groups': [user_group],
-            'domain_force': str([('number', '>', 20)]),
+            'domain_force': str([('float_numeric', '>', 20)]),
         }, {
             'model_id': self.env['ir.model']._get_id(model._name),
             'groups': [elevated_group],
@@ -915,18 +915,18 @@ class TestDomainOptimize(TransactionCase):
         model = self.env['test_orm.mixed']
         self.assertEqual(
             Domain.AND([
-                Domain('number', '=', 5),
+                Domain('float_numeric', '=', 5),
                 Domain('date', 'like', "2024"),
                 Domain('date', '!=', False),
-                Domain('number', '<', 99),
-                Domain('comment1', 'like', 'ok'),
+                Domain('float_numeric', '<', 99),
+                Domain('html', 'like', 'ok'),
             ]).optimize(model),
             Domain.AND([
-                Domain('comment1', 'like', 'ok'),
                 Domain('date', 'not in', OrderedSet([False])),
                 Domain('date', 'like', "2024"),
-                Domain('number', 'in', OrderedSet([5])),
-                Domain('number', '<', 99),
+                Domain('float_numeric', 'in', OrderedSet([5])),
+                Domain('float_numeric', '<', 99),
+                Domain('html', 'like', 'ok'),
             ]),
             "Optimization sorts by field and operator",
         )
@@ -937,7 +937,7 @@ class TestDomainOptimize(TransactionCase):
         def domain(op, values):
             if not values:
                 return Domain.FALSE if op == 'in' else Domain.TRUE
-            return Domain('number', op, values)
+            return Domain('float_numeric', op, values)
 
         set123 = OrderedSet([1, 2, 3])
         set345 = OrderedSet([3, 4, 5])
@@ -989,7 +989,7 @@ class TestDomainOptimize(TransactionCase):
         )
 
         self.assertIsInstance(
-            (Domain('number', 'in', [1]) | Domain('number', 'in', [2])).optimize(model).value,
+            (Domain('float_numeric', 'in', [1]) | Domain('float_numeric', 'in', [2])).optimize(model).value,
             OrderedSet, "Check we can optimize something else than OrderedSet",
         )
 

@@ -417,7 +417,7 @@ class TestSchema(common.TransactionCase):
             self._get_foreign_keys(self.model._table, 'many2one_id'), {
                 'table_restricted_by_constraint': self.model._table,
                 'column_restricted_by_constraint': 'many2one_id',
-                'table_used_by_constraint': 'test_orm_schema_relations',
+                'table_used_by_constraint': 'test_orm_common_fields_relations',
                 'column_used_by_constraint': 'id',
                 'delete_rule': 'SET NULL',
             },

@@ -2512,7 +2512,7 @@ class TestFields(TransactionCaseWithUserDemo, TransactionExpressionCase):
 
     def test_43_new_related(self):
         """ test the behavior of one2many related fields """
-        partner = self.env['res.partner'].create({
+        partner = self.env['test_orm.partner'].create({
             'name': 'Foo',
             'child_ids': [Command.create({'name': 'Bar'})],
         })
