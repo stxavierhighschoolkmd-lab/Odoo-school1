@@ -25,6 +25,9 @@ export class EventMailTemplateReferenceField extends ReferenceField {
         if (props.readonly) {
             props.canOpen = false;
         }
+        props.canCreate = false;
+        props.canCreateEdit = false;
+        props.canQuickCreate = false;
         return props;
     }
 }
