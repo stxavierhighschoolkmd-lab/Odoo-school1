@@ -58,7 +58,13 @@ patch(webModels.IrModel.prototype, {
 
 defineWebsiteModels();
 
+const changeAction = async (actionLabel) => {
+    await contains("div:has(>span:contains('Action')) + div button").click();
+    await contains(`div.o-dropdown-item:contains('${actionLabel}')`).click();
+};
+
 test("change action of form changes available options", async () => {
+    onRpc("get_authorized_fields", () => ({}));
     // reduced version of form_editor_actions
     registry
         .category("website.form_editor_actions")
@@ -78,15 +84,13 @@ test("change action of form changes available options", async () => {
     await setupWebsiteBuilderWithSnippet("s_website_form");
 
     await contains(":iframe section").click();
-    await contains("div:has(>span:contains('Action')) + div button").click();
-    await contains("div.o-dropdown-item:contains('Apply for a Job')").click();
+    await changeAction("Apply for a Job");
 
     await animationFrame();
     expect("span:contains('Applied Job')").toHaveCount(1);
     expect("div:has(>span:contains('URL')) + div input").toHaveValue("/job-thank-you");
 
-    await contains("div:has(>span:contains('Action')) + div button").click();
-    await contains("div.o-dropdown-item:contains('Create a Customer')").click();
+    await changeAction("Create a Customer");
 
     expect("span:contains('Applied Job')").toHaveCount(0);
     expect("div:has(>span:contains('URL')) + div input").toHaveValue("/contactus-thank-you");
@@ -431,8 +435,7 @@ test("Form using the Outgoing Mails model includes hidden email_to field", async
     );
 
     await contains(":iframe section").click();
-    await contains("div:has(>span:contains('Action')) + div button").click();
-    await contains("div.o-dropdown-item:contains('Send an E-mail')").click();
+    await changeAction("Send an E-mail");
 
     expect(":iframe input[type='hidden'][name='email_to']").toHaveCount(1);
     expect(":iframe input[type='hidden'][name='email_to']").toHaveValue(
@@ -968,4 +971,97 @@ test("builderList re-renders when the field type changes (existing fields)", asy
     await contains(".options-container [data-label='Type'] button").click();
     await contains(".o_popover [data-action-value='country_id']").click();
     expect.verifySteps(["setup"]);
+});
+
+test("Send a copy option creates/removes email field and adapts on action change", async () => {
+    onRpc("get_authorized_fields", () => ({}));
+    registry.category("website.form_editor_actions").add("apply_job", {
+        formFields: [
+            {
+                type: "char",
+                name: "partner_name",
+                fillWith: "name",
+                string: "Your Name",
+            },
+            {
+                type: "email",
+                required: true,
+                fillWith: "email",
+                name: "email_from",
+                string: "Your Email",
+            },
+        ],
+        fields: [
+            {
+                name: "job_id",
+                type: "many2one",
+                relation: "hr.job",
+                string: "Applied Job",
+            },
+        ],
+        successPage: "/job-thank-you",
+    });
+
+    await setupWebsiteBuilderWithSnippet("s_website_form");
+
+    const sendCopyOptionSelector =
+        ".options-container[data-container-title='Form'] [data-action-id='toggleSendCopy'] input[type='checkbox']";
+    const sendCopyEmailFieldSelector =
+        ":iframe .s_website_form form .s_website_form_field.s_website_form_copy_email[data-type='email']";
+
+    await contains(":iframe section.s_website_form").click();
+    await contains(sendCopyOptionSelector).click();
+    expect(sendCopyEmailFieldSelector).toHaveCount(1);
+    expect(".options-container[data-container-title='Form'] .o_doc_link").toHaveAttribute(
+        "href",
+        "https://www.odoo.com/documentation/1.0/applications/websites/website/configuration/spam_protection.html"
+    );
+
+    await changeAction("Apply for a Job");
+    expect(`${sendCopyOptionSelector}:checked`).toHaveCount(1);
+    expect(sendCopyEmailFieldSelector).toHaveCount(1);
+
+    await contains(sendCopyEmailFieldSelector).click();
+    expect(
+        ".options-container[data-container-title='Field'] span:has(.oe_snippet_remove)"
+    ).toHaveAttribute(
+        "title",
+        'The field “email_from” is mandatory when the option "Send a Copy" is enabled'
+    );
+    expect(
+        ".options-container[data-container-title='Field'] .oe_snippet_remove[disabled]"
+    ).toHaveCount(1);
+    expect(
+        ".options-container[data-container-title='Field'] .oe_snippet_clone[disabled]"
+    ).toHaveCount(1);
+    expect(
+        ".options-container[data-container-title='Field'] .hb-row[data-label='Type']"
+    ).not.toBeVisible();
+    expect(
+        ".options-container[data-container-title='Field'] .hb-row[data-label='Input Type']"
+    ).not.toBeVisible();
+
+    await unfoldAllOptionsGroups();
+    await contains(sendCopyOptionSelector).click();
+    expect(sendCopyEmailFieldSelector).toHaveCount(0);
+
+    await changeAction("Send an E-mail");
+    expect(`${sendCopyOptionSelector}:not(:checked)`).toHaveCount(1);
+    expect(sendCopyEmailFieldSelector).toHaveCount(0);
+
+    await changeAction("Apply for a Job");
+    await contains(sendCopyOptionSelector).click();
+    expect(sendCopyEmailFieldSelector).toHaveCount(1);
+    expect(":iframe .s_website_form .s_website_form_field[data-type='email']").toHaveCount(1);
+
+    await contains(sendCopyOptionSelector).click();
+    expect(sendCopyEmailFieldSelector).toHaveCount(0);
+
+    await contains(":iframe .s_website_form .s_website_form_field[data-type='email']").click();
+    await contains(".options-container[data-container-title='Field'] .oe_snippet_remove").click();
+    await unfoldAllOptionsGroups();
+    await contains(sendCopyOptionSelector).click();
+    expect(`${sendCopyEmailFieldSelector}.s_send_copy_auto_created_email_field`).not.toHaveClass(
+        "s_website_form_required"
+    );
 });

@@ -84,6 +84,7 @@ export class FormOptionPlugin extends Plugin {
         "clearValidationDataset",
         "defaultMessage",
         "fetchModels",
+        "prepareSendCopyEmailField",
     ];
     /** @type {import("plugins").WebsiteResources} */
     resources = {
@@ -113,8 +114,9 @@ export class FormOptionPlugin extends Plugin {
         ],
         clone_disabled_reason_providers: (el) => {
             if (
-                el.classList.contains("s_website_form_field") &&
-                !el.classList.contains("s_website_form_custom")
+                (el.classList.contains("s_website_form_field") &&
+                    !el.classList.contains("s_website_form_custom")) ||
+                el.classList.contains("s_website_form_copy_email")
             ) {
                 return _t("You cannot duplicate this field.");
             }
@@ -133,6 +135,14 @@ export class FormOptionPlugin extends Plugin {
                         : _t("The field “%(fieldName)s” is mandatory for the selected action.", {
                               fieldName,
                           });
+            }
+            if (el.classList.contains("s_website_form_copy_email")) {
+                return _t(
+                    'The field “%(fieldName)s” is mandatory when the option "Send a Copy" is enabled',
+                    {
+                        fieldName: getFieldName(el),
+                    }
+                );
             }
         },
         builder_actions: {
@@ -171,6 +181,7 @@ export class FormOptionPlugin extends Plugin {
             SetMultipleFilesAction,
             ToggleAllowEmptyAction,
             SetEmptyPlaceholderAction,
+            ToggleSendCopyAction,
         },
         content_not_editable_selectors: ".s_website_form form",
         content_editable_selectors: [
@@ -452,8 +463,17 @@ export class FormOptionPlugin extends Plugin {
             field.querySelector(".s_website_form_label").appendChild(span);
         });
     }
-    addFieldToForm(formEl) {
-        const field = getCustomField("char", _t("Custom Text"));
+    /**
+     * Insert a new custom field into the website form.
+     *
+     * @param {HTMLFormElement} formEl
+     * @param {Object} [options={}] - Field config
+     * @param {String} [options.type="char"] - Field type
+     * @param {String} [options.label="Custom Text"] - Field label
+     * @returns {HTMLElement} The inserted field element
+     */
+    addFieldToForm(formEl, { type = "char", label = "Custom Text" } = {}) {
+        const field = getCustomField(type, _t(label));
         field.formatInfo = getDefaultFormat(formEl);
         const fieldEl = renderField(field);
         let locationEl = formEl.querySelector(".s_website_form_submit, .s_website_form_recaptcha");
@@ -464,6 +484,7 @@ export class FormOptionPlugin extends Plugin {
             locationEl.insertAdjacentElement("beforebegin", fieldEl);
         }
         this.dependencies.builderOptions.setNextTarget(fieldEl);
+        return fieldEl;
     }
     addSnippetAfterField(fieldEl, snippet) {
         let newSnippetEl = null;
@@ -492,6 +513,28 @@ export class FormOptionPlugin extends Plugin {
         // resource.
         fieldEl.insertAdjacentElement("afterend", newSnippetEl);
         this.dependencies.builderOptions.setNextTarget(newSnippetEl);
+    }
+    /**
+     * Adds a "Send a copy" email field if not present. If it already exists,
+     * adds the `s_website_form_copy_email` class for identification.
+     *
+     * @param {HTMLFormElement} formEl
+     */
+    prepareSendCopyEmailField(formEl) {
+        const emailFieldEl = formEl.querySelector("div[data-name='Field'][data-type='email']");
+        if (emailFieldEl) {
+            emailFieldEl.classList.add("s_website_form_copy_email");
+        } else {
+            const fieldEl = this.addFieldToForm(formEl, { type: "email", label: "Your Email" });
+            // Add a marker class to identify this email field as auto-created
+            // for the "send a copy" option. When the option is toggled off,
+            // field with `s_send_copy_autocreated_email_field` is removed,
+            // while existing email fields are left untouched.
+            fieldEl.classList.add(
+                "s_website_form_copy_email",
+                "s_send_copy_auto_created_email_field"
+            );
+        }
     }
     /**
      * To be used in load for any action that uses getActiveField or
@@ -937,6 +980,7 @@ export class SelectAction extends BuilderAction {
         if (!loadResult) {
             return;
         }
+        const isSendCopyEnabled = !!el.querySelector(".s_website_form_copy_email");
         const models = this.dependencies.websiteFormOption.getModelsCache(el);
         const targetModelName = getModelName(el);
         const activeForm = models.find((m) => m.model === targetModelName);
@@ -946,6 +990,9 @@ export class SelectAction extends BuilderAction {
             parseInt(modelId),
             loadResult.formInfo
         );
+        if (isSendCopyEnabled) {
+            this.dependencies.websiteFormOption.prepareSendCopyEmailField(el);
+        }
     }
     isApplied({ editingElement: el, value: modelId }) {
         const models = this.dependencies.websiteFormOption.getModelsCache(el);
@@ -1564,6 +1611,29 @@ export class SetMultipleFilesAction extends BuilderAction {
     static id = "setMultipleFiles";
     apply({ editingElement }) {
         editingElement.multiple = editingElement.dataset.maxFilesNumber > 1;
+    }
+}
+/**
+ * Custom action for "Send a copy" that ensures the email field is present.
+ * In cleanup, removes the `s_website_form_copy_email` class if it already
+ * exists, or removes the field if it was newly created.
+ */
+export class ToggleSendCopyAction extends BuilderAction {
+    static id = "toggleSendCopy";
+    static dependencies = ["websiteFormOption", "builderOptions"];
+    isApplied({ editingElement: formEl }) {
+        return !!formEl.querySelector(".s_website_form_copy_email");
+    }
+    apply({ editingElement: formEl }) {
+        this.dependencies.websiteFormOption.prepareSendCopyEmailField(formEl);
+    }
+    clean({ editingElement: formEl }) {
+        const emailFieldEl = formEl.querySelector(".s_website_form_copy_email");
+        if (emailFieldEl.classList.contains("s_send_copy_auto_created_email_field")) {
+            emailFieldEl.remove();
+        } else {
+            emailFieldEl.classList.remove("s_website_form_copy_email");
+        }
     }
 }
 

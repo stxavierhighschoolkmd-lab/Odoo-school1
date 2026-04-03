@@ -1,7 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import base64
+import datetime
 import json
+import logging
 
 from markupsafe import Markup
 from psycopg2 import IntegrityError
@@ -11,11 +13,12 @@ from werkzeug.exceptions import BadRequest
 from odoo import http, SUPERUSER_ID
 from odoo.addons.base.models.ir_qweb_fields import nl2br, nl2br_enclose
 from odoo.http import request
-from odoo.tools import BinaryBytes, plaintext2html
+from odoo.tools import BinaryBytes, format_date, plaintext2html
 from odoo.exceptions import AccessDenied, ValidationError, UserError
-from odoo.tools.misc import hmac, consteq
+from odoo.tools.misc import consteq, get_lang, hmac
 from odoo.tools.translate import _, LazyTranslate
 
+_logger = logging.getLogger(__name__)
 _lt = LazyTranslate(__name__)
 
 
@@ -57,6 +60,8 @@ class WebsiteForm(http.Controller):
             return json.dumps({
                 'error': _("The form's specified model does not exist")
             })
+        visitor_email = kwargs.pop('_send_copy_mail_address', False)
+        visitor_name = kwargs.get('partner_name') or kwargs.get('contact_name') or kwargs.get('name')
 
         try:
             data = self.extract_data(model_record, kwargs)
@@ -83,6 +88,9 @@ class WebsiteForm(http.Controller):
                         if not consteq(kwargs["website_form_signature"], hash_value):
                             raise AccessDenied(self.env._('invalid website_form_signature'))
                     request.env[model_name].sudo().browse(id_record).send()
+
+                if visitor_email and data['send_copy_fields']:
+                    self.send_copy_email(visitor_email, visitor_name, data['send_copy_fields'])
 
         # Some fields have additional SQL constraints that we can't check generically
         # Ex: crm.lead.probability which is a float between 0 and 1
@@ -163,11 +171,16 @@ class WebsiteForm(http.Controller):
             'attachments': [],  # Attached files
             'custom': '',        # Custom fields values
             'meta': '',         # Add metadata if enabled
+            'send_copy_fields': {},  # Add form fields for copy email if enabled.
         }
 
         authorized_fields = model_sudo.with_user(SUPERUSER_ID)._get_form_writable_fields(values)
         error_fields = []
         custom_fields = []
+
+        send_copy_fields = values.pop('_send_copy_fields', False)
+        if send_copy_fields:
+            data['send_copy_fields'] = json.loads(send_copy_fields)
 
         for field_name, field_value in values.items():
             # First decode the field_name encoded at the client side.
@@ -326,3 +339,41 @@ class WebsiteForm(http.Controller):
             # attach the custom binary field files on the attachment_ids field.
             for attachment_id_id in orphan_attachment_ids:
                 record.attachment_ids = [(4, attachment_id_id)]
+
+    def send_copy_email(self, visitor_email, visitor_name, send_copy_fields):
+        ip = request.httprequest.remote_addr
+        RateLimitLog = request.env['website.form.send.copy.rate.limit.log'].sudo()
+        if not RateLimitLog._check_rate_limit(ip=ip, email=visitor_email):
+            _logger.warning("Send-a-copy rate limit exceeded for IP %s / Email %s. Skipping copy email", ip, visitor_email)
+            return
+        lang = get_lang(request.env).code
+        send_copy_email_body = request.env['ir.qweb'].with_context(lang=lang)._render(
+            'website.form_send_copy_email',
+            {
+                'visitor_name': visitor_name,
+                'form_submission_values': send_copy_fields,
+                'formatted_current_date': format_date(request.env, datetime.date.today(), lang_code=lang),
+            },
+            raise_if_not_found=False,
+        )
+        if not send_copy_email_body:
+            return
+        admin_user = request.env.ref('base.user_admin')
+        body_html = request.env['mail.render.mixin'].with_context(lang=lang)._render_encapsulate(
+            'mail.mail_notification_layout',
+            send_copy_email_body,
+            add_context={
+                'email_notification_force_header': True,
+                'email_notification_force_footer': True,
+                'email_add_signature': True,
+                'signature': admin_user.sudo().signature,
+                'subtitles': [request.env._('Copy of your Form Submission')],
+            },
+        )
+        request.env['mail.mail'].sudo().create({
+            'subject': request.env._('Your answers on Form'),
+            'email_from': request.env.company.email_formatted,
+            'email_to': visitor_email,
+            'body_html': body_html,
+            'auto_delete': True,
+        })
