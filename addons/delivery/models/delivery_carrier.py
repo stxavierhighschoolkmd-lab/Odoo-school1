@@ -41,6 +41,7 @@ class DeliveryCarrier(models.Model):
         default="fixed",
         required=True,
     )
+    supports_cash_on_delivery = fields.Boolean(compute="_compute_supports_cash_on_delivery")
     allow_cash_on_delivery = fields.Boolean(
         string="Cash on Delivery",
         help="Allow customers to choose Cash on Delivery as their payment method.",
@@ -215,6 +216,11 @@ class DeliveryCarrier(models.Model):
             carrier.can_generate_return = False
 
     @api.depends("delivery_type")
+    def _compute_supports_cash_on_delivery(self):
+        for carrier in self:
+            carrier.supports_cash_on_delivery = carrier.delivery_type in {'base_on_rule', 'fixed'}
+
+    @api.depends("delivery_type")
     def _compute_supports_shipping_insurance(self):
         for carrier in self:
             carrier.supports_shipping_insurance = False
@@ -346,6 +352,11 @@ class DeliveryCarrier(models.Model):
     def _onchange_return_label_on_delivery(self):
         if not self.return_label_on_delivery:
             self.get_return_label_from_portal = False
+
+    @api.onchange("supports_cash_on_delivery")
+    def _onchange_supports_cash_on_delivery(self):
+        if not self.supports_cash_on_delivery:
+            self.allow_cash_on_delivery = False
 
     @api.onchange("country_ids")
     def _onchange_country_ids(self):
