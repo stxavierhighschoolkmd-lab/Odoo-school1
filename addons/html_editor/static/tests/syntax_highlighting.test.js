@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "@odoo/hoot";
+import { beforeEach, describe, expect, test } from "@odoo/hoot";
 import { getContent, setSelection } from "./_helpers/selection";
 import { animationFrame, click, press, queryOne, waitFor } from "@odoo/hoot-dom";
 import { ensureDistinctHistoryStep, insertText, splitBlock } from "./_helpers/user_actions";
@@ -52,10 +52,88 @@ const testEditorWithHighlightedContent = async (config) =>
     await testEditor({
         ...config,
         compareFunction: compareHighlightedContent,
-        config: configWithEmbeddings,
+        config: {
+            ...configWithEmbeddings,
+            // Reduce the syntax highlighting limit for tests.
+            // Real limit (e.g. 1 million characters) is too large to use
+            // in unit test, so use smaller value to reliably test behavior.
+            syntaxHighlightingTextLimit: 50,
+        },
     });
 
 beforeEach(patchPrism);
+
+describe("syntax highlighting limits for <pre>", () => {
+    test("should not syntax-highlight when content exceeds the highlighting limit", async () => {
+        await testEditorWithHighlightedContent({
+            contentBefore: "<p>[]Lorem ipsum dolor sit amet consectetur adipiscing elit</p>", // exceeds limit
+            stepFunction: async (editor) => {
+                await insertPre(editor);
+            },
+            contentAfter: "<pre>[]Lorem ipsum dolor sit amet consectetur adipiscing elit</pre>",
+        });
+    });
+
+    test("should syntax-highlight when content is within the highlighting limit", async () => {
+        await testEditorWithHighlightedContent({
+            contentBefore: "<p>[]Lorem ipsum dolor sit amet consectetur</p>", // within limit
+            stepFunction: async (editor) => {
+                await insertPre(editor);
+                await compareHighlightedContent(
+                    getContent(editor.editable),
+                    '<p data-selection-placeholder=""><br></p>' +
+                        highlightedPre({
+                            value: "Lorem ipsum dolor sit amet consectetur",
+                            textareaRange: 38,
+                        }) +
+                        '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
+                    "syntax highlighting applied within limit",
+                    editor
+                );
+            },
+            contentAfter:
+                '<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">Lorem ipsum dolor sit amet consectetur</pre>[]',
+        });
+    });
+
+    test("should fall back to a normal pre when typing exceeds the syntax highlighting limit", async () => {
+        await testEditorWithHighlightedContent({
+            contentBefore: "<pre>Lorem ipsum dolor sit amet consectetur adipiscingx[]</pre>", // at limit
+            contentBeforeEdit:
+                '<p data-selection-placeholder=""><br></p>' +
+                highlightedPre({ value: "Lorem ipsum dolor sit amet consectetur adipiscingx" }) +
+                '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
+            stepFunction: async () => {
+                await click("textarea");
+                await pressAndWait("y"); // exceed limit
+            },
+            contentAfter: "<pre>Lorem ipsum dolor sit amet consectetur adipiscingxy[]</pre>",
+        });
+    });
+
+    test("should re-enable syntax highlighting when deleting brings content back within the limit", async () => {
+        await testEditorWithHighlightedContent({
+            contentBefore:
+                "<pre>Lorem ipsum dolor sit amet consectetur <u>adipiscingxy[]</u></pre>", // exceeds limit
+            stepFunction: async (editor) => {
+                await pressAndWait("Backspace"); // back within limit
+                await compareHighlightedContent(
+                    getContent(editor.editable),
+                    '<p data-selection-placeholder=""><br></p>' +
+                        highlightedPre({
+                            value: "Lorem ipsum dolor sit amet consectetur adipiscingx",
+                            textareaRange: 50,
+                        }) +
+                        '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
+                    "syntax highlighting restored after deleting",
+                    editor
+                );
+            },
+            contentAfter:
+                '<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">Lorem ipsum dolor sit amet consectetur adipiscingx</pre>[]',
+        });
+    });
+});
 
 test("starting edition with a pre activates syntax highlighting", async () => {
     await testEditorWithHighlightedContent({

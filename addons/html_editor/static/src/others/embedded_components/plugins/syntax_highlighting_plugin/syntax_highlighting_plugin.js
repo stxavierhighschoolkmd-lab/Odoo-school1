@@ -7,6 +7,7 @@ import {
     newlinesToLineBreaks,
 } from "../../core/syntax_highlighting/syntax_highlighting_utils";
 import { removeInvisibleWhitespace } from "@html_editor/utils/dom";
+import { closestElement } from "@html_editor/utils/dom_traversal";
 
 const CODE_BLOCK_CLASS = "o_syntax_highlighting";
 const CODE_BLOCK_SELECTOR = `div.${CODE_BLOCK_CLASS}`;
@@ -21,6 +22,9 @@ export class SyntaxHighlightingPlugin extends Plugin {
         "protectedNode",
         "embeddedComponents",
     ];
+    static defaultConfig = {
+        syntaxHighlightingTextLimit: 1_000_000,
+    };
     /** @type {import("plugins").EditorResources} */
     resources = {
         // Ensure focus can be preserved within the textarea:
@@ -83,10 +87,20 @@ export class SyntaxHighlightingPlugin extends Plugin {
      */
     addCodeBlocks(root = this.editable, preserveFocus = false) {
         const targetedNodes = this.dependencies.selection.getTargetedNodes();
-        const nonEmbeddedPres = [...root.querySelectorAll("pre")].filter(
-            (pre) => !pre.closest(CODE_BLOCK_SELECTOR)
-        );
+        const closestPre = closestElement(root, "pre");
+        const nonEmbeddedPres = [
+            ...root.querySelectorAll("pre"),
+            ...(closestPre ? [closestPre] : []),
+        ].filter((pre) => !pre.closest(CODE_BLOCK_SELECTOR));
+
         for (const pre of nonEmbeddedPres) {
+            // Do not convert large <pre> elements into syntax-highlighted components.
+            // When the text content exceeds the allowed limit, we intentionally
+            // preserve the original <pre> to ensure editor performance and stability.
+            if (pre.textContent.length > this.config.syntaxHighlightingTextLimit) {
+                continue;
+            }
+
             const isPreInSelection = !targetedNodes.some((node) => !pre.contains(node));
             const embeddedProps = JSON.stringify(
                 Object.assign(
@@ -136,6 +150,16 @@ export class SyntaxHighlightingPlugin extends Plugin {
                     this.dependencies.selection.setCursorStart(baseContainer);
                     this.dependencies.history.addStep();
                 },
+                convertSyntaxHighlightingToPre: ({ target }) => {
+                    const component = target.closest(`[data-embedded='${name}']`);
+                    const embeddedProps = getEmbeddedProps(component);
+                    const pre = this.document.createElement("pre");
+                    pre.textContent = embeddedProps.value;
+                    component.replaceWith(pre);
+                    newlinesToLineBreaks(pre);
+                    this.dependencies.selection.setCursorEnd(pre);
+                },
+                syntaxHighlightingTextLimit: this.config.syntaxHighlightingTextLimit,
             });
             props.host.removeAttribute("data-syntax-highlighting-autofocus");
         }

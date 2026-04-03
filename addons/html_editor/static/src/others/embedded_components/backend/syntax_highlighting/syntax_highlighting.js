@@ -23,6 +23,8 @@ export class EmbeddedSyntaxHighlightingComponent extends Component {
         codeWrap: { type: Boolean, optional: true },
         onTextareaFocus: { type: Function },
         convertToParagraph: { type: Function },
+        convertSyntaxHighlightingToPre: { type: Function },
+        syntaxHighlightingTextLimit: { type: Number, optional: true },
         host: { type: Object },
     };
 
@@ -44,10 +46,17 @@ export class EmbeddedSyntaxHighlightingComponent extends Component {
             this.highlight();
         });
 
-        useLayoutEffect(this.highlight.bind(this), () => [
-            this.embeddedState.value,
-            this.embeddedState.languageId,
-        ]);
+        useLayoutEffect(
+            () => {
+                // If the text content grows beyond supported limit, convert
+                // syntax-highlighted component back to a plain <pre>.
+                if (this.embeddedState?.value?.length > this.props.syntaxHighlightingTextLimit) {
+                    this.props.convertSyntaxHighlightingToPre({ target: this.pre });
+                }
+                this.highlight();
+            },
+            () => [this.embeddedState.value, this.embeddedState.languageId]
+        );
     }
 
     /**
