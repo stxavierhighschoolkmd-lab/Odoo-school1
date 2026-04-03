@@ -46,9 +46,10 @@ class ResConfigSettings(models.TransientModel):
     email_secondary_color = fields.Char(related='company_id.email_secondary_color', readonly=False)
 
     tenor_api_key = fields.Char(
-        'Tenor API key',
+        'Klipy API key',
         config_parameter='discuss.tenor_api_key',
-        help="Add a Tenor GIF API key to enable GIFs support. https://developers.google.com/tenor/guides/quickstart#setup",
+        help="Add a Klipy GIF API key to enable GIFs support. https://docs.klipy.com/getting-started\n"
+        "If you were using a Tenor GIF API key (service shutdown on June 30, 2026), please replace it here with a Klipy GIF API",
     )
     tenor_content_filter = fields.Selection(
         [('high', 'High'),
