@@ -5,7 +5,6 @@ import { DashboardDateFilter } from "../dashboard_date_filter/dashboard_date_fil
 import { DashboardSearchBarMenu } from "../dashboard_search_bar_menu/dashboard_search_bar_menu";
 import { useService, useChildRef, useAutofocus } from "@web/core/utils/hooks";
 import { useDropdownState } from "@web/core/dropdown/dropdown_hooks";
-import { getFacetInfo } from "@spreadsheet/global_filters/helpers";
 import { _t } from "@web/core/l10n/translation";
 import { fuzzyTest, fuzzyLookup } from "@web/core/utils/search";
 import { Dropdown } from "@web/core/dropdown/dropdown";
@@ -27,12 +26,12 @@ export class DashboardSearchBar extends Component {
     static props = { model: Object, toggler: Object };
 
     setup() {
-        this.facets = [];
-        this.firstDateFilter = undefined;
         this.nameService = useService("name");
         this.orm = useService("orm");
         this.keepLast = new KeepLast();
         this.fields = useService("field");
+        this.loader = useService("spreadsheet_dashboard_loader");
+        this.searchModel = this.loader.getDashboard(this.loader.activeDashboardId).searchModel;
 
         this.inputRef = useAutofocus("autofocus");
 
@@ -47,7 +46,7 @@ export class DashboardSearchBar extends Component {
         this.items = useState([]);
         this.subItems = {};
 
-        this.filtersValuesDropdown = useDropdownState();
+        this.searchBarDropdownMenu = useDropdownState();
         this.inputDropdownState = useDropdownState();
         this.inputDropdownNavOptions = this.getDropdownNavigation();
         this.menuRef = useChildRef();
@@ -56,35 +55,32 @@ export class DashboardSearchBar extends Component {
     }
 
     openFilterValueDropdown() {
-        this.filtersValuesDropdown.open();
+        this.searchBarDropdownMenu.open();
     }
 
     closeFilterValueDropdown() {
-        this.filtersValuesDropdown.close();
+        this.searchBarDropdownMenu.close();
     }
 
     toggleFilterValueDropdown() {
-        this.filtersValuesDropdown.isOpen
-            ? this.filtersValuesDropdown.close()
-            : this.filtersValuesDropdown.open();
-    }
-
-    clearFilter(id) {
-        this.props.model.dispatch("SET_GLOBAL_FILTER_VALUE", { id });
+        this.searchBarDropdownMenu.isOpen
+            ? this.searchBarDropdownMenu.close()
+            : this.searchBarDropdownMenu.open();
     }
 
     updateFirstDateFilter(value) {
         this.props.model.dispatch("SET_GLOBAL_FILTER_VALUE", {
-            id: this.firstDateFilter.id,
+            id: this.searchModel.firstDateFilter.id,
             value,
         });
+        this.searchModel.handleManualFilterConfirm();
     }
 
     get firstDateFilterValue() {
-        if (!this.firstDateFilter) {
+        if (!this.searchModel.firstDateFilter) {
             return undefined;
         }
-        return this.props.model.getters.getGlobalFilterValue(this.firstDateFilter.id);
+        return this.props.model.getters.getGlobalFilterValue(this.searchModel.firstDateFilter.id);
     }
 
     onSearchClick() {
@@ -95,7 +91,7 @@ export class DashboardSearchBar extends Component {
         } else {
             this.inputDropdownState.close();
             this.resetState();
-            this.filtersValuesDropdown.open();
+            this.searchBarDropdownMenu.open();
         }
     }
 
@@ -112,9 +108,10 @@ export class DashboardSearchBar extends Component {
 
     onSearchInputKeydown(ev) {
         if (ev.key === "Backspace" || ev.key === "Delete") {
-            const lastFacet = this.facets[this.facets.length - 1];
+            const allFacets = this.searchModel.state.facets;
+            const lastFacet = allFacets[allFacets.length - 1];
             if (ev.target.selectionStart === 0 && ev.target.selectionEnd === 0 && lastFacet) {
-                this.clearFilter(lastFacet.id);
+                this.searchModel.clearFilter(lastFacet.id);
             }
         }
     }
@@ -165,17 +162,6 @@ export class DashboardSearchBar extends Component {
             this.inputRef.el.value = query;
         }
 
-        const filters = this.props.model.getters.getGlobalFilters();
-        const firstDateFilterIndex = filters.findIndex((filter) => filter.type === "date");
-        if (firstDateFilterIndex !== -1) {
-            this.firstDateFilter = filters.splice(firstDateFilterIndex, 1)[0];
-        }
-        this.facets = await Promise.all(
-            filters
-                .filter((filter) => this.props.model.getters.isGlobalFilterActive(filter.id))
-                .map((filter) => this.getFacetFor(filter))
-        );
-
         this.items.length = 0;
 
         const trimmedQuery = this.state.query.trim();
@@ -184,11 +170,6 @@ export class DashboardSearchBar extends Component {
                 this.items.push(...this.getItems(globalFilter, trimmedQuery));
             }
         }
-    }
-
-    async getFacetFor(filter) {
-        const filterValue = this.props.model.getters.getGlobalFilterValue(filter.id);
-        return getFacetInfo(this.env, filter, filterValue, this.props.model.getters);
     }
 
     getItems(globalFilter, trimmedQuery) {
