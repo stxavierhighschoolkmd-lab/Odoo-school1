@@ -169,6 +169,8 @@ class ProductProduct(models.Model):
         domain_move_out = [('product_id', 'in', self.ids)] + domain_move_out_loc
         if lot_id is not None:
             domain_quant += [('lot_id', '=', lot_id)]
+            domain_move_in += [('move_line_ids.lot_id', '=', lot_id)]
+            domain_move_out += [('move_line_ids.lot_id', '=', lot_id)]
         if owner_id is not None:
             domain_quant += [('owner_id', '=', owner_id)]
             domain_move_in += [('restrict_partner_id', '=', owner_id)]
@@ -424,6 +426,12 @@ class ProductProduct(models.Model):
                     '&', ('state', '=', 'done'), ~dest_loc_domain_done,
                     '&', ('state', '!=', 'done'), ~dest_loc_domain_in_progress,
             ])
+            if self.env.context.get('skip_in_progress'):
+                return (
+                    loc_domain,
+                    dest_loc_domain_done & ~loc_domain,
+                    loc_domain & ~dest_loc_domain_done
+                )
 
         # returns: (domain_quant_loc, domain_move_in_loc, domain_move_out_loc,
         #           domain_move_in_loc_done, domain_move_out_loc_done)
