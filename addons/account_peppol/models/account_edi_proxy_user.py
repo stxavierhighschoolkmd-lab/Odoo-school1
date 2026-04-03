@@ -162,7 +162,11 @@ class AccountEdiProxyClientUser(models.Model):
         self.ensure_one()
         # Self-billed invoices are invoices which your customer creates on your behalf and sends you via Peppol.
         # In this case, the invoice needs to be created as an out_invoice in a sale journal.
-        xml_tree = etree.fromstring(attachment.raw)
+        try:
+            xml_tree = etree.fromstring(attachment.raw)
+        except etree.XMLSyntaxError:
+            _logger.exception("The Peppol XML file is not a valid XML")
+            xml_tree = etree.Element('root')
 
         invoice_type_code = xml_tree.findtext('.//{*}InvoiceTypeCode')
         credit_note_type_code = xml_tree.findtext('.//{*}CreditNoteTypeCode')
