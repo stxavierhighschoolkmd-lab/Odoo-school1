@@ -1809,7 +1809,16 @@ Please change the quantity done or the rounding precision of your unit of measur
         StockMove.browse(assigned_moves_ids).write({'state': 'assigned'})
         if not self.env.context.get('bypass_entire_pack'):
             self.picking_id._check_entire_pack()
-        StockMove.browse(moves_to_redirect).move_line_ids._apply_putaway_strategy()
+
+        moves = StockMove.browse(moves_to_redirect)
+        locations = moves.location_dest_id.putaway_rule_ids.location_out_id.child_internal_location_ids._check_access_putaway()
+        weights_data = locations._get_weight(moves.move_line_ids.ids)
+        forecasted_weights = {
+            loc.id: weights_data[loc]['forecast_weight'] if weights_data.get(loc) else 0
+            for loc in locations
+        }
+        move_lines = moves.move_line_ids.with_context(forecasted_weights=forecasted_weights)
+        move_lines._apply_putaway_strategy()
 
     def _action_cancel(self):
         if any(move.state == 'done' and not move.scrapped for move in self):

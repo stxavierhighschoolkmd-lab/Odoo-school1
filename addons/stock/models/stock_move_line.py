@@ -249,21 +249,28 @@ class StockMoveLine(models.Model):
         if self._context.get('avoid_putaway_rules'):
             return
         self = self.with_context(do_not_unreserve=True)
+        weights_to_recompute = set()
         for (package), smls in groupby(self, lambda sml: (sml.result_package_id)):
             smls = self.env['stock.move.line'].concat(*smls)
             locations = smls.move_id.location_dest_id.child_internal_location_ids
             excluded_smls = set(smls.ids)
             if package.package_type_id:
-                best_loc = smls.move_id.location_dest_id.with_context(exclude_sml_ids=excluded_smls, products=smls.product_id, locations=locations)._get_putaway_strategy(self.env['product.product'], package=package)
+                best_loc = smls.move_id.location_dest_id.with_context(
+                    exclude_sml_ids=excluded_smls, products=smls.product_id, locations=locations, weights_to_recompute=weights_to_recompute
+                )._get_putaway_strategy(self.env['product.product'], package=package)
                 smls.location_dest_id = smls.package_level_id.location_dest_id = best_loc
+                weights_to_recompute.add(best_loc.id)
             elif package:
                 used_locations = set()
                 for sml in smls:
                     if len(used_locations) > 1:
                         break
-                    sml.location_dest_id = sml.move_id.location_dest_id.with_context(exclude_sml_ids=excluded_smls, locations=locations)._get_putaway_strategy(sml.product_id, quantity=sml.quantity)
+                    sml.location_dest_id = sml.move_id.location_dest_id.with_context(
+                        exclude_sml_ids=excluded_smls, locations=locations, weights_to_recompute=weights_to_recompute
+                    )._get_putaway_strategy(sml.product_id, quantity=sml.quantity)
                     excluded_smls.discard(sml.id)
                     used_locations.add(sml.location_dest_id)
+                    weights_to_recompute.add(sml.location_dest_id.id)
                 if len(used_locations) > 1:
                     for move, grouped_smls in smls.grouped('move_id').items():
                         grouped_smls.location_dest_id = move.location_dest_id
@@ -271,11 +278,14 @@ class StockMoveLine(models.Model):
                     smls.package_level_id.location_dest_id = smls.location_dest_id
             else:
                 for sml in smls:
-                    putaway_loc_id = sml.move_id.location_dest_id.with_context(exclude_sml_ids=excluded_smls, locations=locations)._get_putaway_strategy(
+                    putaway_loc_id = sml.move_id.location_dest_id.with_context(
+                        exclude_sml_ids=excluded_smls, locations=locations, weights_to_recompute=weights_to_recompute
+                    )._get_putaway_strategy(
                         sml.product_id, quantity=sml.quantity, packaging=sml.move_id.product_packaging_id,
                     )
                     if putaway_loc_id != sml.location_dest_id:
                         sml.location_dest_id = putaway_loc_id
+                        weights_to_recompute.add(putaway_loc_id.id)
                     excluded_smls.discard(sml.id)
 
     def _get_default_dest_location(self):

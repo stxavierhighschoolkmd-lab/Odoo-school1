@@ -382,7 +382,10 @@ class Location(models.Model):
         specified."""
         self.ensure_one()
         if self.storage_category_id:
-            forecast_weight = self._get_weight(self.env.context.get('exclude_sml_ids', set()))[self]['forecast_weight']
+            forecast_weight = self.env.context.get("forecasted_weights", {}).get(self.id, None)
+            weights_to_recompute = self.env.context.get("weights_to_recompute", set())
+            if forecast_weight is None or self.id in weights_to_recompute:
+                forecast_weight = self._get_weight(self.env.context.get('exclude_sml_ids', set()))[self]['forecast_weight']
             # check if enough space
             if package and package.package_type_id:
                 # check weight
