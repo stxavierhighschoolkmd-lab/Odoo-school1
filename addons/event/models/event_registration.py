@@ -31,6 +31,10 @@ class EventRegistration(models.Model):
          """
         return str(int.from_bytes(os.urandom(8), 'little'))
 
+    @api.model
+    def _default_event_ticket_id(self):
+        return self.env['event.event'].browse(self.env.context.get('default_event_id', False)).event_ticket_ids[:1].id
+
     # event
     event_id = fields.Many2one(
         'event.event', string='Event', required=True, tracking=True, index=True)
@@ -39,7 +43,8 @@ class EventRegistration(models.Model):
         "event.slot", string="Slot", ondelete='restrict', tracking=True, index="btree_not_null",
         domain="[('event_id', '=', event_id)]")
     event_ticket_id = fields.Many2one(
-        'event.event.ticket', string='Ticket Type', ondelete='restrict', tracking=True, index='btree_not_null')
+        'event.event.ticket', string='Ticket Type', ondelete='restrict', tracking=True, index='btree_not_null',
+        default=lambda self: self._default_event_ticket_id())
     active = fields.Boolean(default=True)
     barcode = fields.Char(string='Barcode', default=lambda self: self._get_random_barcode(), readonly=True, copy=False)
     # utm informations
@@ -78,6 +83,9 @@ class EventRegistration(models.Model):
              'Registered: registrations considered taken by a client\n'
              'Attended: registrations for which the attendee attended the event\n'
              'Cancelled: registrations cancelled manually')
+    remaining_entries = fields.Integer(string="Remaining Entries", compute="_compute_remaining_entries", tracking=True)
+    ticket_entry_limit = fields.Integer(string="Initial Entry Limit", related="event_ticket_id.entry_limit", tracking=True)
+    main_registration_id = fields.Many2one('event.registration', string='Main Registration')
     # questions
     registration_answer_ids = fields.One2many('event.registration.answer', 'registration_id', string='Attendee Answers')
     registration_answer_choice_ids = fields.One2many('event.registration.answer', 'registration_id', string='Attendee Selection Answers',
@@ -191,6 +199,15 @@ class EventRegistration(models.Model):
         for registration in self:
             registration.event_end_date = registration.event_slot_id.end_datetime or registration.event_id.date_end
 
+    @api.depends("ticket_entry_limit")
+    def _compute_remaining_entries(self):
+        sub_registrations = self.env['event.registration'].search([('main_registration_id', 'in', self.ids), ('state', '=', 'done')])
+        for registration in self:
+            if registration.ticket_entry_limit and not registration.main_registration_id and registration.state != 'done':
+                registration.remaining_entries = (registration.ticket_entry_limit - len(sub_registrations.filtered(lambda r: r.main_registration_id.id == registration.id)))
+            else:
+                registration.remaining_entries = 0
+
     @api.model
     def _search_event_end_date(self, operator, value):
         return Domain.OR([
@@ -233,6 +250,14 @@ class EventRegistration(models.Model):
             country = self.partner_id.country_id or self.event_id.country_id or self.env.company.country_id
             self.phone = self._phone_format(fname='phone', country=country) or self.phone
 
+    @api.onchange("remaining_entries")
+    def _onchange_remaining_entries(self):
+        for registration in self:
+            if registration.ticket_entry_limit and registration.state == 'open' and registration.remaining_entries < 1:
+                registration.action_set_done()
+            elif registration.state == 'done' and registration.remaining_entries > 0:
+                registration.action_confirm()
+
     @api.model
     def register_attendee(self, barcode, event_id):
         attendee = self.search([('barcode', '=', barcode)], limit=1)
@@ -249,7 +274,7 @@ class EventRegistration(models.Model):
             if event_id and attendee.event_id.id != event_id:
                 status = 'need_manual_confirmation'
             else:
-                attendee.action_set_done()
+                attendee.action_attend_event()
                 status = 'confirmed_registration'
         else:
             status = 'already_registered'
@@ -311,6 +336,30 @@ class EventRegistration(models.Model):
 
     def action_confirm(self):
         self.write({'state': 'open'})
+
+    def cancel_last_attendance(self):
+        sub_registrations = self.env['event.registration'].search([('main_registration_id', 'in', self.ids), ('state', '=', 'done')])
+        for record in self:
+            related_registrations_sorted = sub_registrations.filtered(lambda r: r.main_registration_id.id == record.id).sorted('date_closed desc')
+            if related_registrations_sorted:
+                related_registrations_sorted[0].action_cancel()
+
+    def action_attend_event(self):
+        for record in self:
+            if record.remaining_entries > 1:
+                new_registration = record.with_context(install_mode=True).copy({
+                    'main_registration_id': record.id,
+                })
+                new_registration.action_set_done()
+                sub_registration_link = new_registration._get_html_link(title=f"{new_registration.name}")
+                record._message_log(
+                    body=_(
+                        "A related sub-registration is validated to represent the attendance of one entry for this main registration: %s", sub_registration_link
+                    ),
+                    message_type='comment',
+                )
+            else:
+                record.action_set_done()
 
     def action_set_done(self):
         """ Close Registration """
@@ -465,4 +514,6 @@ class EventRegistration(models.Model):
             'badge_format': self.event_id.badge_format,
             'date_closed_formatted': format_date(env=self.env, value=self.date_closed, date_format='short') if self.date_closed else False,
             'is_date_closed_today': is_date_closed_today,
+            'remaining_entries': max(0, self.remaining_entries - 1),
+            'ticket_entry_limit': self.ticket_entry_limit,
         }
