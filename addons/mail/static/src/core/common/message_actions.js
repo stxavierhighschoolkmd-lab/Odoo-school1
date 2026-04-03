@@ -1,4 +1,4 @@
-import { toRaw, useComponent, useState } from "@odoo/owl";
+import { markup, toRaw, useComponent, useState } from "@odoo/owl";
 
 import { _t } from "@web/core/l10n/translation";
 import { download } from "@web/core/network/download";
@@ -8,8 +8,11 @@ import { Deferred } from "@web/core/utils/concurrency";
 import { Action, ACTION_TAGS, UseActions } from "@mail/core/common/action";
 import { useEmojiPicker } from "@web/core/emoji_picker/emoji_picker";
 import { QuickReactionMenu } from "@mail/core/common/quick_reaction_menu";
+import { generatePartnerMentionElement } from "@mail/utils/common/format";
 import { isMobileOS } from "@web/core/browser/feature_detection";
 import { useService } from "@web/core/utils/hooks";
+import { createDocumentFragmentFromContent } from "@web/core/utils/html";
+import { nbsp } from "@web/core/utils/strings";
 
 const { DateTime } = luxon;
 
@@ -92,10 +95,21 @@ registerMessageAction("reply-to", {
             return;
         }
         if (!message.isSelfAuthored && message.model !== "discuss.channel") {
-            const mentionText = `@${message.authorName} `;
-            if (!composer.composerText.includes(mentionText)) {
-                composer.mentionedPartners.add(message.author);
-                composer.insertText(mentionText, 0, { moveCursorToEnd: true });
+            composer.mentionedPartners.add(message.author);
+            const messageBody = createDocumentFragmentFromContent(composer.composerHtml).body;
+            if (
+                message.author &&
+                !messageBody.querySelector(`a.o_mail_redirect[data-oe-id="${message.author.id}"]`)
+            ) {
+                if (thread.store.env.services["mail.composer"].htmlEnabled) {
+                    messageBody.firstElementChild.prepend(
+                        generatePartnerMentionElement(message.author, thr),
+                        nbsp
+                    );
+                    composer.composerHtml = markup(messageBody.innerHTML);
+                } else {
+                    composer.insertText(`@${message.authorName} `, 0, { moveCursorToEnd: true });
+                }
             }
         }
         owner.env.inChatter?.toggleComposer("note", { force: true });
