@@ -47,44 +47,23 @@
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
-                    <group name="resource_details">
+                    <group name="resource_details" col="4">
                         <group name="schedule_type">
                             <field name="schedule_type" widget="schedule_type_confirm_radio" options="{'horizontal': true}" class="o_field_radio"/>
-                            <field name="days_per_week" string="Days/Week" readonly="schedule_type == 'fixed'"/>
-                            <field name="hours_per_week" string="Hours/Week" readonly="schedule_type == 'fixed'"/>
-                            <field name="hours_per_day" string="Hours/Day" readonly="schedule_type == 'fixed'"/>
-                        </group>
-                        <group name="resource_working_hours">
-                            <label for="full_time_required_hours" invisible="not company_id" groups="base.group_no_one"/>
-                            <label for="full_time_required_hours" string="Required Full Time" invisible="company_id" groups="base.group_no_one"/>
-                            <div groups="base.group_no_one">
-                                <field name="full_time_required_hours" style="width: 6ch;" widget="float_time" readonly="company_id"/>
-                                <span>hours/week</span>
-                            </div>
-                            <label for="work_time_rate" string="Work Time Rate" groups="base.group_no_one"/>
-                            <div groups="base.group_no_one">
-                                <field name="work_time_rate" nolabel="1" style="width: 6ch; " widget="percentage"/>
-                            </div>
-                        </group>
-                        <group name="resource_company">
                             <field name="company_id" placeholder="Visible to all"/>
                         </group>
-                    </group>
-                    <group name="resource_working_hours">
                         <group>
-                        <label for="full_time_required_hours" invisible="not company_id" groups="base.group_no_one"/>
-                        <label for="full_time_required_hours" string="Required Full Time" invisible="company_id" groups="base.group_no_one"/>
-                        <div groups="base.group_no_one">
-                            <field name="full_time_required_hours" style="width: 6ch;" widget="float_time" readonly="company_id"/>
-                            <span>hours/week</span>
-                        </div>
+                            <label for="days_per_week"/>
+                            <div class="d-flex">
+                                <field name="days_per_week" class="oe_inline" widget="float" options="{'hide_trailing_zeros': true}" readonly="schedule_type == 'fixed'"/>
+                                <span class="text-muted">d</span>
+                            </div>
                         </group>
                         <group>
-                        <label for="work_time_rate" string="Work Time Rate" groups="base.group_no_one"/>
-                        <div groups="base.group_no_one">
-                            <field name="work_time_rate" nolabel="1" style="width: 6ch;"/>
-                            <span class="ms-1">%</span>
-                        </div>
+                            <field name="hours_per_week" widget="float_time" readonly="schedule_type == 'fixed'"/>
+                        </group>
+                        <group>
+                            <field name="hours_per_day" widget="float_time" readonly="schedule_type == 'fixed'"/>
                         </group>
                     </group>
                     <div invisible="schedule_type != 'fixed'">

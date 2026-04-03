@@ -163,8 +163,8 @@ export class ResourceCalendarAttendanceCalendarCommonRenderer extends CalendarCo
 
     openPopover(target, record) {
         this.popoverPromise = Promise.withResolvers();
-        const start = new luxon.DateTime.fromJSDate(target.fcSeg.start);
-        const end = new luxon.DateTime.fromJSDate(target.fcSeg.end);
+        const start = new luxon.DateTime.fromJSDate(target.fcSeg.eventRange.range.start);
+        const end = new luxon.DateTime.fromJSDate(target.fcSeg.eventRange.range.end);
         record.startOcurrenceDateTime = start.set({
             hour: record.start.hour,
             minute: record.start.minute,
