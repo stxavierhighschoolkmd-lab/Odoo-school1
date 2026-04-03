@@ -1,6 +1,7 @@
 import { BarcodeScanner } from "@barcodes/components/barcode_scanner";
 import { scanBarcode } from "@web/core/barcode/barcode_dialog";
 import { isDisplayStandalone } from "@web/core/browser/feature_detection";
+import { AttendanceVideoStream } from "@hr_attendance/components/attendance_video_stream/attendance_video_stream";
 
 export class KioskBarcodeScanner extends BarcodeScanner {
     static props = {
@@ -9,12 +10,18 @@ export class KioskBarcodeScanner extends BarcodeScanner {
         token: String,
         kioskMode: String,
         fromTrialMode: Boolean,
+        captureCheckInImage: { type: Boolean, optional: true },
+        exposeCamera: { type: Function, optional: true },
     };
-    static template = "hr_attendance.BarcodeScanner";
+    static template = "hr_attendance.KioskBarcodeScanner";
+    static components = {
+        AttendanceVideoStream,
+    };
     setup() {
         super.setup();
         this.isDisplayStandalone = isDisplayStandalone();
         this.scanBarcode = () => scanBarcode(this.env, this.facingMode);
+        this.cameraApi = null;
     }
 
     get facingMode() {

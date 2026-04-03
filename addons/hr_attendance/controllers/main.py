@@ -1,6 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import base64
+import binascii
 import datetime
+
 from requests.exceptions import RequestException
 
 import odoo.release
@@ -35,6 +38,7 @@ class HrAttendance(http.Controller):
                 'attendance_state': employee.attendance_state,
                 'display_systray': employee.company_id.attendance_from_systray,
                 'device_tracking_enabled': employee.company_id.attendance_device_tracking,
+                'capture_check_in_image': employee.company_id.attendance_capture_check_in,
             }
         return response
 
@@ -79,6 +83,30 @@ class HrAttendance(http.Controller):
         })
 
         return response
+
+    @staticmethod
+    def _get_validated_check_in_image_and_type(check_in_image, capture_check_in_image=False):
+        if (
+            not capture_check_in_image
+            or not check_in_image
+            or not isinstance(check_in_image, str)
+            or len(check_in_image) > 30720  # Max size: 30 KB
+        ):
+            return None
+
+        header, encoded_image = check_in_image.split(",", 1)
+        mimetype = header.split(";")[0].split(":")[1]
+        try:
+            decoded_image = base64.b64decode(encoded_image, validate=True)
+            if len(decoded_image) > 20480:  # Max size: 20 KB
+                return None
+        except (binascii.Error, ValueError):
+            return None
+
+        return {
+            'image': encoded_image,
+            'type': mimetype,
+        }
 
     @http.route('/hr_attendance/kiosk_mode_menu/<int:company_id>', auth='user', type='http')
     def kiosk_menu_item_action(self, company_id):
@@ -197,6 +225,7 @@ class HrAttendance(http.Controller):
                         'from_trial_mode': from_trial_mode,
                         'barcode_source': company.attendance_barcode_source,
                         'device_tracking_enabled': company.attendance_device_tracking,
+                        'capture_check_in_image': company.attendance_capture_check_in,
                         'lang': py_to_js_locale(company.partner_id.lang or company.env.lang),
                         'server_version_info': odoo.release.version_info,
                     },
@@ -213,22 +242,33 @@ class HrAttendance(http.Controller):
         return {}
 
     @http.route('/hr_attendance/attendance_barcode_scanned', type="jsonrpc", auth="public")
-    def scan_barcode(self, token, barcode):
+    def scan_barcode(self, token, barcode, check_in_image=None):
         company = self._get_company(token)
         if company:
             employee = request.env['hr.employee'].sudo().search([('barcode', '=', barcode), ('company_id', '=', company.id)], limit=1)
             if employee:
-                employee._attendance_action_change(self._get_geoip_response('kiosk', device_tracking_enabled=company.attendance_device_tracking))
+                employee._attendance_action_change(
+                    self._get_geoip_response('kiosk', device_tracking_enabled=company.attendance_device_tracking),
+                    self._get_validated_check_in_image_and_type(check_in_image, company.attendance_capture_check_in),
+                )
                 return self._get_employee_info_response(employee)
         return {}
 
     @http.route('/hr_attendance/manual_selection', type="jsonrpc", auth="public")
-    def manual_selection(self, token, employee_id, pin_code, latitude=False, longitude=False):
+    def manual_selection(self, token, employee_id, pin_code, latitude=False, longitude=False, check_in_image=None):
         company = self._get_company(token)
         if company:
             employee = request.env['hr.employee'].sudo().browse(employee_id)
             if employee.company_id == company and ((not company.attendance_kiosk_use_pin) or (employee.pin == pin_code)):
-                employee.sudo()._attendance_action_change(self._get_geoip_response('kiosk', latitude=latitude, longitude=longitude, device_tracking_enabled=company.attendance_device_tracking))
+                employee.sudo()._attendance_action_change(
+                    self._get_geoip_response(
+                        mode='kiosk',
+                        latitude=latitude,
+                        longitude=longitude,
+                        device_tracking_enabled=company.attendance_device_tracking,
+                    ),
+                    self._get_validated_check_in_image_and_type(check_in_image, company.attendance_capture_check_in),
+                )
                 return self._get_employee_info_response(employee)
         return {}
 
@@ -259,13 +299,14 @@ class HrAttendance(http.Controller):
         return []
 
     @http.route('/hr_attendance/systray_check_in_out', type="jsonrpc", auth="user")
-    def systray_attendance(self, latitude=False, longitude=False):
+    def systray_attendance(self, latitude=False, longitude=False, check_in_image=None):
         employee = request.env.user.employee_id
         geo_ip_response = self._get_geoip_response(mode='systray',
                                                   latitude=latitude,
                                                   longitude=longitude,
                                                   device_tracking_enabled=employee.company_id.attendance_device_tracking)
-        employee.with_context({'is_from_systray_check_in_out': True})._attendance_action_change(geo_ip_response)
+        check_in_image = self._get_validated_check_in_image_and_type(check_in_image, employee.company_id.attendance_capture_check_in)
+        employee.with_context({'is_from_systray_check_in_out': True})._attendance_action_change(geo_ip_response, check_in_image)
         return self._get_employee_info_response(employee)
 
     @http.route('/hr_attendance/attendance_user_data', type="jsonrpc", auth="user", readonly=True)
