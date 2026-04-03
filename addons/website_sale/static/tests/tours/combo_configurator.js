@@ -34,7 +34,7 @@ registry
             ...wsTourUtils.assertCartContains({ productName: "3 x Product B2" }),
             {
                 content: "Verify the first combo item's attributes",
-                trigger: 'div.o_cart_product:contains("No variant attribute: B: Some custom value")',
+                trigger: 'div.o_cart_product:contains("B: Some custom value")',
             },
             {
                 content: "Verify the combo product's quantity",

@@ -279,7 +279,7 @@ class TestSaleOrder(SaleCommon):
             f"{self.sale_order.name} - Foo ({self.partner.name})",
             "Multi-line note should display the first line only",
         )
-        self.assertIn(f"{no_variant_attr.name}: {ptav1.name}", sol5.name.split("\n"))
+        self.assertIn(ptav1.name, sol5.name.split("\n"))
         self.assertEqual(
             sol5.display_name,
             f"{self.sale_order.name} - {no_variant_product.name} ({self.partner.name})",

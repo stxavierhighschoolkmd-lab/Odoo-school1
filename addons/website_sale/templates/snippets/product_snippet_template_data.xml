@@ -51,10 +51,7 @@
                 >
                     <t
                         t-set="ribbon"
-                        t-value="product_template._get_ribbon(
-                            price_vals=data,
-                            variant=product_variant,
-                        )"
+                        t-value="product_template._get_ribbon(price_vals=data,)"
                     />
                     <t
                         t-call="website_sale.product_image_and_ribbon"

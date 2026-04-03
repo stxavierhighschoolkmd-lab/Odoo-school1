@@ -84,10 +84,10 @@ class ProductRibbon(models.Model):
                 css_classes += " o_right"
         return css_classes
 
-    def _is_applicable_for(self, product, price_data):
+    def _is_applicable_for(self, product_template, price_data):
         """Return whether the product matches the criteria of the ribbon automatic assignment.
 
-        :param product.product product: the displayed product
+        :param product.template product_template: the displayed product
         :param dict price_data: price information for the given product
             (sales price for shop page, combination information for product page)
 
@@ -119,7 +119,7 @@ class ProductRibbon(models.Model):
         # Check if the product is published within the ribbon's new period.
         if (  # noqa: SIM103
             self.assign == "new"
-            and self.new_period >= (fields.Datetime.today() - product.publish_date).days
+            and self.new_period >= (fields.Datetime.today() - product_template.publish_date).days
         ):
             return True
         return False
