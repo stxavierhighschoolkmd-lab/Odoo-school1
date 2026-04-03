@@ -161,10 +161,19 @@ class PurchaseOrderLine(models.Model):
     @api.depends('uom_id', 'price_unit')
     def _compute_price_unit_product_uom(self):
         for line in self:
+<<<<<<< 7cc21ae68b122892d7f69f02f9b582ab8808001c
             if line.uom_id:
                 line.price_unit_product_uom = line.uom_id._compute_price(line.price_unit, line.product_id.uom_id)
             else:
                 line.price_unit_product_uom = line.price_unit
+||||||| b8f7decb5e13778425878abfd3b94e14ad11fe87
+            if line.product_uom_id:
+                line.price_unit_product_uom = line.product_uom_id._compute_price(line.price_unit, line.product_id.uom_id)
+            else:
+                line.price_unit_product_uom = line.price_unit
+=======
+            line.price_unit_product_uom = not line.display_type and not line.is_downpayment and line.product_uom_id._compute_price(line.price_unit, line.product_id.uom_id)
+>>>>>>> fbf1bd02bb3c56824645799626fb387355f90d0b
 
     @api.depends('invoice_lines.move_id.state', 'invoice_lines.quantity', 'qty_received', 'product_uom_qty', 'order_id.state')
     def _compute_qty_invoiced(self):
