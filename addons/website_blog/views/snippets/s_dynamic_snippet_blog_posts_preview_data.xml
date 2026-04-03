@@ -1,5 +1,124 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Carousel preview -->
+    <template id="s_dynamic_snippet_blog_posts_carousel_preview_data" name="Blogs Carousel Preview Data">
+        <div class="carousel slide s_dialog_preview" data-bs-ride="true">
+            <div class="carousel-inner w-100">
+                <div class="carousel-item active" style="min-height: 357.875px;">
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="s_blog_posts_post position-relative w-100">
+                                <a class="s_blog_posts_post_cover position-relative d-block h-100 rounded shadow-sm overflow-hidden text-decoration-none text-reset ratio ratio-1x1" href="#">
+                                    <div class="o_record_cover_container d-flex flex-column h-100 o_colored_level o_cc w-100 bg-600 position-absolute">
+                                        <div class="o_record_cover_component o_record_cover_image" style="background-image: url('/website_blog/static/src/img/cover_1.jpg');"/>
+                                        <div class="o_record_cover_component o_record_cover_filter oe_black" style="opacity: 0.4;"/>
+                                        <div class="s_blog_post_big_picture_infos position-absolute top-0 start-0 w-100 h-100">
+                                            <div class="s_blog_posts_post_cover_header d-flex flex-column justify-content-end w-100">
+                                                <h3 class="s_blog_post_big_picture_title m-0 px-4 text-white">Sierra Tarahumara</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="s_blog_posts_post position-relative w-100">
+                                <a class="s_blog_posts_post_cover position-relative d-block h-100 rounded shadow-sm overflow-hidden text-decoration-none text-reset ratio ratio-1x1" href="#">
+                                    <div class="o_record_cover_container d-flex flex-column h-100 o_colored_level o_cc w-100 bg-600 position-absolute">
+                                        <div class="o_record_cover_component o_record_cover_image" style="background-image: url('/website_blog/static/src/img/cover_2.jpg');"/>
+                                        <div class="o_record_cover_component o_record_cover_filter oe_black" style="opacity: 0.4;"/>
+                                        <div class="s_blog_post_big_picture_infos position-absolute top-0 start-0 w-100 h-100">
+                                            <div class="s_blog_posts_post_cover_header d-flex flex-column justify-content-end w-100">
+                                                <h3 class="s_blog_post_big_picture_title m-0 px-4 text-white">Maui helicopter tours</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="s_blog_posts_post position-relative w-100">
+                                <a class="s_blog_posts_post_cover position-relative d-block h-100 rounded shadow-sm overflow-hidden text-decoration-none text-reset ratio ratio-1x1" href="#">
+                                    <div class="o_record_cover_container d-flex flex-column h-100 o_colored_level o_cc w-100 bg-600 position-absolute">
+                                        <div class="o_record_cover_component o_record_cover_image" style="background-image: url('/website_blog/static/src/img/cover_3.jpg');"/>
+                                        <div class="o_record_cover_component o_record_cover_filter oe_black" style="opacity: 0.4;"/>
+                                        <div class="s_blog_post_big_picture_infos position-absolute top-0 start-0 w-100 h-100">
+                                            <div class="s_blog_posts_post_cover_header d-flex flex-column justify-content-end w-100">
+                                                <h3 class="s_blog_post_big_picture_title m-0 px-4 text-white">How to choose the right hotel</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-item" style="min-height: 357.875px;">
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="s_blog_posts_post position-relative w-100">
+                                <a class="s_blog_posts_post_cover position-relative d-block h-100 rounded shadow-sm overflow-hidden text-decoration-none text-reset ratio ratio-1x1" href="#">
+                                    <div class="o_record_cover_container d-flex flex-column h-100 o_colored_level o_cc w-100 bg-600 position-absolute">
+                                        <div class="o_record_cover_component o_record_cover_image" style="background-image: url('/website_blog/static/src/img/cover_4.jpg');"/>
+                                        <div class="o_record_cover_component o_record_cover_filter oe_black" style="opacity: 0.4;"/>
+                                        <div class="s_blog_post_big_picture_infos position-absolute top-0 start-0 w-100 h-100">
+                                            <div class="s_blog_posts_post_cover_header d-flex flex-column justify-content-end w-100">
+                                                <h3 class="s_blog_post_big_picture_title m-0 px-4 text-white">How to look up</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="s_blog_posts_post position-relative w-100">
+                                <a class="s_blog_posts_post_cover position-relative d-block h-100 rounded shadow-sm overflow-hidden text-decoration-none text-reset ratio ratio-1x1" href="#">
+                                    <div class="o_record_cover_container d-flex flex-column h-100 o_colored_level o_cc w-100 bg-600 position-absolute">
+                                        <div class="o_record_cover_component o_record_cover_image" style="background-image: url('/website_blog/static/src/img/cover_5.jpg');"/>
+                                        <div class="o_record_cover_component o_record_cover_filter oe_black" style="opacity: 0.4;"/>
+                                        <div class="s_blog_post_big_picture_infos position-absolute top-0 start-0 w-100 h-100">
+                                            <div class="s_blog_posts_post_cover_header d-flex flex-column justify-content-end w-100">
+                                                <h3 class="s_blog_post_big_picture_title m-0 px-4 text-white">What If They Let You Run The Hubble</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="s_blog_posts_post position-relative w-100">
+                                <a class="s_blog_posts_post_cover position-relative d-block h-100 rounded shadow-sm overflow-hidden text-decoration-none text-reset ratio ratio-1x1" href="#">
+                                    <div class="o_record_cover_container d-flex flex-column h-100 o_colored_level o_cc w-100 bg-600 position-absolute">
+                                        <div class="o_record_cover_component o_record_cover_image" style="background-image: url('/website_blog/static/src/img/cover_6.jpg');"/>
+                                        <div class="o_record_cover_component o_record_cover_filter oe_black" style="opacity: 0.4;"/>
+                                        <div class="s_blog_post_big_picture_infos position-absolute top-0 start-0 w-100 h-100">
+                                            <div class="s_blog_posts_post_cover_header d-flex flex-column justify-content-end w-100">
+                                                <h3 class="s_blog_post_big_picture_title m-0 px-4 text-white">Buying a Telescope</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="s_dynamic_snippet_arrows d-flex gap-2 w-100">
+                <div class="o_carousel_arrow_wrap align-items-center">
+                    <a class="carousel-control-prev position-relative pe-auto" data-bs-slide="prev" role="button" aria-label="Previous" title="Previous">
+                        <span class="o_carousel_arrow oi oi-chevron-left p-3"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </a>
+                </div>
+                <div class="o_carousel_arrow_wrap align-items-center justify-content-end">
+                    <a class="carousel-control-next position-relative pe-auto" data-bs-slide="next" role="button" aria-label="Next" title="Next">
+                        <span class="o_carousel_arrow oi oi-chevron-right p-3"></span>
+                        <span class="visually-hidden">Next</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </template>
     <!-- Multi record preview -->
     <template id="s_dynamic_snippet_blog_posts_preview_data" name="Blogs Preview Data">
         <div class="s_dialog_preview row">
