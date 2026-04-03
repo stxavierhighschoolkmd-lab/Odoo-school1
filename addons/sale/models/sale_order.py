@@ -2607,7 +2607,7 @@ class SaleOrder(models.Model):
         return "order_id"
 
     def _update_order_line_info(
-        self, product_id, quantity, *, section_id=False, child_field="order_line", **kwargs
+        self, product_id, quantity, *, section_id=False, child_field="order_line", uom_id=False, **kwargs
     ):
         """Update sale order line information for a given product or create a
         new one if none exists yet.
@@ -2615,8 +2615,8 @@ class SaleOrder(models.Model):
         :param int product_id: The product, as a `product.product` id.
         :param int quantity: The quantity selected in the catalog.
         :param int section_id: The id of section selected in the catalog.
+        :param int uom_id: The UoM selected in the catalog, as a `uom.uom` id.
         :return: The unit price of the product, based on the pricelist of the sale order and the
-                 quantity selected.
         :rtype: float
         """
         request.update_context(catalog_skip_tracking=True)
@@ -2626,6 +2626,8 @@ class SaleOrder(models.Model):
             )
         )
         if sol:
+            if uom_id and sol.product_uom_id.id != uom_id:
+                sol.product_uom_id = uom_id
             if quantity != 0:
                 sol.product_uom_qty = quantity
             elif self.state in ["draft", "sent"]:
@@ -2641,12 +2643,15 @@ class SaleOrder(models.Model):
             else:
                 sol.product_uom_qty = 0
         elif quantity > 0:
-            sol = self.env["sale.order.line"].create({
+            vals = {
                 "order_id": self.id,
                 "product_id": product_id,
                 "product_uom_qty": quantity,
                 "sequence": self._get_new_line_sequence(child_field, section_id),
-            })
+            }
+            if uom_id:
+                vals["product_uom_id"] = uom_id
+            sol = self.env["sale.order.line"].create(vals)
         else:  # quantity of 0, no line to update, return defaut pricelist price
             return self.pricelist_id._get_product_price(
                 product=self.env["product.product"].browse(product_id),

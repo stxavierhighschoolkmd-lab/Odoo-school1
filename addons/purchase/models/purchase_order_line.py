@@ -581,10 +581,16 @@ class PurchaseOrderLine(models.Model):
         """
         if len(self) == 1:
             catalog_info = self.order_id._get_product_price_and_data(self.product_id)
+            available_uoms = self.product_id.product_tmpl_id._get_available_uoms() | self.product_id.seller_ids.uom_id
             catalog_info.update(
                 quantity=self.product_qty,
                 price=self.price_unit * (1 - self.discount / 100),
                 readOnly=self.order_id._is_readonly(),
+                uomId=self.uom_id.id,
+                availableUoms=[
+                    {'id': uom.id, 'name': uom.display_name}
+                    for uom in available_uoms
+                ],
             )
             if self.product_id.uom_id != self.uom_id:
                 catalog_info['uomDisplayName'] = self.uom_id.display_name
@@ -593,12 +599,17 @@ class PurchaseOrderLine(models.Model):
             self.product_id.ensure_one()
             order_line = self[0]
             catalog_info = order_line.order_id._get_product_price_and_data(order_line.product_id)
+            available_uoms = self.product_id.product_tmpl_id._get_available_uoms() | self.product_id.seller_ids.uom_id
             catalog_info['quantity'] = sum(self.mapped(
                 lambda line: line.uom_id._compute_quantity(
                     qty=line.product_qty,
                     to_unit=line.product_id.uom_id,
             )))
             catalog_info['readOnly'] = True
+            catalog_info['availableUoms'] = [
+                {'id': uom.id, 'name': uom.display_name}
+                for uom in available_uoms
+            ]
             return catalog_info
         return {'quantity': 0}
 
