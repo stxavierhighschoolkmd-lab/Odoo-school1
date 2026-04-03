@@ -1,6 +1,10 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import io
 import unittest
+from unittest.mock import patch
+
+from PIL import Image
 
 from odoo.tests import TransactionCase, can_import, loaded_demo_data, tagged
 from odoo.tools import mute_logger
@@ -177,3 +181,45 @@ class TestImportFiles(TransactionCase):
         product = self.env['product.product'].search([('default_code', '=', 'CERT20')])
         self.assertEqual(product.list_price, 200)
         self.assertEqual(product.standard_price, 5)
+
+    @unittest.skipUnless(
+        can_import("xlrd.xlsx") or can_import("openpyxl"), "XLRD/XLSX not available",
+    )
+    def test_import_image_by_url_as_non_admin_user(self):
+        if not loaded_demo_data(self.env):
+            self.skipTest('Requires demo data to import that file')
+
+        demo_user = self.env['res.users'].create({
+            'name': 'Demo User',
+            'login': 'user_demo',
+            'group_ids': [
+                (6, 0, [
+                    self.env.ref('base.group_user').id,
+                    self.env.ref('product.group_product_manager').id,
+                ]),
+            ],
+        })
+        self.env = self.env(user=demo_user)
+
+        f = io.BytesIO()
+        Image.new('RGB', (1, 1), '#FF0000').save(f, 'PNG')
+        f.seek(0)
+        image_data = f.read()
+
+        with patch(
+            "odoo.addons.base_import.models.base_import.Base_ImportImport._import_file_by_url",
+            return_value=image_data,
+        ):
+            results = self.import_product_xls(
+                "product.template",
+                filepath="product/static/xls/products_import_template.xlsx",
+            )
+
+        self.assertFalse(
+            results["messages"],
+            f"Non-admin user should be able to import images via URL, but got errors: {results['messages']}",
+        )
+        self.assertEqual(
+            results['name'],
+            ['Odoo Functional Certification', 'Scale-Up! Business Game', 'Odoo Mug', 'Odoo Polo', 'Odoo Polo', 'Odoo Polo', 'Odoo Polo', 'Odoo Polo']
+        )
