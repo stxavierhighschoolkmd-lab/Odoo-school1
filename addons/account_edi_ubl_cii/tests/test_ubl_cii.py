@@ -1031,3 +1031,77 @@ comment-->1000.0</TaxExclusiveAmount></xpath>"""
         self.assertEqual(due_date.text, '20251231')
         self.assertEqual(days.text, '15')
         self.assertEqual(percent.text, '3.0')
+
+    def test_payment_terms_early_payment_discount_when_0_tax_rate(self):
+        pay_terms = self.env['account.payment.term'].create({
+            'name': '2% Before 10 Days',
+            'note': 'Payment terms: 2%% if paid within 15 Days',
+            'early_discount': True,
+            'discount_days': 10,
+            'discount_percentage': 2.0,
+            'early_pay_discount_computation': 'mixed',
+            'line_ids': [Command.create({
+                'value': 'percent',
+                'value_amount': 100.0,
+                'nb_days': 30,
+            })],
+        })
+        tax_rate_0 = self.env['account.tax'].create({'name': '0% Tax', 'amount': 0.0})
+        product = self.product_a
+        product.taxes_id = [Command.set(tax_rate_0.ids)]
+
+        partner = self.partner_a
+        partner.ubl_cii_format = 'ubl_bis3'
+        partner.property_payment_term_id = pay_terms.id
+
+        invoice = self._create_invoice_one_line(
+            product_id=product,
+            partner_id=partner,
+            invoice_date="2026-03-25",
+            post=True,
+        )
+        ns = {
+            'cbc': "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+            'cac': "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
+        }
+        xml_tree = etree.fromstring(self.env['account.edi.xml.ubl_bis3']._export_invoice(invoice)[0])
+        tva_breakdown_nodes = xml_tree.xpath("./cac:TaxTotal/cac:TaxSubtotal[cac:TaxCategory/cbc:ID='E']", namespaces=ns)
+        # Ensure having a single VAT breakdown (only one TaxSubtotal with 'E').
+        self.assertEqual(len(tva_breakdown_nodes or []), 1)
+        # Ensure that the TaxableAmount = the product price
+        tva_breakdown = tva_breakdown_nodes[0]
+        self.assertEqual(
+            float(tva_breakdown.xpath('string(./cbc:TaxableAmount/text())', namespaces=ns) or 0.0),
+            product.lst_price,
+        )
+
+    def test_global_discount_exported_as_allowance_charge(self):
+        self.ensure_installed('pos_discount')
+
+        discount_product = self.env['pos.config'].sudo().search([]).mapped('discount_product_id')
+        invoice = self._create_invoice(
+            partner_id=self.partner_a,
+            invoice_line_ids=[
+                self._prepare_invoice_line(product_id=self.product_a),
+                self._prepare_invoice_line(product_id=discount_product),
+            ],
+            post=True,
+        )
+
+        xml_tree = etree.fromstring(self.env['account.edi.xml.ubl_bis3']._export_invoice(invoice)[0])
+        ns = {
+            'cbc': "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+            'cac': "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
+        }
+        global_discount_allowance_charge = xml_tree.xpath(
+            ".//cac:AllowanceCharge[cbc:AllowanceChargeReason='General discount']",
+            namespaces=ns,
+        )
+        self.assertTrue(global_discount_allowance_charge)
+
+        # Check that the discount_product isn't exported as an invoice line
+        invoice_lines = xml_tree.xpath(
+            ".//cac:InvoiceLine/cac:Item/cbc:Name",
+            namespaces=ns,
+        )
+        self.assertEqual(len(invoice_lines), 1)

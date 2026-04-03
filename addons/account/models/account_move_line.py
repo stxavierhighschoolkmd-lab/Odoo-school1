@@ -3457,6 +3457,18 @@ class AccountMoveLine(models.Model):
             'reconciliation': reconciliation_fnames,
         }
 
+    def _is_global_discount_line(self):
+        self.ensure_one()
+        pos_module_installed = self.env['ir.module.module'].sudo().search([
+            ('name', '=', 'pos_discount'),
+            ('state', '=', 'installed')
+        ], limit=1)
+        if not pos_module_installed:
+            return False
+
+        discount_products = self.env['pos.config'].sudo().mapped('discount_product_id')
+        return self.product_id in discount_products
+
     @api.model
     def get_import_templates(self):
         return [{
