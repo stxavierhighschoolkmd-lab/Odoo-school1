@@ -1,3 +1,4 @@
+from freezegun import freeze_time
 
 from odoo.addons.hr_holidays.tests.common import TestHrHolidaysCommon
 
@@ -15,6 +16,7 @@ class TestHrLeaveReport(TestHrHolidaysCommon):
             'count_as': 'absence',
         })
 
+    @freeze_time("2026-03-20")
     def test_hr_leave_employee_report(self):
         self.env['hr.leave.allocation'].create([
             {
@@ -76,7 +78,7 @@ class TestHrLeaveReport(TestHrHolidaysCommon):
         leave_balance = self.env['hr.leave.employee.type.report'].search(domain)
 
         left_allocation = leave_balance.filtered(lambda l: l.holiday_status == 'left')
-        taken_allocation = leave_balance.filtered(lambda l: l.holiday_status == 'taken')
+        allocated_allocation = leave_balance.filtered(lambda l: l.holiday_status == 'allocated')
 
         self.assertEqual(sum(left_allocation.mapped('number_of_hours')), 104.5)
-        self.assertEqual(sum(taken_allocation.mapped('number_of_hours')), 24.0)
+        self.assertEqual(sum(allocated_allocation.mapped('number_of_hours')), 128.5)
