@@ -129,3 +129,36 @@ test("avatar card preview with hr (partner_id field)", async () => {
     await contains(".o_action_manager:eq(0)").click();
     await mailContains(".o_avatar_card", { count: 0 });
 });
+
+test("employees with user prioritized over employees without user", async () => {
+    const { env } = await makeMockServer();
+    const partnerId = env["res.partner"].create({ name: "John" });
+    const userId = env["res.users"].create({ partner_id: partnerId });
+    const [department1Id, department2Id] = env["hr.department"].create([
+        { name: "RD Discuss" },
+        { name: "RD Livechat" },
+    ]);
+    env["hr.employee"].create([
+        { department_id: department1Id, work_contact_id: partnerId, active: false },
+        { department_id: department2Id, work_contact_id: partnerId, user_id: userId },
+    ]);
+    env["m2x.avatar.user"].create({ partner_id: partnerId });
+    await mountView({
+        type: "kanban",
+        resModel: "m2x.avatar.user",
+        arch: `<kanban>
+            <templates>
+                <t t-name="card">
+                    <field name="partner_id" widget="many2one_avatar_user"/>
+                </t>
+            </templates>
+        </kanban>`,
+    });
+    await contains(".o_m2o_avatar > img").click();
+    await mailContains(".o_avatar_card");
+    await mailContains(".o_avatar_card span[data-tooltip='Department']");
+    expect(queryAllTexts(".o_card_user_infos > *:not(.o_avatar_card_buttons)")).toEqual([
+        "John",
+        "RD Livechat",
+    ]);
+});

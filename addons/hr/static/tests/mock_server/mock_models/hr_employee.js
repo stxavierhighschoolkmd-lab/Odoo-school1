@@ -5,20 +5,24 @@ export class HrEmployee extends models.ServerModel {
     _name = "hr.employee";
 
     department_id = fields.Many2one({ relation: "hr.department" });
+    user_id = fields.Many2one({ relation: "res.users" });
     work_email = fields.Char();
     work_phone = fields.Char();
     work_location_type = fields.Char();
     work_location_id = fields.Many2one({ relation: "hr.work.location" });
     job_title = fields.Char();
+    active = fields.Boolean({ related: false });
 
     _get_store_avatar_card_fields() {
         return [
             "company_id",
             mailDataHelpers.Store.one("department_id", ["name"]),
+            "user_id",
             "work_email",
             mailDataHelpers.Store.one("work_location_id", ["location_type", "name"]),
             "work_phone",
             "job_title",
+            "active",
         ];
     }
 

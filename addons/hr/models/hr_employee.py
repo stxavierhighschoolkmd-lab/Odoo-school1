@@ -1790,9 +1790,11 @@ We can redirect you to the public employee list."""
         employee_fields = [
             "company_id",
             Store.One("department_id", ["name"]),
+            "user_id",
             "work_email",
             Store.One("work_location_id", ["location_type", "name"]),
             "work_phone",
+            "active",
         ]
         user = target.get_user(self.env)
         if user.has_group("hr.group_hr_user"):

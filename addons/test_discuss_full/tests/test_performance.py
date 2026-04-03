@@ -1858,4 +1858,5 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
         return {
             "id": employee.id,
             "leave_date_to": False,
+            "active": employee.active,
         }

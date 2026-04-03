@@ -41,7 +41,10 @@ class ResPartner(models.Model):
             defaults.append(
                 Store.One(
                     "main_user_id",
-                    [Store.Many("employee_ids", "leave_date_to", sudo=True), "partner_id"],
+                    [
+                        Store.Many("employee_ids", ["leave_date_to", "active"], sudo=True),
+                        "partner_id",
+                    ],
                 ),
             )
         return defaults
