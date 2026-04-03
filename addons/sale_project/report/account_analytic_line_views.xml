@@ -7,6 +7,7 @@
         <field name="mode">primary</field>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='date']" position="after">
+                <field name="category_report" type="col"/>
                 <field name="billable_type" type="col"/>
             </xpath>
             <xpath expr="//field[@name='date']" position="replace">

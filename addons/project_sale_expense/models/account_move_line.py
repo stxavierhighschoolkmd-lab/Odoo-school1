@@ -15,3 +15,10 @@ class AccountMoveLine(models.Model):
         mapping_from_expense = self._get_so_mapping_from_expense()
         mapping_from_project.update(mapping_from_expense)
         return mapping_from_project
+
+    def _prepare_analytic_lines(self):
+        values_list = super()._prepare_analytic_lines()
+        if self.expense_id:
+            for vals in values_list:
+                vals['category'] = 'expense'
+        return values_list
