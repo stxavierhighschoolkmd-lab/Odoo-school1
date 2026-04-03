@@ -4039,6 +4039,27 @@ class TestMrpOrder(TestMrpCommon):
         consumption_warning.action_confirm()
         self.assertEqual(mo.state, 'done')
 
+    def test_close_mo_with_tracked_component_not_set(self):
+        """ check that the verification of lot for tracked component does trigger an user error.
+        """
+        self.product_1.is_storable = True
+        self.product_1.tracking = 'lot'
+        self.env['stock.quant']._update_available_quantity(self.product_1, self.stock_location_components, 10.0)
+        self.bom_4.bom_line_ids.manual_consumption = True
+        # create the MO and confirm it
+        mo = self.env['mrp.production'].create({
+            'product_id': self.product_6.id,
+            'bom_id': self.bom_4.id,
+            'product_uom_qty': 1.0,
+        })
+        mo.action_confirm()
+        self.assertEqual(mo.state, 'confirmed')
+        mo.qty_producing = 1
+        mo.move_raw_ids.quantity = 1
+        with self.assertRaisesRegex(UserError, r"You need to supply Lot/Serial Number for products and 'consume' them: \n  - \[PROD-1\] Courage"):
+            mo.button_mark_done()
+        self.assertEqual(mo.state, 'progress')
+
     def test_cancel_return(self):
         """
         check that the return picking is not created on done state transfer when reducing MO quantity.

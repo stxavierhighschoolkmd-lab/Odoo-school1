@@ -2244,6 +2244,7 @@ class MrpProduction(models.Model):
 
         for production in self.env['mrp.production'].browse(productions_auto):
             production._set_quantities()
+        self._check_missing_lot_id_in_raw_move()
 
         consumption_issues = self._get_consumption_issues()
         if consumption_issues:
@@ -2829,10 +2830,12 @@ class MrpProduction(models.Model):
             self.qty_producing = self.product_qty - self.qty_produced
         self._set_qty_producing()
 
+    def _check_missing_lot_id_in_raw_move(self):
+        self.ensure_one()
+        missing_lot_id_products = ""
         for move in self.move_raw_ids:
             if move.state in ('done', 'cancel') or not move.product_uom_qty:
                 continue
-            rounding = move.product_uom.rounding
             if move.manual_consumption:
                 if move.has_tracking in ('serial', 'lot') and (not move.picked or any(not line.lot_id for line in move.move_line_ids if line.quantity and line.picked)):
                     missing_lot_id_products += "\n  - %s" % move.product_id.display_name
