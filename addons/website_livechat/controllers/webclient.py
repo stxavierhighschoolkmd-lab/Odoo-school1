@@ -5,12 +5,11 @@ from odoo.addons.mail.tools.discuss import Store
 
 
 class WebClient(WebclientController):
-    @classmethod
-    def _process_request_for_all(self, store: Store, name, params):
-        if name == "init_livechat" and (channel := self._link_visitor_to_livechat(params)):
+    def _mail_data_init_livechat(self, store: Store, livechat_channel_id=None):
+        if channel := self._link_visitor_to_livechat(livechat_channel_id):
             channel.is_pending_chat_request = False
             store.add(channel, "_store_open_chat_window_fields")
-        super()._process_request_for_all(store, name, params)
+        super()._mail_data_init_livechat(store, livechat_channel_id=livechat_channel_id)
 
     @classmethod
     def _link_visitor_to_livechat(self, livechat_channel_id):

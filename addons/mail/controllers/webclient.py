@@ -1,10 +1,14 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from collections import defaultdict
 
 from odoo.http import request
 from odoo.addons.mail.controllers.thread import ThreadController
 from odoo.addons.mail.tools.discuss import mail_route, Store
+from odoo.addons.mail.tools.mail_data_registry import (
+    mail_data_handler,
+    mail_data_registry,
+    MailDataTarget,
+)
 
 
 class WebclientController(ThreadController):
@@ -24,7 +28,6 @@ class WebclientController(ThreadController):
         """
         return self._process_request(fetch_params, context=context)
 
-    @classmethod
     def _process_request(self, fetch_params, context):
         store = Store()
         if context:
@@ -32,23 +35,11 @@ class WebclientController(ThreadController):
         self._process_request_loop(store, fetch_params)
         return store
 
-    @classmethod
     def _process_request_loop(self, store: Store, fetch_params):
         # aggregate of messages to return, to batch them in a single query when all the fetch params
         # have been processed
         request.update_context(messages=request.env["mail.message"], add_inbox_fields=False)
-        for fetch_param in fetch_params:
-            name, params, data_id = (
-                (fetch_param, None, None)
-                if isinstance(fetch_param, str)
-                else (fetch_param + [None, None])[:3]
-            )
-            store.data_id = data_id
-            self._process_request_for_all(store, name, params)
-            if not request.env.user._is_public():
-                self._process_request_for_logged_in_user(store, name, params)
-            if request.env.user._is_internal():
-                self._process_request_for_internal_user(store, name, params)
+        mail_data_registry.execute_for_user(self, store, fetch_params)
         if messages := request.env.context["messages"]:
             if request.env.context["add_inbox_fields"]:
                 # sudo: bus.bus: reading non-sensitive last id
@@ -69,120 +60,127 @@ class WebclientController(ThreadController):
                 store.add(messages, "_store_message_fields")
         store.data_id = None
 
-    @classmethod
-    def _process_request_for_all(self, store: Store, name, params):
-        if name == "init_messaging":
-            if request.env.user._is_internal():
-                # sudo: bus.bus: reading non-sensitive last id
-                bus_last_id = request.env["bus.bus"].sudo()._bus_last_id()
-                store.add_global_values(
-                    lambda res: self._store_init_messaging_global_fields(res, bus_last_id),
-                )
-        if name == "mail.thread":
-            thread = self._get_thread_with_access(
-                params["thread_model"],
-                params["thread_id"],
-                mode="read",
-                **params.get("access_params", {}),
-            )
-            if not thread:
-                thread = request.env[params["thread_model"]].browse(params["thread_id"])
-                store.add(thread, {"hasReadAccess": False, "hasWriteAccess": False}, as_thread=True)
-            else:
-                store.add(
-                    thread,
-                    "_store_thread_fields",
-                    fields_params={"request_list": params["request_list"]},
-                    as_thread=True,
-                )
-        if name == "res.partner":
-            partner = request.env["res.partner"].search_fetch([("id", "=", params["id"])])
-            store.add(partner, "_store_partner_fields")
-        if name == "res.users":
-            user = request.env["res.users"].search_fetch([("id", "=", params["id"])])
-            store.add(user, "_store_user_fields")
-        if name == "/mail/poll_option/votes":
-            option_id = params.get("poll_option_id")
-            # sudo - mail.poll.option: validated by "_get_thread_with_access" afterwards.
-            if opt_sudo := request.env["mail.poll.option"].sudo().search([("id", "=", option_id)]):
-                message = opt_sudo.poll_id.start_message_id
-                if self._get_thread_with_access(message.model, message.res_id, mode="read"):
-                    store.add(opt_sudo.vote_ids, "_store_vote_fields")
-
-    @classmethod
-    def _process_request_for_logged_in_user(self, store: Store, name, params):
-        if name == "failures":
-            domain = [
-                ("author_id", "=", request.env.user.partner_id.id),
-                ("notification_status", "in", ("bounce", "exception")),
-                ("mail_message_id.message_type", "!=", "user_notification"),
-                ("mail_message_id.model", "!=", False),
-                ("mail_message_id.res_id", "!=", 0),
-            ]
-            # sudo as to not check ACL, which is far too costly
-            # sudo: mail.notification - return only failures of current user as author
-            notifications = request.env["mail.notification"].sudo().search(domain, limit=100)
-            found = defaultdict(list)
-            for message in notifications.mail_message_id:
-                found[message.model].append(message.res_id)
-            existing = {
-                model: set(request.env[model].browse(ids).exists().ids)
-                for model, ids in found.items()
-            }
-            valid = notifications.filtered(
-                lambda n: n.mail_message_id.res_id in existing[n.mail_message_id.model]
-            )
-            lost = notifications - valid
-            # might break readonly status of mail/data, but in really rare cases
-            # and solves it by removing useless notifications
-            if lost:
-                lost.sudo().unlink()  # no unlink right except admin, ok to remove as lost anyway
-            store.add(valid.mail_message_id, "_store_notification_fields")
-        if name == "/mail/thread/messages":
-            if thread := self._get_thread_with_access(
-                params["thread_model"],
-                params["thread_id"],
-                mode="read",
-            ):
-                messages = self._resolve_messages(
-                    store,
-                    thread=thread,
-                    fetch_params=params.get("fetch_params"),
-                )
-                if not request.env.user._is_public():
-                    messages.set_message_done()
-
-    @classmethod
-    def _process_request_for_internal_user(self, store: Store, name, params):
-        if name == "systray_get_activities":
-            # sudo: bus.bus: reading non-sensitive last id
-            bus_last_id = request.env["bus.bus"].sudo()._bus_last_id()
-            groups = request.env["res.users"]._get_activity_groups()
-            store.add_global_values(
-                activityCounter=sum(group.get("total_count", 0) for group in groups),
-                activity_counter_bus_id=bus_last_id,
-                activityGroups=groups,
-            )
-        if name == "mail.canned.response":
-            domain = [
-                "|",
-                ("create_uid", "=", request.env.user.id),
-                ("group_ids", "in", request.env.user.all_group_ids.ids),
-            ]
+    @mail_data_handler("mail.thread", target=MailDataTarget.ALL)
+    def _mail_data_mail_thread(
+        self, store, thread_model, thread_id, request_list, access_params=None, **kwargs
+    ):
+        thread = self._get_thread_with_access(
+            thread_model, thread_id, mode="read", **(access_params or {})
+        )
+        if not thread:
+            thread = request.env[thread_model].browse(thread_id)
+            store.add(thread, {"hasReadAccess": False, "hasWriteAccess": False}, as_thread=True)
+        else:
             store.add(
-                request.env["mail.canned.response"].search_fetch(domain),
-                "_store_canned_response_fields",
+                thread,
+                "_store_thread_fields",
+                fields_params={"request_list": request_list},
+                as_thread=True,
             )
-        if name == "avatar_card":
-            record_id, model = params.get("id"), params.get("model")
-            if not record_id or model not in self._get_supported_avatar_card_models():
-                return
-            context = {
-                "active_test": False,
-                "allowed_company_ids": request.env.user._get_company_ids(),
-            }
-            record = request.env[model].with_context(**context).search([("id", "=", record_id)])
-            store.add(record, "_store_avatar_card_fields")
+
+    @mail_data_handler("init_messaging")
+    def _mail_data_init_messaging_internal(self, store):
+        # sudo: bus.bus: reading non-sensitive last id
+        bus_last_id = request.env["bus.bus"].sudo()._bus_last_id()
+        store.add_global_values(
+            lambda res: self._store_init_messaging_global_fields(res, bus_last_id),
+        )
+
+    @mail_data_handler("res.partner", target=MailDataTarget.ALL)
+    def _mail_data_res_partner(self, store: Store, id):
+        partner = request.env["res.partner"].search_fetch([("id", "=", id)])
+        store.add(partner, "_store_partner_fields")
+
+    @mail_data_handler("res.users", target=MailDataTarget.ALL)
+    def _mail_data_res_users(self, store: Store, id):
+        user = request.env["res.users"].search_fetch([("id", "=", id)])
+        store.add(user, "_store_user_fields")
+
+    @mail_data_handler("/mail/poll_option/votes", target=MailDataTarget.ALL)
+    def _mail_data_poll_option_votes(self, store: Store, pull_option_id):
+        # sudo - mail.poll.option: validated by "_get_thread_with_access" afterwards.
+        if opt_sudo := request.env["mail.poll.option"].sudo().search([("id", "=", pull_option_id)]):
+            message = opt_sudo.poll_id.start_message_id
+            if self._get_thread_with_access(message.model, message.res_id, mode="read"):
+                store.add(opt_sudo.vote_ids, "_store_vote_fields")
+
+    @mail_data_handler("failures", target=MailDataTarget.LOGGED_IN)
+    def _mail_data_failures(self, store: Store):
+        domain = [
+            ("author_id", "=", request.env.user.partner_id.id),
+            ("notification_status", "in", ("bounce", "exception")),
+            ("mail_message_id.message_type", "!=", "user_notification"),
+            ("mail_message_id.model", "!=", False),
+            ("mail_message_id.res_id", "!=", 0),
+        ]
+        # sudo as to not check ACL, which is far too costly
+        # sudo: mail.notification - return only failures of current user as author
+        notifications = request.env["mail.notification"].sudo().search(domain, limit=100)
+        found = defaultdict(list)
+        for message in notifications.mail_message_id:
+            found[message.model].append(message.res_id)
+        existing = {
+            model: set(request.env[model].browse(ids).exists().ids)
+            for model, ids in found.items()
+        }
+        valid = notifications.filtered(
+            lambda n: n.mail_message_id.res_id in existing[n.mail_message_id.model]
+        )
+        lost = notifications - valid
+        # might break readonly status of mail/data, but in really rare cases
+        # and solves it by removing useless notifications
+        if lost:
+            lost.sudo().unlink()  # no unlink right except admin, ok to remove as lost anyway
+        store.add(valid.mail_message_id, "_store_notification_fields")
+
+    @mail_data_handler("/mail/thread/messages", target=MailDataTarget.LOGGED_IN)
+    def _mail_data_thread_messages(self, store: Store, thread_model, thread_id, fetch_params=None):
+        if thread := self._get_thread_with_access(
+            thread_model,
+            thread_id,
+            mode="read",
+        ):
+            messages = self._resolve_messages(
+                store,
+                thread=thread,
+                fetch_params=fetch_params,
+            )
+            if not request.env.user._is_public():
+                messages.set_message_done()
+
+    @mail_data_handler("systray_get_activities")
+    def _mail_data_systray_get_activities(self, store: Store):
+        # sudo: bus.bus: reading non-sensitive last id
+        bus_last_id = request.env["bus.bus"].sudo()._bus_last_id()
+        groups = request.env["res.users"]._get_activity_groups()
+        store.add_global_values(
+            activityCounter=sum(group.get("total_count", 0) for group in groups),
+            activity_counter_bus_id=bus_last_id,
+            activityGroups=groups,
+        )
+
+    @mail_data_handler("mail.canned.response")
+    def _mail_data_canned_response(self, store: Store):
+        domain = [
+            "|",
+            ("create_uid", "=", request.env.user.id),
+            ("group_ids", "in", request.env.user.all_group_ids.ids),
+        ]
+        store.add(
+            request.env["mail.canned.response"].search_fetch(domain),
+            "_store_canned_response_fields",
+        )
+
+    @mail_data_handler("avatar_card")
+    def _mail_data_avatar_card(self, store: Store, id=None, model=None):
+        if not id or model not in self._get_supported_avatar_card_models():
+            return
+        context = {
+            "active_test": False,
+            "allowed_company_ids": request.env.user._get_company_ids(),
+        }
+        record = request.env[model].with_context(**context).search([("id", "=", id)])
+        store.add(record, "_store_avatar_card_fields")
 
     @classmethod
     def _store_init_messaging_global_fields(cls, res: Store.FieldList, bus_last_id):
