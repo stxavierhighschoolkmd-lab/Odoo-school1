@@ -2391,6 +2391,11 @@ export class PosStore extends WithLazyGetterTrap {
             order.setPreset(preset);
             if (preset.identification === "name") {
                 await this.handleSelectNamePreset(order);
+                if (!this.models["pos.order"].exists(order.id)) {
+                    // order may not exist in case when an order is selected from
+                    // the orders list in the EditOrderNamePopup.
+                    return;
+                }
             }
 
             if (preset.use_timing && !order.preset_time) {

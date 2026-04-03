@@ -606,7 +606,7 @@ patch(PosStore.prototype, {
                     await this.editFloatingOrderName(order);
                     //re-set the order in case an order was selected from the current orders list in the EditOrderNamePopup
                     order = this.getOrder();
-                    if (!order.floating_order_name) {
+                    if (!order?.floating_order_name) {
                         return;
                     }
                 }

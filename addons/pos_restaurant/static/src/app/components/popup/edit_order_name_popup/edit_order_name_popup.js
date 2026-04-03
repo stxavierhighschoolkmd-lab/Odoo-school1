@@ -11,9 +11,10 @@ export class EditOrderNamePopup extends TextInputPopup {
         this.dialog = useService("dialog");
         super.setup();
     }
-    transferOrder(order) {
-        this.pos.transferOrder(this.currentOrder.uuid, null, order);
+    async transferOrder(order) {
+        await this.pos.transferOrder(this.currentOrder.uuid, null, order);
         this.pos.setOrder(order);
+        this.pos.showScreen("ProductScreen");
         this.dialog.closeAll();
     }
     get currentOrder() {
@@ -22,7 +23,7 @@ export class EditOrderNamePopup extends TextInputPopup {
     get items() {
         return this.pos
             .getOpenOrders()
-            .filter((o) => !o.table_id && o.uuid != this.currentOrder.uuid)
+            .filter((o) => !o.table_id && o.uuid != this.currentOrder?.uuid)
             .toSorted((a, b) => a.getName().localeCompare(b.getName()));
     }
 }
