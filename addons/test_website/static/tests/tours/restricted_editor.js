@@ -1,8 +1,8 @@
+import { registry } from "@web/core/registry";
 import {
     clickOnSave,
     clickOnEditAndWaitEditMode,
     clickOnExtraMenuItem,
-    registerWebsitePreviewTour,
     insertSnippet,
 } from "@website/js/tours/tour_utils";
 import { stepUtils } from "@web_tour/tour_utils";
@@ -66,12 +66,8 @@ const goToMenuItem = [
     stepUtils.waitIframeIsReady(),
 ];
 
-registerWebsitePreviewTour(
-    "test_restricted_editor_only",
-    {
-        undeterministicTour_doNotCopy: true,
-    },
-    () => [
+registry.category("web_tour.tours").add("test_restricted_editor_only", {
+    steps: () => [
         // Home
         checkNoTranslate,
         ...clickOnEditAndWaitEditMode(),
@@ -113,17 +109,11 @@ registerWebsitePreviewTour(
         ...switchTo("fr"),
         ...translate,
         ...closeErrorDialog,
-    ]
-);
+    ],
+});
 
-registerWebsitePreviewTour(
-    "test_restricted_editor_test_admin",
-    {
-        // Remove this key to make the tour fail with error:
-        // "Element has not been found." at step "Open Edit menu"
-        undeterministicTour_doNotCopy: true,
-    },
-    () => [
+registry.category("web_tour.tours").add("test_restricted_editor_test_admin", {
+    steps: () => [
         // Home
         checkNoTranslate,
         ...clickOnEditAndWaitEditMode(),
@@ -178,14 +168,16 @@ registerWebsitePreviewTour(
             run: "editor potentiel.",
         },
         ...clickOnSave(),
-    ]
-);
+    ],
+});
 
-registerWebsitePreviewTour("test_restricted_editor_tester", {}, () => [
-    ...clickOnEditAndWaitEditMode(),
-    {
-        content: "Footer should not be be editable for restricted user",
-        trigger: ":iframe :has(.o_savable) footer:not(.o_savable):not(:has(.o_savable))",
-    },
-    ...clickOnSave(),
-]);
+registry.category("web_tour.tours").add("test_restricted_editor_tester", {
+    steps: () => [
+        ...clickOnEditAndWaitEditMode(),
+        {
+            content: "Footer should not be be editable for restricted user",
+            trigger: ":iframe :has(.o_savable) footer:not(.o_savable):not(:has(.o_savable))",
+        },
+        ...clickOnSave(),
+    ],
+});
