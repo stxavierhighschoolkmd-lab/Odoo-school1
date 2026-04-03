@@ -190,7 +190,7 @@ class PosOrder(models.Model):
         self.payment_ids.unlink()
 
     def _compute_amount_paid(self):
-        return sum(self.payment_ids.mapped('amount'))
+        return sum(x.amount * x.currency_rate for x in self.payment_ids)
 
     def _process_payment_lines(self, pos_order, order, pos_session, draft):
         """Create account.bank.statement.lines from the dictionary given to the parent function.
