@@ -861,11 +861,20 @@ class AccountEdiCommon(models.AbstractModel):
         inv_line_vals['taxes'] = []
         for tax_node in tax_nodes:
             amount = float(tax_node.text)
+
+            fiscal_position_domain = ()
+            if invoice_line.move_id.fiscal_position_id.country_id:
+                fiscal_position_domain = ('country_id', '=', invoice_line.move_id.fiscal_position_id.country_id.id)
+            elif invoice_line.move_id.fiscal_position_id.country_group_id:
+                fiscal_position_domain = ('country_id', 'in', invoice_line.move_id.fiscal_position_id.country_group_id.country_ids.ids)
+
             domain = [
                 *self.env['account.journal']._check_company_domain(invoice_line.company_id),
                 ('amount_type', '=', 'percent'),
                 ('type_tax_use', '=', invoice_line.move_id.journal_id.type),
                 ('amount', '=', amount),
+                ('country_id', '=', invoice_line.move_id.tax_country_id.id),
+                *([fiscal_position_domain] if fiscal_position_domain else []),
             ]
 
             tax = False
