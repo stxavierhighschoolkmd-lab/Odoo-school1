@@ -276,3 +276,144 @@ class SaleOrder(models.Model):
         self._update_programs_and_rewards()
         self._auto_apply_rewards()
         super()._recompute_cart()
+
+    def _get_promotion_progress_bars(self, include_applied=False):
+        """Return progress data for auto-applied promotion programs whose only unmatched
+        condition is the minimum purchase amount.
+
+        A progress bar is shown when all other rule conditions (code, product, quantity) are
+        satisfied but the order total hasn't yet reached the rule's minimum amount threshold.
+
+        :param bool include_applied: If True, also include already-applied programs shown as
+            completed (progress=100, just_matched=True). Useful on the cart page so the bar
+            persists after the promotion is claimed.
+        :return: A list of dicts with the following shape::
+
+            [{
+                'program_id': int,
+                'reward_name': str,      # e.g. "Free delivery"
+                'minimum_amount': float,  # required threshold in order currency
+                'progress': float,        # 0..100
+                'just_matched': bool,     # True when the promotion is currently applied
+            }]
+        :rtype: list[dict]
+        """
+        self.ensure_one()
+        if not self.website_id:
+            return []
+
+        program_domain = Domain.AND([
+            self._get_program_domain(),
+            [
+                ("program_type", "=", "promotion"),
+                ("trigger", "=", "auto"),
+                ("rule_ids.mode", "=", "auto"),
+            ],
+        ])
+        programs = (
+            self
+            .env["loyalty.program"]
+            .search(program_domain)
+            .filtered(lambda p: not p.limit_usage or p.total_order_count < p.max_usage)
+        )
+        if not programs:
+            return []
+
+        applied_programs = self._get_applied_programs()
+
+        # Early exit: if all candidate programs are already applied and we don't need them,
+        # skip the expensive order-line computation below.
+        unapplied_programs = programs - applied_programs
+        if not unapplied_programs and not include_applied:
+            return []
+
+        progress_bars = []
+
+        # Include already-applied programs as completed bars when requested.
+        if include_applied:
+            for program in programs & applied_programs:
+                rule = program.rule_ids[:1]
+                rule_amount = rule._compute_amount(self.currency_id) if rule else 0
+                if rule_amount:
+                    progress_bars.append({
+                        "program_id": program.id,
+                        "reward_name": program.reward_ids[:1].description or program.name,
+                        "minimum_amount": rule_amount,
+                        "progress": 100,
+                        "just_matched": True,
+                    })
+
+        if not unapplied_programs:
+            return progress_bars
+
+        # --- Compute order-line data only for unapplied programs ---
+        # Mirrors the logic in _program_check_compute_points.
+        order_lines = self._get_not_rewarded_order_lines().filtered(
+            lambda line: not line.combo_item_id
+        )
+        products = order_lines.product_id
+        products_qties = dict.fromkeys(products, 0)
+        for line in order_lines:
+            products_qties[line.product_id] += line.product_uom_id._compute_quantity(
+                line.product_uom_qty, line.product_id.uom_id
+            )
+        products_per_rule = unapplied_programs._get_valid_products(products)
+
+        so_products_per_rule = unapplied_programs._get_valid_products(self.order_line.product_id)
+        lines_per_rule = defaultdict(lambda: self.env["sale.order.line"])
+        for line in self.order_line - self._get_no_effect_on_threshold_lines():
+            is_discount = line.reward_id.reward_type == "discount"
+            reward_program = line.reward_id.program_id
+            if (is_discount and reward_program.trigger == "auto") or line.combo_item_id:
+                continue
+            for program in unapplied_programs:
+                if is_discount and reward_program == program:
+                    continue
+                for rule in program.rule_ids:
+                    if line.product_id in so_products_per_rule.get(rule, []):
+                        lines_per_rule[rule] |= line._get_lines_with_price()
+
+        for program in unapplied_programs:
+            # Check each rule: show a bar only when code + product/qty conditions pass
+            # but the minimum_amount is the sole failing condition.
+            best_bar = None
+            for rule in program.rule_ids:
+                if rule.mode == "with_code" and rule not in self.code_enabled_rule_ids:
+                    continue
+
+                rule_products = products_per_rule.get(rule)
+                if not rule_products:
+                    continue
+                if sum(products_qties[p] for p in rule_products) < rule.minimum_qty:
+                    continue
+
+                rule_amount = rule._compute_amount(self.currency_id)
+                if not rule_amount:
+                    continue  # No minimum amount → condition already met, nothing to show
+
+                untaxed = sum(lines_per_rule[rule].mapped("price_subtotal"))
+                tax = sum(lines_per_rule[rule].mapped("price_tax"))
+                current_amount = (
+                    (untaxed + tax) if rule.minimum_amount_tax_mode == "incl" else untaxed
+                )
+
+                if current_amount >= rule_amount:
+                    # Amount condition already met on this rule → program will be auto-applied,
+                    # no progress bar needed.
+                    best_bar = None
+                    break
+
+                progress = min(current_amount / rule_amount * 100, 99.9)
+                if best_bar is None or progress > best_bar["progress"]:
+                    best_bar = {
+                        "program_id": program.id,
+                        "reward_name": program.reward_ids[:1].description or program.name,
+                        "minimum_amount": rule_amount,
+                        "progress": progress,
+                        "just_matched": False,
+                    }
+
+            if best_bar is not None:
+                progress_bars.append(best_bar)
+
+        return progress_bars

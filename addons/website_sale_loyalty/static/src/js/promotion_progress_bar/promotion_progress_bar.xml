@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="website_sale_loyalty.PromotionProgressBar">
+        <div
+            t-foreach="props.bars"
+            t-as="bar"
+            t-key="bar.program_id"
+            class="pb-2 mt-2"
+        >
+            <div class="d-flex justify-content-between align-items-center small mb-1">
+                <span
+                    t-attf-class="fw-bold #{bar.just_matched ? 'text-success' : ''}"
+                    t-out="bar.reward_name"
+                />
+                <span t-out="this.getFormattedAmount(bar.minimum_amount)"/>
+            </div>
+            <div
+                class="progress"
+                style="height: 8px; border-radius: var(--btn-border-radius); overflow: hidden;"
+            >
+                <div
+                    t-attf-class="progress-bar #{bar.just_matched ? 'bg-success' : ''}"
+                    role="progressbar"
+                    t-attf-style="width: #{Math.min(bar.progress, 100)}%; border-radius: inherit; #{bar.just_matched ? '' : 'color: inherit; background-color: currentColor;'}"
+                    t-att-aria-valuenow="bar.progress"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                />
+            </div>
+        </div>
+    </t>
+
+</templates>

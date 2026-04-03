@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="website_sale_loyalty.ItemAddedNotification" t-inherit="website_sale.ItemAddedNotification" t-inherit-mode="extension">
+        <xpath expr="//a[@href='/shop/cart']" position="after">
+            <PromotionProgressBar
+                t-if="props.promotion_progress_bars and props.promotion_progress_bars.length"
+                bars="props.promotion_progress_bars"
+                currency_id="props.currency_id"
+            />
+        </xpath>
+    </t>
+
+</templates>
