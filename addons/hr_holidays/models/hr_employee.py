@@ -32,8 +32,14 @@ class HrEmployee(models.Model):
             ('validate', 'Approved'),
             ('cancel', 'Cancelled'),
         ], groups="hr.group_hr_user")
-    leave_date_from = fields.Date('From Date', compute='_compute_leave_status', groups="hr.group_hr_user")
+    leave_date_from = fields.Datetime('From Date', compute='_compute_leave_status', groups="hr.group_hr_user")
     leave_date_to = fields.Date('To Date', compute='_compute_leave_status')
+    request_date_from_period = fields.Selection(
+        [('am', 'Morning'), ('pm', 'Afternoon')],
+        string="Date Period Start",
+        default='am',
+        compute="_compute_leave_status"
+    )
     allocation_count = fields.Float('Total number of days allocated.', compute='_compute_allocation_count',
                                     groups="hr.group_hr_user")
     allocations_count = fields.Integer('Total number of allocations', compute="_compute_allocation_count",
@@ -46,7 +52,7 @@ class HrEmployee(models.Model):
         ('presence_holiday_absent', 'On leave'),
         ('presence_holiday_present', 'Present but on leave')])
     member_of_department = fields.Boolean('Member of Department', compute='_compute_member_of_department', search='_search_part_of_department')
-
+    next_working_day_on_leave = fields.Date(compute="_compute_next_working_day_on_leave")
     departure_do_cancel_time_off_requests = fields.Boolean(related='version_id.departure_do_cancel_time_off_requests',
         inherited=True, readonly=False, groups="hr.group_hr_user")
 
@@ -62,6 +68,30 @@ class HrEmployee(models.Model):
         for holiday in holidays:
             employee = self.filtered(lambda e: e.id == holiday.employee_id.id)
             employee.current_work_entry_type_id = holiday.work_entry_type_id.id
+
+    def _compute_next_working_day_on_leave(self):
+        first_leave_by_employee = dict(self.env['hr.leave'].sudo()._read_group(
+            [
+                ('employee_id', 'in', self.ids),
+                ('date_from', '>=', fields.Datetime.now()),
+                ('date_from', '<=', fields.Datetime.now() + timedelta(days=7)),
+                ('state', '=', 'validate'),
+            ],
+            ("employee_id",),
+            ["date_from:min"],
+        ))
+        tomorrow = fields.Datetime.now() + timedelta(days=1)
+        next_working_day_by_employee = self._get_first_working_interval_batch({
+            employee.id: tomorrow
+            for employee in first_leave_by_employee
+        }, compute_leaves=False)
+        for employee in self:
+            next_working_day = next_working_day_by_employee.get(employee.id)
+            next_leave_day = first_leave_by_employee.get(employee)
+            if next_working_day and next_working_day.date() == next_leave_day.date():
+                employee.next_working_day_on_leave = next_working_day
+            else:
+                employee.next_working_day_on_leave = None
 
     def _compute_presence_state(self):
         super()._compute_presence_state()
@@ -120,7 +150,7 @@ class HrEmployee(models.Model):
             employee.show_hr_icon_display = True
 
     @api.model
-    def _get_first_working_interval_batch(self, min_dts):
+    def _get_first_working_interval_batch(self, min_dts, compute_leaves=True):
         # find the first working interval after a given date
         if not min_dts:
             return min_dts
@@ -157,7 +187,7 @@ class HrEmployee(models.Model):
                     employees = self.browse(employee_ids).with_prefetch(remaining._ids)
                     resources_per_tz = employees._get_resources_per_tz(min_dt)
                     work_intervals = calendar._work_intervals_batch(
-                        min_dt, datetime.combine(max_end, time.max, UTC) + timedelta(1), resources_per_tz=resources_per_tz)
+                        min_dt, datetime.combine(max_end, time.max, UTC) + timedelta(1), resources_per_tz=resources_per_tz, compute_leaves=compute_leaves)
                     # intersect work intervals with periods
                     for resource_id, work_interval in work_intervals.items():
                         employee_id = self.env['resource.resource'].browse(resource_id).employee_id.id
@@ -182,7 +212,7 @@ class HrEmployee(models.Model):
             ).items():
                 resources_per_tz = employees._get_resources_per_tz(min_dt)
                 work_intervals = calendar._work_intervals_batch(
-                    min_dt, min_dt + timedelta(days=lookahead_day), resources_per_tz=resources_per_tz)
+                    min_dt, min_dt + timedelta(days=lookahead_day), resources_per_tz=resources_per_tz, compute_leaves=compute_leaves)
                 collect_employees({
                     self.env['resource.resource'].browse(resource_id).employee_id.id: interval
                     for resource_id, interval in work_intervals.items()
@@ -196,7 +226,7 @@ class HrEmployee(models.Model):
         # Used SUPERUSER_ID to forcefully get status of other user's leave, to bypass record rule
         holidays = self.env['hr.leave'].sudo().search([
             ('employee_id', 'in', self.ids),
-            ('date_from', '<=', fields.Datetime.now()),
+            ('date_from', '<=', fields.Datetime.now() + timedelta(days=1.0)),
             ('date_to', '>=', fields.Datetime.now()),
             ('state', '=', 'validate'),
         ], order='date_to desc')
@@ -206,10 +236,10 @@ class HrEmployee(models.Model):
             employee.id: holiday[0].date_to
             for employee, holiday in employee_holidays.items()
         })
-
         for employee, holidays in employee_holidays.items():
             latest_holiday = holidays[0]
-            employee.leave_date_from = min(holidays.mapped('date_from')).date()
+            employee.leave_date_from = min(holidays.mapped('date_from'))
+            employee.request_date_from_period = latest_holiday.request_date_from_period
             employee.leave_date_to = employee_back_on.get(employee.id, latest_holiday.date_to).date()
             employee.current_leave_state = latest_holiday.state
             employee.is_absent = any(h.work_entry_type_id.count_as == 'absence' for h in holidays)
@@ -217,6 +247,7 @@ class HrEmployee(models.Model):
         no_data = self - holidays.employee_id
         no_data.update({
             'leave_date_from': False,
+            'request_date_from_period': False,
             'leave_date_to': False,
             'current_leave_state': False,
             'is_absent': False,
@@ -728,6 +759,9 @@ class HrEmployee(models.Model):
     def _store_avatar_card_fields(self, res: Store.FieldList):
         super()._store_avatar_card_fields(res)
         res.attr("leave_date_to")
+        res.attr("leave_date_from")
+        res.attr("request_date_from_period")
+        res.attr("next_working_day_on_leave")
 
     def _store_im_status_fields(self, res: Store.FieldList):
         super()._store_im_status_fields(res)

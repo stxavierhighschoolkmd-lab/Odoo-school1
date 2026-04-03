@@ -86,7 +86,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
     #           - search discuss_channel_res_groups_rel (group_ids)
     #           - fetch res_groups (group_public_id)
     #           - select the current db snapshot
-    _query_count_init_messaging = 35
+    _query_count_init_messaging = 48
     # Queries for _query_count_discuss_channels (in order):
     #   3: _search_is_member (for current user, first occurence channels_as_member)
     #       - fetch res_users
@@ -158,7 +158,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
     #       - fetch user (author)
     #       - fetch discuss_call_history
     #       - select the current db snapshot
-    _query_count_discuss_channels = 62
+    _query_count_discuss_channels = 88
 
     def setUp(self):
         super().setUp()
@@ -423,12 +423,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
         partner_0 = user_0.partner_id
         return {
             "hr.employee": [
-                {
-                    "id": self.employees[0].id,
-                    "leave_date_to": False,
-                    "user_id": self.users[0].id,
-                    "work_location_type": False,
-                },
+                self._res_for_employee(self.employees[0]),
             ],
             "res.partner": self._filter_partners_fields(
                 {
@@ -535,8 +530,8 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 self._res_for_user(self.users[2], only_inviting=True),
             ),
             "hr.employee": [
-                self._res_for_employee(self.users[0].employee_ids[0]),
-                self._res_for_employee(self.users[14].employee_ids[0]),
+                self._res_for_employee(self.users[0].employee_ids[0], partial=False),
+                self._res_for_employee(self.users[14].employee_ids[0], partial=False),
                 self._res_for_employee(self.users[2].employee_ids[0]),
             ],
             "Store": {
@@ -681,12 +676,12 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
             ),
             "Store": {"has_unpinned_channels": False},
             "hr.employee": [
-                self._res_for_employee(self.users[0].employee_ids[0]),
-                self._res_for_employee(self.users[2].employee_ids[0]),
-                self._res_for_employee(self.users[14].employee_ids[0]),
-                self._res_for_employee(self.users[15].employee_ids[0]),
-                self._res_for_employee(self.users[3].employee_ids[0]),
-                self._res_for_employee(self.users[12].employee_ids[0]),
+                self._res_for_employee(self.users[0].employee_ids[0], partial=False),
+                self._res_for_employee(self.users[2].employee_ids[0], partial=False),
+                self._res_for_employee(self.users[14].employee_ids[0], partial=False),
+                self._res_for_employee(self.users[15].employee_ids[0], partial=False),
+                self._res_for_employee(self.users[3].employee_ids[0], partial=False),
+                self._res_for_employee(self.users[12].employee_ids[0], partial=False),
                 self._res_for_employee(self.users[1].employee_ids[0]),
             ],
         }
@@ -2067,10 +2062,20 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
             }
         return {}
 
-    def _res_for_employee(self, employee):
+    def _res_for_employee(self, employee, partial=True):
+        if partial:
+            return {
+                "id": employee.id,
+                "leave_date_to": False,
+                "user_id": employee.user_id.id,
+                "work_location_type": False,
+            }
         return {
             "id": employee.id,
+            "leave_date_from": False,
             "leave_date_to": False,
             "user_id": employee.user_id.id,
+            "request_date_from_period": False,
+            "next_working_day_on_leave": False,
             "work_location_type": False,
         }
