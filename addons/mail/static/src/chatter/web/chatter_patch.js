@@ -112,7 +112,7 @@ const chatterPatch = {
                         return;
                     }
                     if (isDragSourceExternalFile(ev.dataTransfer)) {
-                        const files = [...ev.dataTransfer.files];
+                        const files = [...ev.dataTransfer.files].reverse();
                         if (!this.state.thread.id) {
                             const saved = await this.props.saveRecord?.();
                             if (!saved) {
@@ -398,8 +398,11 @@ const chatterPatch = {
         this.load(thread, ["suggestedRecipients"]);
     },
 
-    async onUploaded(data) {
-        await this.attachmentUploader.uploadData(data);
+    onUploaded(data) {
+        this.attachmentUploader.uploadData(data);
+    },
+
+    onUploadComplete() {
         if (this.props.hasParentReloadOnAttachmentsChanged) {
             this.reloadParentView();
         }
