@@ -3,7 +3,7 @@
 
 <t t-name="html_builder.Snippet">
     <div class="o_snippet"
-         t-att-class="{'o_disabled': this.snippet.isDisabled, 'o_to_install': this.snippet.isInstallable, 'o_draggable': !this.snippet.isInstallable and !this.snippet.isDisabled}"
+         t-att-class="{'o_block_disabled': this.snippet.isDisabled, 'o_to_install': this.snippet.isInstallable, 'o_draggable': !this.snippet.isInstallable and !this.snippet.isDisabled}"
          t-att-data-snippet-group="this.snippet.groupName"
          t-att-name="this.snippet.title"
          t-att-data-id="this.snippet.id"
@@ -17,7 +17,7 @@
             <span class="o_snippet_thumbnail_title" t-out="this.snippet.title"/>
             <button
                 t-if="this.snippet.isInstallable"
-                class="o_install_btn btn btn-success btn-lg position-absolute start-50 bottom-50 translate-middle-x visually-hidden-focusable z-1"
+                class="o_install_btn btn btn-success position-absolute top-0 end-0 bottom-0 start-0 d-flex flex-wrap flex-column align-items-center justify-content-center visually-hidden-focusable z-1"
                 t-on-click="this.onClickInstall"
                 >
                 Install

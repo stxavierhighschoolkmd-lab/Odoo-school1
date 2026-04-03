@@ -77,7 +77,7 @@ registerWebsitePreviewTour(
         ...clickOnEditAndWaitEditMode(),
         {
             content: "Check icons cannot be dragged",
-            trigger: "#snippet_groups .o_snippet[name='Intro'].o_disabled",
+            trigger: "#snippet_groups .o_snippet[name='Intro'].o_block_disabled",
             run: function () {
                 if (document.querySelector("button.o_snippet_thumbnail_area")) {
                     console.error(
@@ -100,7 +100,7 @@ registerWebsitePreviewTour(
         ...clickOnEditAndWaitEditMode(),
         {
             content: "Check icons cannot be dragged",
-            trigger: "#snippet_groups .o_snippet[name='Intro'].o_disabled",
+            trigger: "#snippet_groups .o_snippet[name='Intro'].o_block_disabled",
             run: function () {
                 if (document.querySelector("button.o_snippet_thumbnail_area")) {
                     console.error(
@@ -129,7 +129,7 @@ registerWebsitePreviewTour(
         ...clickOnEditAndWaitEditMode(),
         {
             content: "Check icons cannot be dragged",
-            trigger: "#snippet_groups .o_snippet[name='Intro'].o_disabled",
+            trigger: "#snippet_groups .o_snippet[name='Intro'].o_block_disabled",
         },
         ...clickOnSave(),
         ...switchTo("fr"),
