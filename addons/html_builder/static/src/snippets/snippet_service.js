@@ -230,8 +230,8 @@ export class SnippetModel extends Reactive {
                 : snippet.name;
             if (this.isCustomInnerContent(customSnippetName)) {
                 customInnerContent.unshift(snippet);
-                customSnippets.splice(i, 1);
-            } else if (!this.isCustomStructure(customSnippetName)) {
+            }
+            if (!this.isCustomStructure(customSnippetName)) {
                 // If no structure snippet could be found, it means that the
                 // module is not installed (i.e. the original snippet has no
                 // `data-snippet` attribute).
