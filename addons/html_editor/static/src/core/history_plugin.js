@@ -1158,7 +1158,7 @@ export class HistoryPlugin extends Plugin {
         let revertedStep;
         for (revertedStep of this.getNextUndoSteps()) {
             this.revertedSteps.add(revertedStep.id);
-            this.revertMutations(revertedStep.mutations, { forNewStep: true });
+            this.revertMutations(revertedStep.mutations, { forNewStep: true, stepType: "undo" });
             this.setSerializedFocus(revertedStep.activeElementId);
             this.stageFocus();
             this.setSerializedSelection(revertedStep.selection);
@@ -1187,7 +1187,7 @@ export class HistoryPlugin extends Plugin {
         let revertedStep;
         for (revertedStep of this.getNextRedoSteps()) {
             this.revertedSteps.add(revertedStep.id);
-            this.revertMutations(revertedStep.mutations, { forNewStep: true });
+            this.revertMutations(revertedStep.mutations, { forNewStep: true, stepType: "redo" });
             this.setSerializedFocus(revertedStep.activeElementId);
             this.stageFocus();
             this.setSerializedSelection(revertedStep.selection);
@@ -1388,7 +1388,7 @@ export class HistoryPlugin extends Plugin {
      * @param { boolean } options.reverse whether the mutations are the reverse
      *        of other mutations
      */
-    applyMutations(mutations, { forNewStep = false, reverse } = {}) {
+    applyMutations(mutations, { forNewStep = false, reverse, stepType } = {}) {
         if (forNewStep) {
             this.fixClassListMutationsForNewStep(mutations);
         }
@@ -1424,7 +1424,7 @@ export class HistoryPlugin extends Plugin {
                                 value: mutation.value,
                                 reverse,
                             },
-                            { forNewStep }
+                            { forNewStep, stepType }
                         );
                         this.setAttribute(node, mutation.attributeName, value);
                     }
@@ -1531,7 +1531,7 @@ export class HistoryPlugin extends Plugin {
         console.warn("Mutation could not be applied, reference nodes are invalid.", mutation);
     }
 
-    revertMutations(mutations, { forNewStep = false } = {}) {
+    revertMutations(mutations, { forNewStep = false, stepType } = {}) {
         const revertedMutations = mutations.map((mutation) => {
             switch (mutation.type) {
                 case "characterData":
@@ -1548,7 +1548,11 @@ export class HistoryPlugin extends Plugin {
                     throw new Error(`Unknown mutation type: ${mutation.type}`);
             }
         });
-        this.applyMutations(revertedMutations.toReversed(), { forNewStep, reverse: true });
+        this.applyMutations(revertedMutations.toReversed(), {
+            forNewStep,
+            reverse: true,
+            stepType,
+        });
     }
 
     /**
@@ -1746,7 +1750,7 @@ export class HistoryPlugin extends Plugin {
         // steps as "discarded" in the process (typically current peer steps).
         for (let i = this.steps.length - 1; i > stepIndex; i--) {
             const currentStep = this.steps[i];
-            this.revertMutations(currentStep.mutations, { forNewStep: true });
+            this.revertMutations(currentStep.mutations, { forNewStep: true, stepType: "restore" });
             // Process (filter, handle and stage) mutations so that the
             // attribute comparison for the state change is done with the
             // intermediate attribute value and not with the final value in the
@@ -1761,7 +1765,10 @@ export class HistoryPlugin extends Plugin {
         for (let i = stepIndex + 1; i < this.steps.length; i++) {
             const currentStep = this.steps[i];
             if (!this.isReversibleStep(i)) {
-                this.applyMutations(currentStep.mutations, { forNewStep: true });
+                this.applyMutations(currentStep.mutations, {
+                    forNewStep: true,
+                    stepType: "restore",
+                });
                 this.processNewRecords(this.observer.takeRecords());
             }
         }
