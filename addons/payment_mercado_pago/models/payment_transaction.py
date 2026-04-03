@@ -18,6 +18,54 @@ _logger = get_payment_logger(__name__)
 class PaymentTransaction(models.Model):
     _inherit = "payment.transaction"
 
+    def _get_pix_rendering_values(self, processing_values):
+        first_name, last_name = payment_utils.split_partner_name(self.partner_name)
+        payload = {
+            'transaction_amount': float(self.amount),
+            'payment_method_id': 'pix',
+            'payer': {
+                'email': self.partner_email,
+                'first_name': first_name,
+                'last_name': last_name,
+                'identification': {
+                    'type': self.partner_id.l10n_latam_identification_type_id.name,
+                    'number': self.partner_id.vat,
+                },
+                'address': {
+                    'zip_code': self.partner_zip,
+                    'street_name': self.partner_address,
+                }
+            }
+        }
+        # print("---------------------PAYLOAD---------------------------")
+        # print(payload)
+        try:
+            response_content = self._send_api_request(
+                'POST',
+                '/v1/payments',
+                json=payload,
+                idempotency_key=payment_utils.generate_idempotency_key(self, scope='token_payment'),
+                )
+        except ValidationError as error:
+            self._set_error(str(error))
+            return {}
+        # print("--------------------RESPONSE----------------------------")
+        # print(response_content)
+        point_of_interaction = response_content[
+            'point_of_interaction' if self.provider_id.state == 'enabled' else 'sandbox_init_point'
+        ]
+        api_url = point_of_interaction['transaction_data']['ticket_url']
+
+        # Extract the payment link URL and params and embed them in the redirect form.
+        parsed_url = url_parse(api_url)
+        url_params = url_decode(parsed_url.query)
+        rendering_values = {
+            'api_url': api_url,
+            'url_params': url_params,  # Encore the params as inputs to preserve them.
+        }
+        return rendering_values
+
+
     def _get_specific_rendering_values(self, processing_values):
         """Override of `payment` to return Mercado Pago-specific rendering values.
 
@@ -29,6 +77,9 @@ class PaymentTransaction(models.Model):
         """
         if self.provider_code != "mercado_pago":
             return super()._get_specific_rendering_values(processing_values)
+
+        if self.payment_method_code == 'pix':
+            return self._get_pix_rendering_values(processing_values)
 
         # Initiate the payment and retrieve the payment link data.
         payload = self._mercado_pago_prepare_preference_request_payload()
