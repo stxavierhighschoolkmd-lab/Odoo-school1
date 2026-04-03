@@ -13,6 +13,7 @@ export class VideoPlugin extends Plugin {
                 title: _t("Video Link"),
                 description: _t("Insert a Video"),
                 icon: "fa-play",
+                isAvailable: () => !this.config.disableVideo,
                 run: () => {
                     this.openVideoSelectorDialog((media) => {
                         this.insertVideo(media);
