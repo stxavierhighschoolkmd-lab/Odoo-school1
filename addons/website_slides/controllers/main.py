@@ -522,6 +522,8 @@ class WebsiteSlides(WebsiteProfile):
             status = 'not_authorized'
         return {'status': status, 'slide': slide, 'channel_id': slide.sudo().channel_id.id}
 
+    # Removing `readonly=True` prevents the "cannot execute INSERT" errors when
+    # creating website.track records.
     @http.route([
         '/slides/<int:channel_id>',
         '/slides/<int:channel_id>/category/<int:category_id>',
@@ -532,7 +534,7 @@ class WebsiteSlides(WebsiteProfile):
         '/slides/<model("slide.channel"):channel>/tag/<model("slide.tag"):tag>/page/<int:page>',
         '/slides/<model("slide.channel"):channel>/category/<model("slide.slide"):category>',
         '/slides/<model("slide.channel"):channel>/category/<model("slide.slide"):category>/page/<int:page>',
-    ], type='http', auth="public", website=True, sitemap=sitemap_slide, handle_params_access_error=handle_wslide_error, readonly=True)
+    ], type='http', auth="public", website=True, sitemap=sitemap_slide, handle_params_access_error=handle_wslide_error)
     def channel(self, channel=False, channel_id=False, category=None, category_id=False, tag=None, page=1, slide_category=None, uncategorized=False, sorting=None, search=None, **kw):
         """ Will return the rendered page of a course, with optional parameters allowing customization:
 
@@ -585,6 +587,9 @@ class WebsiteSlides(WebsiteProfile):
         if not channel.has_access('read'):
             return self._redirect_to_slides_main('no_rights')
 
+        visitor = request.env['website.visitor']._get_visitor_from_request()
+        if visitor:
+            visitor._add_viewed_slide(channel.id)
         if category_id and not category:
             category = channel.slide_category_ids.filtered(lambda category: category.id == category_id)
 

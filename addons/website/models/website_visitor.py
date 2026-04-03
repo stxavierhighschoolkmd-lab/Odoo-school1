@@ -23,6 +23,8 @@ class WebsiteTrack(models.Model):
     page_id = fields.Many2one('website.page', index=True, ondelete='cascade', readonly=True)
     url = fields.Text('Url', index=True)
     visit_datetime = fields.Datetime('Visit Date', default=fields.Datetime.now, required=True, readonly=True)
+    res_model = fields.Char(string="Model Name")
+    res_id = fields.Many2oneReference(model_field='res_model', string="Name")
 
 
 class WebsiteVisitor(models.Model):
@@ -119,23 +121,70 @@ class WebsiteVisitor(models.Model):
 
     @api.depends('website_track_ids')
     def _compute_page_statistics(self):
-        results = self.env['website.track']._read_group(
-            [('visitor_id', 'in', self.ids), ('url', '!=', False)], ['visitor_id', 'page_id'], ['__count'])
-        mapped_data = {}
-        for visitor, page, count in results:
-            visitor_info = mapped_data.get(visitor.id, {'page_count': 0, 'visitor_page_count': 0, 'page_ids': set()})
-            visitor_info['visitor_page_count'] += count
-            visitor_info['page_count'] += 1
-            if page:
-                visitor_info['page_ids'].add(page.id)
-            mapped_data[visitor.id] = visitor_info
+        self._compute_visitor_statistics(
+            rel_field='page_ids',
+            track_field='page_id',
+            count_field='visitor_page_count',
+            unique_count_field='page_count',
+            group_by_track=True,
+            extra_domain=[
+                ('url', '!=', False),
+            ]
+        )
 
+    def _compute_visitor_statistics(self, rel_field, track_field, count_field, rel_model=None, unique_count_field=None, extra_domain=None, group_by_track=False):
+        """
+        Compute visitor statistics from `website.track`.
+
+        Handles two modes:
+        - Simple aggregation (products/blogs): uses array_agg
+        - Grouped aggregation (pages): groups by track_field
+
+        :param rel_field: M2M field to store related record IDs
+        :param track_field: Field on `website.track` (e.g. 'page_id', 'product_id')
+        :param rel_model: Optional filter on res_model
+        :param count_field: Field to store total visit count
+        :param unique_count_field: Field to store unique record count
+        :param extra_domain: Additional domain filters
+        :param group_by_track: Enable grouping (required for pages)
+        """
+        # Build base domain
+        domain = [('visitor_id', 'in', self.ids)]
+        if rel_model:
+            domain.append(('res_model', '=', rel_model))
+        if extra_domain:
+            domain += extra_domain
+        mapped_data = {}
+        # ✅ CASE 1: Group by track_field to get accurate visit counts per page.
+        if group_by_track:
+            results = self.env['website.track']._read_group(
+                domain, ['visitor_id', track_field], ['__count']
+            )
+            for visitor, record, count in results:
+                stats = mapped_data.setdefault(visitor.id, {'ids': set(), 'count': 0})
+                stats['count'] += count
+                if record:
+                    stats['ids'].add(record.id)
+        # ✅ CASE 2: Simple aggregation using array_agg when grouping is not
+        # needed (e.g. products/blogs).
+        else:
+            results = self.env['website.track']._read_group(
+                domain, ['visitor_id'], [f'{track_field}:array_agg', '__count']
+            )
+            mapped_data = {
+                visitor.id: {
+                    'ids': ids or [],
+                    'count': count or 0,
+                }
+                for visitor, ids, count in results
+            }
+        # Assign computed values
         for visitor in self:
-            visitor_info = mapped_data.get(visitor.id, {'page_count': 0, 'visitor_page_count': 0, 'page_ids': set()})
-            # sudo - website.visitor: access to page_ids is restricted to group_website_designer
-            visitor.sudo().page_ids = [(6, 0, visitor_info['page_ids'])]
-            visitor.visitor_page_count = visitor_info['visitor_page_count']
-            visitor.page_count = visitor_info['page_count']
+            stats = mapped_data.get(visitor.id, {'ids': [], 'count': 0})
+            visitor[rel_field] = [(6, 0, stats['ids'])]
+            visitor[count_field] = stats['count']
+            if unique_count_field:
+                visitor[unique_count_field] = len(stats['ids'])
 
     def _search_page_ids(self, operator, value):
         return [('website_track_ids.page_id.name', operator, value)]
@@ -307,6 +356,8 @@ class WebsiteVisitor(models.Model):
         last_view = self.env['website.track'].sudo().search(domain, limit=1)
         if not last_view or last_view.visit_datetime < datetime.now() - timedelta(minutes=30):
             website_track_values['visitor_id'] = self.id
+            if request:
+                website_track_values['url'] = request.httprequest.url
             self.env['website.track'].create(website_track_values)
         self._update_visitor_last_visit()
 
