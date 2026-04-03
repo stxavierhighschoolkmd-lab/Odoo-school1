@@ -518,7 +518,11 @@ class Cursor(_CursorProtocol):
             self._now = None
         self.prerollback.clear()
         self.postrollback.clear()
-        self.postcommit.run()
+        if self.postcommit:
+            # if we have postcommits to execute, we must reset the transaction
+            # after running them so we can see changes made
+            self.postcommit.run()
+            self.rollback()
 
     def rollback(self) -> None:
         """ Rollback the current transaction. """
