@@ -49,7 +49,8 @@ include disable-programs.inc
 
 private-tmp
 private-dev
-private-etc alternatives,ca-certificates,host.conf,hostname,hosts,ld.so.cache,ld.so.conf,ld.so.conf.d,ld.so.preload,localtime,login.defs,nsswitch.conf,passwd,resolv.conf,ssl
+# private-etc alternatives,ca-certificates,host.conf,hostname,hosts,ld.so.cache,ld.so.conf,ld.so.conf.d,ld.so.preload,localtime,login.defs,nsswitch.conf,passwd,resolv.conf,ssl
+private-etc @network,@tls-ca
 
 disable-mnt
 
