@@ -1,7 +1,8 @@
 import { BaseOptionComponent } from "@html_builder/core/base_option_component";
 import { MassMailingBuilderSelectLabel } from "./components/mass_mailing_builder_select_label";
+import { _t } from "@web/core/l10n/translation";
 
-export const MAIL_FONT_FAMILIES = {
+const MAIL_FONT_FAMILIES = {
     Arial: "Arial,Helvetica Neue,Helvetica,sans-serif",
     "Courier New": "Courier New,Courier,Lucida Sans Typewriter,Lucida Typewriter,monospace",
     Georgia: "Georgia,Times,Times New Roman,serif",
@@ -55,10 +56,19 @@ const GOOGLE_FONT_FAMILIES = {
     "Amatic SC": "Amatic SC,Segoe Print,Comic Sans MS,cursive",
 };
 
-const FONT_FAMILIES = {
-    "Mail Fonts": MAIL_FONT_FAMILIES,
-    "Web Fonts": WEB_FONT_FAMILIES,
-    "Google Fonts": GOOGLE_FONT_FAMILIES,
+export const FONT_FAMILIES = {
+    mail: {
+        families: MAIL_FONT_FAMILIES,
+        label: _t("Mail Fonts"),
+    },
+    web: {
+        families: WEB_FONT_FAMILIES,
+        label: _t("Web Fonts"),
+    },
+    google: {
+        families: GOOGLE_FONT_FAMILIES,
+        label: _t("Google Fonts"),
+    },
 };
 
 export class FontFamilyPicker extends BaseOptionComponent {
