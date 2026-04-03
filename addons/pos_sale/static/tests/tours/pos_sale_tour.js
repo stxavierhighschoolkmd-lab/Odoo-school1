@@ -631,3 +631,19 @@ registry.category("web_tour.tours").add("test_settle_changed_price_with_lots", {
             }),
         ].flat(),
 });
+
+registry.category("web_tour.tours").add("test_settle_cancelled_order_with_extra_product", {
+    steps: () =>
+        [
+            Chrome.startPoS(),
+            Dialog.confirm("Open Register"),
+            PosSale.settleNthOrder(1),
+            Order.hasLine({ productName: "Product A", price: "10.00" }),
+            Order.hasLine({ productName: "Product B", price: "20.00" }),
+            ProductScreen.clickDisplayedProduct("Product C"),
+            ProductScreen.clickPayButton(),
+            PaymentScreen.clickPaymentMethod("Bank"),
+            PaymentScreen.clickValidate(),
+            ReceiptScreen.isShown(),
+        ].flat(),
+});
