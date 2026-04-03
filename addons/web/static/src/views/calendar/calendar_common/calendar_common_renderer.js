@@ -406,17 +406,21 @@ export class CalendarCommonRenderer extends Component {
     }
     onEventDrop(info) {
         this.fc.api.unselect();
-        this.props.model.updateRecord(this.fcEventToRecord(info.event)).catch((e) => {
-            info.revert();
-            throw e;
-        });
+        this.props.model
+            .updateRecord(this.fcEventToRecord(info.event, info.oldEvent))
+            .catch((e) => {
+                info.revert();
+                throw e;
+            });
     }
     onEventResize(info) {
         this.fc.api.unselect();
-        this.props.model.updateRecord(this.fcEventToRecord(info.event)).catch((e) => {
-            info.revert();
-            throw e;
-        });
+        this.props.model
+            .updateRecord(this.fcEventToRecord(info.event, info.oldEvent))
+            .catch((e) => {
+                info.revert();
+                throw e;
+            });
     }
     async onEventScheduled(info) {
         const original = info.event;
@@ -425,33 +429,56 @@ export class CalendarCommonRenderer extends Component {
         await this.props.model.scheduleEvent(resId, date);
         original.remove();
     }
-    fcEventToRecord(event) {
-        const { id, allDay, date, start, end } = event;
+    fcEventToRecord(event, oldEvent) {
+        const { id, date, start, end } = event;
         const res = {
             start: luxon.DateTime.fromJSDate(date || start),
-            isAllDay: allDay,
+            isAllDay: event.allDay,
         };
         if (end) {
             res.end = luxon.DateTime.fromJSDate(end);
-            if (["week", "month"].includes(this.props.model.scale) && allDay) {
-                res.end = res.end.minus({ days: 1 });
+        }
+        const existingRecord = this.props.model.records[id];
+        if (existingRecord) {
+            res.id = existingRecord.id;
+            // allDay is just a ui flag, we don't want to overwrite the allday value silently
+            // instead it should only be overwritten if there was an explicit change in the UI
+            // such as dragging an event to or from the "all day" section in week view
+            res.isAllDay = existingRecord.isAllDay;
+            if (oldEvent && oldEvent.allDay != event.allDay) {
+                res.isAllDay = event.allDay;
             }
         }
-        if (id) {
-            const existingRecord = this.props.model.records[id];
-            if (this.props.model.scale === "month") {
+        // midnight is handled specially in fullcalendar.
+        // An event will not appear in a slot if it ends at midnight on the day.
+        // Additionally, allDay event in fullcalendar effectively ends the next day at midnight.
+        // In odoo an allday event ends on the last date it is effective, so the day before midnight.
+        // If the event is not actually allday, it should end the day before midnight at a given hour.
+        if (["week", "month"].includes(this.props.model.scale)) {
+            if (existingRecord && event.allDay) {
                 res.start = res.start?.set({
                     hour: existingRecord.start.hour,
                     minute: existingRecord.start.minute,
                 });
-                if (existingRecord.end) {
-                    res.end = res.end?.set({
-                        hour: existingRecord.end.hour,
-                        minute: existingRecord.end.minute,
-                    });
+                if (res.end) {
+                    if (
+                        existingRecord.isAllDay ||
+                        (!existingRecord.isAllDay &&
+                            event.allDay &&
+                            (existingRecord.end?.hour !== 0 || existingRecord.end?.minute !== 0))
+                    ) {
+                        res.end = res.end.minus({ days: 1 });
+                    }
+                    if (existingRecord.end) {
+                        res.end = res.end.set({
+                            hour: existingRecord.end.hour,
+                            minute: existingRecord.end.minute,
+                        });
+                    }
                 }
+            } else if (res.isAllDay && res.end) {
+                res.end = res.end.minus({ days: 1 });
             }
-            res.id = existingRecord.id;
         }
         return res;
     }
