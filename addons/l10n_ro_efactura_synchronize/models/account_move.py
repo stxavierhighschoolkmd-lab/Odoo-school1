@@ -18,7 +18,7 @@ class AccountMove(models.Model):
         # index, i.e. they have already been sent and should not be modified
         super()._compute_show_reset_to_draft_button()
         for move in self:
-            if move.l10n_ro_edi_index:
+            if move.l10n_ro_edi_index and move.l10n_ro_edi_document_ids.sorted()[:1].state == 'invoice_sending_failed':
                 move.show_reset_to_draft_button = True
 
     @api.model
@@ -49,22 +49,18 @@ class AccountMove(models.Model):
         ]
         non_indexed_invoices = self.env['account.move'].search(domain)
 
-        document_ids_to_delete = []
         for invoice in non_indexed_invoices:
             # At that point, only one sent document should exist on an invoice
-            sent_document = invoice.l10n_ro_edi_document_ids
+            sent_document = invoice.l10n_ro_edi_document_ids.filtered(lambda d: d.state == 'invoice_sent')[:1]
 
             if (fields.Datetime.now() - sent_document.create_date).days > HOLDING_DAYS:
                 # The last document sent to ANAF was live for longer than the holding period, refuse it
-                document_ids_to_delete += invoice.l10n_ro_edi_document_ids.ids
 
                 error_message = _(
                     "The invoice has probably been refused by the SPV. We were unable to recover the reason of the refusal because "
                     "the invoice had not received its index. Duplicate the invoice and attempt to send it again."
                 )
-                invoice._l10n_ro_edi_create_document_invoice_sending_failed({'error': error_message})
-
-        self.env['l10n_ro_edi.document'].sudo().browse(document_ids_to_delete).unlink()
+                invoice._l10n_ro_edi_update_document_invoice_sending_failed(sent_document, {'error': error_message})
 
         if self._can_commit():
             self._cr.commit()
@@ -101,7 +97,6 @@ class AccountMove(models.Model):
         ])
         invoices = self.env['account.move'].search(domain)
 
-        document_ids_to_delete = []
         index_to_move = {move.l10n_ro_edi_index: move for move in invoices}
         name_to_move = {move.name: move for move in invoices}
         for message in sent_invoices_accepted_messages:
@@ -119,13 +114,17 @@ class AccountMove(models.Model):
                 # timeout for unknown reasons during the upload
                 invoice.l10n_ro_edi_index = message['id_solicitare']
 
+            sent_doc = invoice.l10n_ro_edi_document_ids.filtered(lambda d: d.state == 'invoice_sent')[:1]
+
             if 'error' in message['answer']:
-                document_ids_to_delete += invoice._l10n_ro_edi_get_sent_and_failed_documents().ids
                 error_message = _(
                     "Error when trying to download the E-Factura data from the SPV: %s",
                     message['answer']['error'],
                 )
-                invoice._l10n_ro_edi_create_document_invoice_sending_failed({'error': error_message})
+                if sent_doc:
+                    invoice._l10n_ro_edi_update_document_invoice_sending_failed(sent_doc, {'error': error_message})
+                else:
+                    invoice._l10n_ro_edi_create_document_invoice_sending_failed({'error': error_message})
                 continue
 
             # Only delete invoice_sent documents and not all because one invoice can contain several signature due to
@@ -133,17 +132,17 @@ class AccountMove(models.Model):
             # be due to a resequencing of the invoice and/or re-sending of an invoice. In that case coupled with name
             # matching where none of the two invoices received an index, all signatures are added to the invoice; the
             # user will have to manually update/select the correct one.
-            document_ids_to_delete += invoice._l10n_ro_edi_get_sent_and_failed_documents().ids
-
             invoice.message_post(body=_("This invoice has been accepted by the SPV."))
-            invoice._l10n_ro_edi_create_document_invoice_validated({
+            validated_values = {
                 'key_loading': invoice.l10n_ro_edi_index,
                 'key_signature': message['answer']['signature']['key_signature'],
                 'key_certificate': message['answer']['signature']['key_certificate'],
                 'attachment_raw': message['answer']['signature']['attachment_raw'],
-            })
-
-        self.env['l10n_ro_edi.document'].sudo().browse(document_ids_to_delete).unlink()
+            }
+            if sent_doc:
+                invoice._l10n_ro_edi_update_document_invoice_validated(sent_doc, validated_values)
+            else:
+                invoice._l10n_ro_edi_create_document_invoice_validated(validated_values)
 
     @api.model
     def _l10n_ro_edi_process_invoice_refused_messages(self, sent_invoices_refused_messages):
@@ -162,27 +161,23 @@ class AccountMove(models.Model):
         invoices = self.env['account.move'].search(domain)
         index_to_move = {move.l10n_ro_edi_index: move for move in invoices}
 
-        document_ids_to_delete = []
         for message in sent_invoices_refused_messages:
             invoice = index_to_move.get(message['id_solicitare'])
             if not invoice:
                 continue
 
+            sent_doc = invoice.l10n_ro_edi_document_ids.filtered(lambda d: d.state == 'invoice_sent')[:1]
+
             if 'error' in message['answer']:
-                document_ids_to_delete += invoice._l10n_ro_edi_get_sent_and_failed_documents().ids
                 error_message = _(
                     "Error when trying to download the E-Factura data from the SPV: %s",
                     message['answer']['error']
                 )
-                invoice._l10n_ro_edi_create_document_invoice_sending_failed({'error': error_message})
+                invoice._l10n_ro_edi_update_document_invoice_sending_failed(sent_doc, {'error': error_message})
                 continue
 
-            document_ids_to_delete += invoice.l10n_ro_edi_document_ids.ids
-
             error_message = message['answer']['invoice']['error'].replace('\t', '')
-            invoice._l10n_ro_edi_create_document_invoice_sending_failed({'error': error_message})
-
-        self.env['l10n_ro_edi.document'].sudo().browse(document_ids_to_delete).unlink()
+            invoice._l10n_ro_edi_update_document_invoice_sending_failed(sent_doc, {'error': error_message})
 
     @api.model
     def _l10n_ro_edi_process_bill_messages(self, received_bills_messages):

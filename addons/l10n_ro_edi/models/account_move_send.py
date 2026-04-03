@@ -9,7 +9,7 @@ class AccountMoveSend(models.AbstractModel):
         return all([
             move._need_ubl_cii_xml('ciusro') or move.ubl_cii_xml_id,
             move.country_code == 'RO',
-            not move.l10n_ro_edi_state,
+            not move.l10n_ro_edi_state or move.l10n_ro_edi_document_ids.sorted()[:1].state == "invoice_sending_failed",
         ])
 
     def _get_all_extra_edis(self) -> dict:
