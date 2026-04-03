@@ -23,7 +23,7 @@ const searchTemplate = /* html */ `
                     data-order-by="name asc"
                     autocomplete="off"/>
             <button type="submit" aria-label="Search" title="Search" class="btn oe_search_button border border-start-0 px-4 bg-o-color-4">
-                <i class="oi oi-search"></i>
+                <i class="oi" data-icon="search"></i>
             </button>
         </div>
         <input name="order" type="hidden" class="o_search_order_by" value="test desc"/>
@@ -44,17 +44,17 @@ function supportAutocomplete() {
         return {
             results: [
                 {
-                    _fa: "fa-file-o",
+                    _icon: "description",
                     name: "Xyz 1",
                     website_url: "/website/test/xyz-1",
                 },
                 {
-                    _fa: "fa-file-o",
+                    _icon: "description",
                     name: "Xyz 2",
                     website_url: "/website/test/xyz-2",
                 },
                 {
-                    _fa: "fa-file-o",
+                    _icon: "description",
                     name: "Xyz 3",
                     website_url: "/website/test/xyz-3",
                 },
