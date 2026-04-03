@@ -65,6 +65,20 @@ class MrpProduction(models.Model):
         if finished_move:
             if finished_move.product_id.cost_method not in ('fifo', 'average'):
                 finished_move.price_unit = finished_move.product_id.standard_price
+                byproduct_moves = self.move_byproduct_ids.filtered(
+                    lambda m: m.state not in ('done', 'cancel') and m.quantity > 0)
+                total_cost = None
+                for byproduct in byproduct_moves:
+                    if byproduct.product_id.cost_method not in ('fifo', 'average'):
+                        byproduct.price_unit = byproduct.product_id.standard_price
+                    elif byproduct.cost_share:
+                        if total_cost is None:
+                            for work_order in self.workorder_ids:
+                                work_center_cost += work_order._cal_cost()
+                            quantity = finished_move.product_uom._compute_quantity(
+                                finished_move.quantity, finished_move.product_id.uom_id)
+                            total_cost = sum(move.value for move in consumed_moves) + work_center_cost + self.extra_cost * quantity
+                        byproduct.price_unit = total_cost * byproduct.cost_share / 100 / byproduct.product_uom._compute_quantity(byproduct.quantity, byproduct.product_id.uom_id)
                 return True
             finished_move.ensure_one()
             for work_order in self.workorder_ids:
