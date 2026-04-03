@@ -22,13 +22,6 @@ class TestUIPortal(TestPortal):
             }
         )
 
-    def test_bookmark_message(self):
-        self.start_tour(
-            f"/my/test_portal_records/{self.record_portal.id}",
-            "bookmark_message_tour",
-            login=self.user_employee.login,
-        )
-
     def test_no_copy_link_for_non_readable_portal_record(self):
         # mail.test.portal has read access only for base.group_user
         self.start_tour(

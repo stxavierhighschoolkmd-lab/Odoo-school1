@@ -173,6 +173,7 @@ class BlogPost(models.Model):
         'website.cover_properties.mixin', 'website.searchable.mixin']
     _order = 'id DESC'
     _mail_post_access = 'read'
+    _reactions_in_portal_chatter = True
 
     def _compute_website_url(self):
         super(BlogPost, self)._compute_website_url()

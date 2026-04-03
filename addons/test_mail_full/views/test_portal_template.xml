@@ -5,7 +5,7 @@
         <xpath expr="//div[hasclass('o_portal_sidebar')]" position="inside">
             <!-- chatter -->
             <div>
-                <h3>Communication history</h3>
+                <h3>Communication History</h3>
                 <t t-call="portal.message_thread"/>
             </div>
         </xpath>

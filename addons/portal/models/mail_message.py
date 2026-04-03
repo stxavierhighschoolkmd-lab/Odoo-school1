@@ -124,24 +124,25 @@ class MailMessage(models.Model):
             if 'published_date_str' in properties_names:
                 values['published_date_str'] = format_datetime(self.env, values['date']) if values.get('date') else ''
             reaction_groups = []
-            for content, reactions in groupby(message.sudo().reaction_ids, lambda r: r.content):
-                reactions = self.env["mail.message.reaction"].union(reactions)
-                reaction_groups.append(
-                    {
-                        "content": content,
-                        "count": len(reactions),
-                        "guests": [
-                            {"id": guest.id, "name": guest.name}
-                            for guest in reactions.guest_id
-                        ],
-                        "message": message.id,
-                        "partners": [
-                            # sudo: res.partner - reading partners of reaction on accessible message is allowed
-                            {"id": partner.id, "name": partner.name}
-                            for partner in reactions.partner_id.sudo()
-                        ],
-                    },
-                )
+            if getattr(self.env[values["model"]], "_reactions_in_portal_chatter", False):
+                for content, reactions in groupby(message.sudo().reaction_ids, lambda r: r.content):
+                    reactions = self.env["mail.message.reaction"].union(reactions)
+                    reaction_groups.append(
+                        {
+                            "content": content,
+                            "count": len(reactions),
+                            "guests": [
+                                {"id": guest.id, "name": guest.name}
+                                for guest in reactions.guest_id
+                            ],
+                            "message": message.id,
+                            "partners": [
+                                # sudo: res.partner - reading partners of reaction on accessible message is allowed
+                                {"id": partner.id, "name": partner.name}
+                                for partner in reactions.partner_id.sudo()
+                            ],
+                        },
+                    )
             values.update(
                 {
                     "reactions": reaction_groups,
@@ -177,6 +178,8 @@ class MailMessage(models.Model):
             else attachment_values["mimetype"])
         attachment = self.env['ir.attachment'].browse(attachment_values['id'])
         attachment_values["raw_access_token"] = attachment._get_raw_access_token()
+        attachment_values["has_thumbnail"] = attachment.has_thumbnail
+        attachment_values["thumbnail_access_token"] = attachment._get_thumbnail_token()
         if self.is_current_user_or_guest_author:
             attachment_values["ownership_token"] = attachment._get_ownership_token()
         return attachment_values

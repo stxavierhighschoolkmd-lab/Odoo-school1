@@ -211,20 +211,6 @@ registry.category("web_tour.tours").add("portal_project_sharing_tour_with_disall
     ],
 });
 
-registry.category("web_tour.tours").add("test_04_project_sharing_chatter_message_reactions", {
-    steps: () => [
-        {
-            trigger: "table > tbody > tr a:has(span:contains(Project Sharing))",
-            run: "click",
-            expectUnloadPage: true,
-        },
-        { trigger: ".o_project_sharing" },
-        { trigger: ".o_kanban_record:contains('Test Task with messages')", run: "click" },
-        { trigger: ".o-mail-Message" },
-        { trigger: ".o-mail-Message .o-mail-MessageReaction:contains('👀')" },
-    ],
-});
-
 registry.category("web_tour.tours").add("portal_project_sharing_chatter_mention_users", {
     steps: () => [
         {

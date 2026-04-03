@@ -37,7 +37,7 @@ registerMessageAction("reaction", {
         messageActive: owner.isActive,
     }),
     componentCondition: ({ owner }) => !isMobileOS() && !owner.isMessageContextMenu,
-    condition: ({ message, thread }) => message.canAddReaction(thread),
+    condition: ({ owner, message, thread }) => message.canAddReaction({ owner, thread }),
     icon: "oi oi-smile-add",
     name: _t("Add a Reaction"),
     onSelected({ owner }) {
@@ -104,7 +104,8 @@ registerMessageAction("reply-to", {
         thread?.eq(store.inbox) || message.isSelfAuthored ? 55 : 20,
 });
 registerMessageAction("add-bookmark", {
-    condition: ({ message }) => message.canToggleBookmark && !message.is_bookmarked,
+    condition: ({ message, owner }) =>
+        message.canToggleBookmark && !message.is_bookmarked && !owner.env.inFrontendPortalChatter,
     icon: "fa fa-bookmark-o",
     name: _t("Bookmark"),
     onSelected: ({ message }) => message.addBookmark(),

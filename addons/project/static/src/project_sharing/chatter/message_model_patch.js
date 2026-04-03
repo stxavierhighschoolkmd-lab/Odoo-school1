@@ -5,4 +5,7 @@ patch(Message.prototype, {
     shouldHideFromMessageListOnDelete(env) {
         return env.projectSharingId || super.shouldHideFromMessageListOnDelete(...arguments);
     },
+    canAddReaction({ owner, thread }){
+        return super.canAddReaction(...arguments) && !owner.env.projectSharingId;
+    },
 });

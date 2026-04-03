@@ -1,18 +1,5 @@
 import { registry } from "@web/core/registry";
 
-registry.category("web_tour.tours").add("bookmark_message_tour", {
-    steps: () => [
-        {
-            trigger:
-                "#chatterRoot:shadow .o-mail-Message:not([data-bookmarked]):contains(Test Message)",
-            run: "hover && click #chatterRoot:shadow [title='Bookmark']",
-        },
-        {
-            trigger: "#chatterRoot:shadow .o-mail-Message[data-bookmarked]:contains(Test Message)",
-        },
-    ],
-});
-
 registry.category("web_tour.tours").add("message_actions_tour", {
     steps: () => [
         {

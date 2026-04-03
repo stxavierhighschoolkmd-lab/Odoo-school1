@@ -14,6 +14,11 @@ class MessageReactionController(ThreadController):
         if not message_sudo:
             raise NotFound()
         thread_model = message_sudo.model and request.env[message_sudo.model]
+        if (
+            not request.env.user._is_internal() and
+            not getattr(thread_model, "_reactions_in_portal_chatter", False)
+        ):
+            raise NotFound()
         msg_mode = getattr(thread_model, "_mail_message_reaction_access", "create")
         message = self._get_message_with_access(int(message_id), mode=msg_mode, **kwargs)
         if not message:

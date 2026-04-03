@@ -507,9 +507,9 @@ export class Message extends Record {
     get canToggleBookmark() {
         return Boolean(
             !this.is_transient &&
-            !this.isPending &&
-            this.store.self_user?.share === false &&
-            this.persistent
+                !this.isPending &&
+                this.store.self_user?.share === false &&
+                this.persistent
         );
     }
 
@@ -589,7 +589,7 @@ export class Message extends Record {
     }
 
     /** @param {import("models").Thread} thread the thread where the message is shown */
-    canAddReaction(thread) {
+    canAddReaction({ owner, thread } = {}) {
         return Boolean(
             !this.is_transient &&
             !this.isPending &&
