@@ -4,6 +4,21 @@ from odoo import Command, _, models
 from odoo.addons.account.models.chart_template import template
 
 
+BELGIAN_ASSO_TEMPLATE_CODES = (
+    'be_asso_full',
+    'be_asso_abbr'
+)
+
+BELGIAN_COMP_TEMPLATE_CODES = (
+    'be_comp_full_cap',
+    'be_comp_full_con',
+    'be_comp_abbr_cap',
+    'be_comp_abbr_con',
+)
+
+BELGIAN_TEMPLATE_CODES = BELGIAN_ASSO_TEMPLATE_CODES + BELGIAN_COMP_TEMPLATE_CODES
+
+
 class AccountChartTemplate(models.AbstractModel):
     _inherit = 'account.chart.template'
 
@@ -76,9 +91,18 @@ class AccountChartTemplate(models.AbstractModel):
         be_account = self.with_company(company).ref('a6560', raise_if_not_found=False)
         return be_account or super()._get_bank_fees_reco_account(company)
 
+    def _load(self, template_code, company, install_demo, force_create=True):
+        # OVERRIDE
+        if template_code and company.chart_template and template_code != company.chart_template:
+            for template_group in (BELGIAN_ASSO_TEMPLATE_CODES, BELGIAN_COMP_TEMPLATE_CODES):
+                if company.chart_template in template_group and template_code in template_group:
+                    company.chart_template = template_code
+                    return
+        return super()._load(template_code, company, install_demo, force_create)
+
     def _post_load_data(self, template_code, company, template_data):
         super()._post_load_data(template_code, company, template_data)
-        if template_code in ('be_comp', 'be_asso') and \
+        if template_code in BELGIAN_TEMPLATE_CODES and \
                 (purchase_journal := self.ref('purchase', raise_if_not_found=False)) and \
                 (non_deductible_account := self.ref('a416', raise_if_not_found=False)):
             purchase_journal.non_deductible_account_id = non_deductible_account

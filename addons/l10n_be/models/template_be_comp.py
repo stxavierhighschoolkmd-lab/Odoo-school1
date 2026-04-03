@@ -28,18 +28,64 @@ class AccountChartTemplate(models.AbstractModel):
     def _get_be_comp_template_data(self):
         return {
             'name': _('Companies'),
+            'visible': False,
             'parent': 'be',
             'code_digits': '6',
             'sequence': 0,
         }
 
-    @template('be_comp', 'res.company')
-    def _get_be_comp_res_company(self):
+    @template('be_comp_abbr')
+    def _get_be_comp_abbr_template_data(self):
         return {
-            self.env.company.id: {
-                'account_fiscal_country_id': 'base.be',
-                'bank_account_code_prefix': '550',
-                'cash_account_code_prefix': '570',
-                'transfer_account_code_prefix': '580',
-            },
+            'name': _('Companies (Abbreviated)'),
+            'visible': False,
+            'parent': 'be_comp',
+            'code_digits': '6',
+            'sequence': 0,
+        }
+
+    @template('be_comp_abbr_cap')
+    def _get_be_comp_abbr_cap_template_data(self):
+        return {
+            'name': _('Companies (Abbreviated - Capital)'),
+            'parent': 'be_comp_abbr',
+            'code_digits': '6',
+            'sequence': 0,
+        }
+
+    @template('be_comp_abbr_con')
+    def _get_be_comp_abbr_con_template_data(self):
+        return {
+            'name': _('Companies (Abbreviated - Contributions)'),
+            'parent': 'be_comp_abbr',
+            'code_digits': '6',
+            'sequence': 0,
+        }
+
+    @template('be_comp_full')
+    def _get_be_comp_full_template_data(self):
+        return {
+            'name': _('Companies (Full)'),
+            'visible': False,
+            'parent': 'be_comp',
+            'code_digits': '6',
+            'sequence': 0,
+        }
+
+    @template('be_comp_full_cap')
+    def _get_be_comp_full_cap_template_data(self):
+        return {
+            'name': _('Companies (Full - Capital)'),
+            'parent': 'be_comp_full',
+            'code_digits': '6',
+            'sequence': 0,
+        }
+
+    @template('be_comp_full_con')
+    def _get_be_comp_full_con_template_data(self):
+        return {
+            'name': _('Companies (Full - Contributions)'),
+            'parent': 'be_comp_full',
+            'code_digits': '6',
+            'sequence': 0,
         }

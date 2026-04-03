@@ -23,13 +23,7 @@ EU_TAG_MAP = {
         'refund_tax_tag': None,
     },
     # Belgium
-    'be_comp': {
-        'invoice_base_tag': 'l10n_be.tax_report_line_47_tag',
-        'invoice_tax_tag': None,
-        'refund_base_tag': 'l10n_be.tax_report_line_49_tag',
-        'refund_tax_tag': None,
-    },
-    'be_asso': {
+    'be': {
         'invoice_base_tag': 'l10n_be.tax_report_line_47_tag',
         'invoice_tax_tag': None,
         'refund_base_tag': 'l10n_be.tax_report_line_49_tag',
@@ -236,3 +230,13 @@ EU_TAG_MAP = {
         'refund_tax_tag': None,
     },
 }
+
+for belgian_chart_template in [
+    'be_asso_abbr',
+    'be_asso_full',
+    'be_comp_abbr_cap',
+    'be_comp_abbr_con',
+    'be_comp_full_cap',
+    'be_comp_full_con'
+]:
+    EU_TAG_MAP[belgian_chart_template] = EU_TAG_MAP.get('be')
