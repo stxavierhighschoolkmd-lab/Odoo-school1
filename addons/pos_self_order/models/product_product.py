@@ -19,26 +19,18 @@ class ProductTemplate(models.Model):
     def _load_pos_self_data_read(self, data, config):
         domain = self._load_pos_self_data_domain(data, config)
         fields = set(self._load_pos_self_data_fields(config))
-        products = self.search_read(
+        products = self.search(
             domain,
-            fields,
             limit=config.get_limited_product_count(),
             order='is_favorite DESC,pos_sequence,name',
-            load=False
         )
-
-        combo_products = self.browse(p['id'] for p in products if p["type"] == "combo")
-        combo_products_choice = self.search_read(
-            [("id", 'in', combo_products.combo_ids.combo_item_ids.product_id.product_tmpl_id.ids), ("id", "not in", [p['id'] for p in products])],
-            fields,
-            limit=config.get_limited_product_count(),
-            order='is_favorite DESC,pos_sequence,name',
-            load=False
-        )
-        products.extend(combo_products_choice)
-        self._process_pos_self_ui_products(products)
-
-        return products
+        combo_products = products.combo_ids.combo_item_ids.product_id.product_tmpl_id
+        self_available_combo_products = combo_products.filtered(lambda p: p.self_order_available)
+        optional_product_ids = products.pos_optional_product_ids.filtered(lambda p: p.self_order_available)
+        all_products = self_available_combo_products | optional_product_ids | products
+        read_products = all_products.read(fields, load=False)
+        self._process_pos_self_ui_products(read_products)
+        return read_products
 
     def _process_pos_self_ui_products(self, products):
         self._add_archived_combinations(products)
