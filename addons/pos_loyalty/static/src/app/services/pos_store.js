@@ -708,8 +708,9 @@ patch(PosStore.prototype, {
             Object.assign(
                 this.couponByLineUuidCache,
                 order.lines.reduce((agg, line) => {
-                    if (line.coupon_id && line.coupon_id.id < 0) {
-                        return { ...agg, [line.uuid]: line.coupon_id.id };
+                    const lineCouponId = line.coupon_id?.id ?? line.coupon_id;
+                    if (lineCouponId && lineCouponId < 0) {
+                        return { ...agg, [line.uuid]: lineCouponId };
                     } else {
                         return agg;
                     }
@@ -774,7 +775,7 @@ patch(PosStore.prototype, {
         }, {});
         for (const line of rewardLines) {
             const reward = line.reward_id;
-            const couponId = line.coupon_id.id;
+            const couponId = line.coupon_id?.id ?? line.coupon_id;
             if (!couponData[couponId]) {
                 couponData[couponId] = {
                     points: 0,
