@@ -36,7 +36,8 @@ export class RadioFollowedByElement extends RadioField {
 
     moveElement() {
         for (const [key, value] of Object.entries(this.props.links)) {
-            const option = document.querySelectorAll("[data-value="+key+"]")[0];
+            const escapedKey = CSS.escape(key);
+            const option = document.querySelectorAll(`[data-value="${escapedKey}"]`)[0];
             const elementToAppend = document.getElementById(value);
             if (option === null || elementToAppend === null || elementToAppend.parentElement === option.parentElement)
                 continue;
