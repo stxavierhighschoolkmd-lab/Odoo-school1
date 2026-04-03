@@ -748,6 +748,7 @@ describe("keyboard navigation", () => {
         await press("Tab", { shiftKey: true });
         await press("Tab", { shiftKey: true });
         await press("Tab", { shiftKey: true });
+        await press("Tab", { shiftKey: true });
         expect(".o_font_color_selector .o_picker_pointer").toBeFocused();
         expect(".o_hex_input").toHaveValue("#FF0000");
         await press("ArrowUp");
@@ -773,6 +774,7 @@ describe("keyboard navigation", () => {
         expect('.o_font_color_selector button:contains("Custom")').toBeFocused();
         await press("Enter");
         await animationFrame();
+        await press("Tab", { shiftKey: true });
         await press("Tab", { shiftKey: true });
         await press("Tab", { shiftKey: true });
         await press("Tab", { shiftKey: true });
@@ -812,6 +814,7 @@ describe("keyboard navigation", () => {
         expect('.o_font_color_selector button:contains("Custom")').toBeFocused();
         await press("Enter");
         await animationFrame();
+        await press("Tab", { shiftKey: true });
         await press("Tab", { shiftKey: true });
         await press("Tab", { shiftKey: true });
         await press("Tab", { shiftKey: true });

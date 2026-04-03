@@ -231,17 +231,15 @@ export class CustomColorPicker extends Component {
     //--------------------------------------------------------------------------
 
     /**
-     * Updates input values, color preview, picker and slider pointer positions.
+     * Updates input value, color preview, picker and slider pointer positions.
      *
      * @private
      */
     _updateUI() {
-        // Update inputs
-        for (const [color, value] of Object.entries(this.colorComponents)) {
-            const input = this.el.querySelector(`.o_${color}_input`);
-            if (input) {
-                input.value = value;
-            }
+        // Update hex input
+        const hexInput = this.el.querySelector(`.o_hex_input`);
+        if (hexInput) {
+            hexInput.value = this.colorComponents.hex;
         }
 
         // Update picker area and picker pointer position
@@ -646,6 +644,30 @@ export class CustomColorPicker extends Component {
             this._updateUI();
             this.shouldSetSelectedColor = true;
             this.props.onColorPreview(this.colorComponents);
+        }
+    }
+
+    /**
+     * Pick a color from the screen using the native
+     * EyeDropper API (Chromium-based browsers only).
+     */
+    async pickColor() {
+        try {
+            const result = await new window.EyeDropper().open();
+            let color = result.sRGBHex;
+
+            // EyeDropper returns - rgba with alpha 0, force to 1
+            if (color.startsWith("rgba") && color.endsWith(", 0)")) {
+                color = color.replace(", 0)", ", 1)");
+            }
+
+            const { red, green, blue, opacity } = convertCSSColorToRgba(color);
+            this._updateRgba(red, green, blue, opacity);
+            this._updateUI();
+            this.shouldSetSelectedColor = true;
+            this.props.onColorPreview(this.colorComponents);
+        } catch {
+            // user cancelled - do nothing
         }
     }
 }
