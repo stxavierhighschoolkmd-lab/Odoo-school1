@@ -33,7 +33,7 @@ class MrpWorkorder(models.Model):
     barcode = fields.Char(compute='_compute_barcode', store=True)
     workcenter_id = fields.Many2one(
         'mrp.workcenter', 'Work Center', required=True,
-        group_expand='_read_group_workcenter_id', check_company=True)
+        group_expand='_read_group_workcenter_id', check_company=True, index=True)
     working_state = fields.Selection(
         string='Workcenter Status', related='workcenter_id.working_state') # technical: used in views only
     product_id = fields.Many2one(related='production_id.product_id', readonly=True, store=True, check_company=True)
