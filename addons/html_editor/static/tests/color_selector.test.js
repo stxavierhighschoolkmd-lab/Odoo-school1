@@ -1428,3 +1428,23 @@ test("Should not close the color picker on icon color change", async () => {
     // Color picker should stay open
     expectElementCount('[data-color="o-color-2"]', 1);
 });
+
+test("should move focus to next element when pressing Tab after selecting custom gradient", async () => {
+    await setupEditor(`<p>This is a [test].</p>`);
+    await expectElementCount(".o-we-toolbar", 1);
+
+    // Open the color picker and select the graident tab
+    await click(".o-we-toolbar .o-select-color-foreground");
+    await expectElementCount(".o_font_color_selector", 1);
+    await click(".btn:contains('Gradient')");
+    await expectElementCount(".o_custom_gradient_button", 1);
+
+    // Click on the custom gradient button and it should be focused
+    await click(".btn.o_custom_gradient_button");
+    await animationFrame();
+    expect(getActiveElement()).toBe(queryOne(".btn.o_custom_gradient_button"));
+
+    // On Tab, the focus should move to the next focusable element
+    await press("Tab");
+    expect(getActiveElement()).toBe(queryAll(".o_type_row button")[0]);
+});

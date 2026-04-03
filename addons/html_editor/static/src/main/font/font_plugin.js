@@ -176,7 +176,7 @@ export class FontPlugin extends Plugin {
                 id: "font",
                 groupId: "font",
                 namespaces: ["compact", "expanded"],
-                description: _t("Select font style"),
+                description: _t("Select text style"),
                 Component: FontSelector,
                 props: {
                     getItems: () => this.availableFontItems,
@@ -216,6 +216,7 @@ export class FontPlugin extends Plugin {
                     },
                     onBlur: () => this.dependencies.selection.focusEditable(),
                     document: this.document,
+                    maxFontSize: this.config.maxFontSize,
                 },
                 isAvailable: isHtmlContentSupported,
             }),

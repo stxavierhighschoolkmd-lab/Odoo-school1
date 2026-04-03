@@ -5,9 +5,10 @@ import {
     deleteBackward,
     deleteForward,
     insertText,
-    keydownShiftTab,
     keydownTab,
+    keydownShiftTab,
 } from "./_helpers/user_actions";
+import { closeToolbar } from "./_helpers/toolbar";
 
 describe("insert tabulation", () => {
     test("should insert a tab character", async () => {
@@ -23,7 +24,10 @@ describe("insert tabulation", () => {
     test("should keep selection and insert a tab character at the beginning of the paragraph", async () => {
         await testTabulation({
             contentBefore: `<p>a[xxx]b</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit: `<p>${oeTab(TAB_WIDTH, false)}a[xxx]b</p>`,
             contentAfter: `<p>${oeTab(TAB_WIDTH)}a[xxx]b</p>`,
         });
@@ -32,7 +36,10 @@ describe("insert tabulation", () => {
     test("should keep selection and insert a tab character at the beginning of the lines", async () => {
         await testTabulation({
             contentBefore: `<p>a<br>b<br>[x<br>x<br>x]c<br>d<br>e</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>a<br>b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}[x</p>` +
@@ -51,7 +58,10 @@ describe("insert tabulation", () => {
     test("should keep selection and insert a tab character at the beginning of the lines (reversed selection)", async () => {
         await testTabulation({
             contentBefore: `<p>a<br>b<br>]x<br>x<br>x[c<br>d<br>e</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>a<br>b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}]x</p>` +
@@ -193,7 +203,10 @@ describe("insert tabulation", () => {
     test("should insert tab characters at the beginning of two separate paragraphs", async () => {
         await testTabulation({
             contentBefore: `<p>a[b</p>` + `<p>c]d</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` + `<p>${oeTab(TAB_WIDTH, false)}c]d</p>`,
             contentAfter: `<p>${oeTab(TAB_WIDTH)}a[b</p>` + `<p>${oeTab(TAB_WIDTH)}c]d</p>`,
@@ -203,7 +216,10 @@ describe("insert tabulation", () => {
     test("should insert tab characters at the beginning of four lines over two separate paragraphs", async () => {
         await testTabulation({
             contentBefore: `<p>a[b<br>c</p>` + `<p>d<br>e]f</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}c</p>` +
@@ -220,7 +236,10 @@ describe("insert tabulation", () => {
     test("should insert tab characters at the beginning of four lines over two separate paragraphs (reversed selection)", async () => {
         await testTabulation({
             contentBefore: `<p>a]b<br>c</p>` + `<p>d<br>e[f</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a]b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}c</p>` +
@@ -239,7 +258,10 @@ describe("insert tabulation", () => {
             contentBefore: `<p>${oeTab()}a[b</p>` + `<p>${oeTab()}c]d</p>`,
             // @todo: add contentBeforeEdit in some test cases to test the addition
             // of the contenteditable="false" attribute by setup.
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a[b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}c]d</p>`,
@@ -252,7 +274,10 @@ describe("insert tabulation", () => {
     test("should insert tab characters at the beginning of two separate paragraphs (one indented, the other not) (1)", async () => {
         await testTabulation({
             contentBefore: `<p>${oeTab()}a[b</p>` + `<p>c]d</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a[b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}c]d</p>`,
@@ -265,7 +290,10 @@ describe("insert tabulation", () => {
     test("should insert tab characters at the beginning of two separate paragraphs (one indented, the other not) (2)", async () => {
         await testTabulation({
             contentBefore: `<p>a[b</p>` + `<p>${oeTab()}c]d</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}c]d</p>`,
@@ -278,7 +306,10 @@ describe("insert tabulation", () => {
     test("should insert tab characters at the beginning of two separate paragraphs (one indented, the other not), with line breaks", async () => {
         await testTabulation({
             contentBefore: `<p>${oeTab()}a[b<br>c</p>` + `<p>d<br>e]f</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a[b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}c</p>` +
@@ -292,7 +323,10 @@ describe("insert tabulation", () => {
         });
         await testTabulation({
             contentBefore: `<p>a[b<br>c</p>` + `<p>${oeTab()}d<br>e]f</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}c</p>` +
@@ -309,7 +343,10 @@ describe("insert tabulation", () => {
     test("should insert tab characters at the beginning of two separate paragraphs (one indented, the other not), with line breaks (reversed selection)", async () => {
         await testTabulation({
             contentBefore: `<p>${oeTab()}a]b<br>c</p>` + `<p>d<br>e[f</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a]b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}c</p>` +
@@ -323,7 +360,10 @@ describe("insert tabulation", () => {
         });
         await testTabulation({
             contentBefore: `<p>a]b<br>c</p>` + `<p>${oeTab()}d<br>e[f</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a]b</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}c</p>` +
@@ -346,7 +386,10 @@ describe("insert tabulation", () => {
         await testTabulation({
             contentBefore:
                 `<p>${oeTab()}a[${oeTab()}b${oeTab()}</p>` + `<p>c${oeTab()}]d${oeTab()}</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter:
                 `<p>${oeTab(TAB_WIDTH)}${oeTab(TAB_WIDTH)}a[${oeTab(tabAfterA)}b${oeTab(
                     tabAfterB
@@ -364,7 +407,10 @@ describe("insert tabulation", () => {
             contentBefore:
                 `<p>${oeTab()}a[${oeTab()}<br>b${oeTab()}</p>` +
                 `<p>c${oeTab()}<br>]d${oeTab()}</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter:
                 `<p>${oeTab(TAB_WIDTH)}${oeTab(TAB_WIDTH)}a[${oeTab(tabAfterA)}</p>` +
                 `<p>${oeTab(TAB_WIDTH)}b${oeTab(tabAfterB)}</p>` +
@@ -383,7 +429,10 @@ describe("insert tabulation", () => {
             contentBefore:
                 `<p>${oeTab()}a]${oeTab()}<br>b${oeTab()}</p>` +
                 `<p>c${oeTab()}<br>[d${oeTab()}</p>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter:
                 `<p>${oeTab(TAB_WIDTH)}${oeTab(TAB_WIDTH)}a]${oeTab(tabAfterA)}</p>` +
                 `<p>${oeTab(TAB_WIDTH)}b${oeTab(tabAfterB)}</p>` +
@@ -402,7 +451,10 @@ describe("insert tabulation", () => {
                 `<h1>cd</h1>` +
                 `<blockquote>e]f</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` +
@@ -428,7 +480,10 @@ describe("insert tabulation", () => {
                 `<h1>d<br>e</h1>` +
                 `<blockquote>f]<br>g</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` +
@@ -460,7 +515,10 @@ describe("insert tabulation", () => {
                 `<h1>d<br>e</h1>` +
                 `<blockquote>f[<br>g</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}a]b</p>` +
@@ -492,7 +550,10 @@ describe("insert tabulation", () => {
                 `<h1>${oeTab()}cd</h1>` +
                 `<blockquote>${oeTab()}e]f</blockquote>` +
                 `<h4>${oeTab()}zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a[b</p>` +
@@ -521,7 +582,10 @@ describe("insert tabulation", () => {
                 `<h1>${oeTab()}d<br>e</h1>` +
                 `<blockquote>${oeTab()}f]<br>g</blockquote>` +
                 `<h4>${oeTab()}zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a[b</p>` +
@@ -556,7 +620,10 @@ describe("insert tabulation", () => {
                 `<h1>${oeTab()}d<br>e</h1>` +
                 `<blockquote>${oeTab()}f[<br>g</blockquote>` +
                 `<h4>${oeTab()}zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a]b</p>` +
@@ -591,7 +658,10 @@ describe("insert tabulation", () => {
                 `<h1>${oeTab()}cd</h1>` +
                 `<blockquote>e]f</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}${oeTab(
@@ -620,7 +690,10 @@ describe("insert tabulation", () => {
                 `<h1>${oeTab()}d<br>e</h1>` +
                 `<blockquote>f]<br>g</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}${oeTab(
@@ -655,7 +728,10 @@ describe("insert tabulation", () => {
                 `<h1>${oeTab()}d<br>e</h1>` +
                 `<blockquote>f[<br>g</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}${oeTab(
@@ -695,7 +771,10 @@ describe("insert tabulation", () => {
                 `<h1>c${oeTab()}d${oeTab()}</h1>` +
                 `<blockquote>e${oeTab()}]f</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a[${oeTab(
@@ -738,7 +817,10 @@ describe("insert tabulation", () => {
                 `<h1>c${oeTab()}<br>d${oeTab()}</h1>` +
                 `<blockquote>e${oeTab()}]f</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a[${oeTab(
@@ -780,7 +862,10 @@ describe("insert tabulation", () => {
                 `<h1>c${oeTab()}<br>d${oeTab()}</h1>` +
                 `<blockquote>e${oeTab()}[f</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a]${oeTab(
@@ -832,7 +917,10 @@ describe("insert tabulation", () => {
                     `</li>` +
                 `</ul>` +
                 `<blockquote>f${oeTab()}]g</blockquote>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}a[${oeTab(tabAfterA, false)}b${oeTab(tabAfterB,false)}</p>` +
                 `<ul>` +
@@ -886,7 +974,10 @@ describe("insert tabulation", () => {
                     `</li>` +
                 `</ul>` +
                 `<blockquote>f${oeTab()}<br>]g</blockquote>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a</p>` +
                 `<p>[${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}b</p>` +
@@ -946,7 +1037,10 @@ describe("insert tabulation", () => {
                     `</li>` +
                 `</ul>` +
                 `<blockquote>f${oeTab()}<br>[g</blockquote>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a</p>` +
                 `<p>]${oeTab(TAB_WIDTH, false)}${oeTab(TAB_WIDTH, false)}b</p>` +
@@ -994,7 +1088,10 @@ describe("insert tabulation", () => {
                 `<div contenteditable="false">cd</div>` +
                 `<h1>ef</h1>` +
                 `<blockquote>gh]</blockquote>`,
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}[xxx</p>` +
                 `<div class="o-paragraph">${oeTab(TAB_WIDTH, false)}ab</div>` +
@@ -1234,7 +1331,10 @@ describe("remove tabulation with shift+tab", () => {
     test("should keep selection and remove a tab character from the beginning of the paragraph", async () => {
         await testEditor({
             contentBefore: `<p>${oeTab()}a[xxx]b</p>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfter: `<p>a[xxx]b</p>`,
         });
     });
@@ -1253,7 +1353,10 @@ describe("remove tabulation with shift+tab", () => {
     test("should remove tab characters from the beginning of two separate paragraphs", async () => {
         await testEditor({
             contentBefore: `<p>${oeTab()}a[b</p>` + `<p>${oeTab()}c]d</p>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfter: `<p>a[b</p>` + `<p>c]d</p>`,
         });
     });
@@ -1261,7 +1364,10 @@ describe("remove tabulation with shift+tab", () => {
     test("should remove tab characters from the beginning of two separate double-indented paragraphs", async () => {
         await testTabulation({
             contentBefore: `<p>${oeTab()}${oeTab()}a[b</p>` + `<p>${oeTab()}${oeTab()}c]d</p>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` + `<p>${oeTab(TAB_WIDTH, false)}c]d</p>`,
             contentAfter: `<p>${oeTab(TAB_WIDTH)}a[b</p>` + `<p>${oeTab(TAB_WIDTH)}c]d</p>`,
@@ -1271,7 +1377,10 @@ describe("remove tabulation with shift+tab", () => {
     test("should remove tab characters from the beginning of two separate paragraphs of mixed indentations (1)", async () => {
         await testTabulation({
             contentBefore: `<p>${oeTab()}${oeTab()}a[b</p>` + `<p>${oeTab()}c]d</p>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfterEdit: `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` + `<p>c]d</p>`,
             contentAfter: `<p>${oeTab(TAB_WIDTH)}a[b</p>` + `<p>c]d</p>`,
         });
@@ -1280,7 +1389,10 @@ describe("remove tabulation with shift+tab", () => {
     test("should remove tab characters from the beginning of two separate paragraphs of mixed indentations (2)", async () => {
         await testTabulation({
             contentBefore: `<p>a[b</p>` + `<p>${oeTab()}c]d</p>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfter: `<p>a[b</p>` + `<p>c]d</p>`,
         });
     });
@@ -1294,7 +1406,10 @@ describe("remove tabulation with shift+tab", () => {
             contentBefore:
                 `<p>${oeTab(TAB_WIDTH)}a[${oeTab(tabAfterA)}b${oeTab(tabAfterB)}</p>` +
                 `<p>c${oeTab(tabAfterC)}]d${oeTab(tabAfterD)}</p>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfter:
                 `<p>a[${oeTab(tabAfterA)}b${oeTab(tabAfterB)}</p>` +
                 `<p>c${oeTab(tabAfterC)}]d${oeTab(tabAfterD)}</p>`,
@@ -1309,7 +1424,10 @@ describe("remove tabulation with shift+tab", () => {
                 `<h1>${oeTab()}cd</h1>` +
                 `<blockquote>${oeTab()}e]f</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfter:
                 `<p>xxx</p>` +
                 `<p>a[b</p>` +
@@ -1327,7 +1445,10 @@ describe("remove tabulation with shift+tab", () => {
                 `<h1>${oeTab()}cd</h1>` +
                 `<blockquote>e]f</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>${oeTab(TAB_WIDTH, false)}a[b</p>` +
@@ -1358,7 +1479,10 @@ describe("remove tabulation with shift+tab", () => {
                 `<h1>${oeTab()}c${oeTab()}d${oeTab()}</h1>` +
                 `<blockquote>${oeTab()}e${oeTab()}]f</blockquote>` +
                 `<h4>zzz</h4>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfterEdit:
                 `<p>xxx</p>` +
                 `<p>a[${oeTab(tabAfterA, false)}b${oeTab(tabAfterB, false)}</p>` +
@@ -1393,7 +1517,10 @@ describe("remove tabulation with shift+tab", () => {
                 `<ul><li>${oeTab()}e${oeTab()}</li></ul></li></ul></li>` +
                 `</ul>` +
                 `<blockquote>${oeTab()}f${oeTab()}]g</blockquote>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfterEdit:
                 `<p>${oeTab(TAB_WIDTH, false)}a[${oeTab(tabAfterA, false)}b${oeTab(
                     tabAfterB,
@@ -1429,7 +1556,10 @@ describe("remove tabulation with shift+tab", () => {
         await testEditor({
             contentBefore:
                 `<p>${oeTab()}<strong>a[b</strong></p>` + `<p>${oeTab()}<strong>c]d</strong></p>`,
-            stepFunction: keydownShiftTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownShiftTab(editor);
+            },
             contentAfter: `<p><strong>a[b</strong></p>` + `<p><strong>c]d</strong></p>`,
         });
     });

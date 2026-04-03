@@ -3,8 +3,9 @@ import { describe, expect, test } from "@odoo/hoot";
 import { press } from "@odoo/hoot-dom";
 import { setupEditor, testEditor } from "../_helpers/editor";
 import { unformat } from "../_helpers/format";
-import { undo } from "../_helpers/user_actions";
+import { keydownTab, undo } from "../_helpers/user_actions";
 import { getContent } from "../_helpers/selection";
+import { closeToolbar } from "../_helpers/toolbar";
 
 function addRow(position) {
     return (editor) => {
@@ -896,7 +897,10 @@ describe("tab", () => {
         await testEditor({
             contentBefore:
                 '<table><tbody><tr style="height: 20px;"><td style="width: 20px;">ab</td><td>[cd]</td><td>ef</td></tr></tbody></table>',
-            stepFunction: () => press("Tab"),
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter:
                 '<table><tbody><tr style="height: 20px;"><td style="width: 20px;">ab</td><td>cd</td><td>ef[]</td></tr></tbody></table>',
         });

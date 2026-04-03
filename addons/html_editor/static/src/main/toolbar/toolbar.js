@@ -1,4 +1,5 @@
-import { Component, useState, validate } from "@odoo/owl";
+import { trapFocus } from "@html_editor/utils/dom_traversal";
+import { Component, useEffect, useRef, useState, validate } from "@odoo/owl";
 import { omit, pick } from "@web/core/utils/objects";
 
 export class Toolbar extends Component {
@@ -7,6 +8,7 @@ export class Toolbar extends Component {
         class: { type: String, optional: true },
         getSelection: Function,
         focusEditable: Function,
+        closeToolbar: Function,
         state: {
             type: Object,
             shape: {
@@ -49,12 +51,42 @@ export class Toolbar extends Component {
                         },
                     },
                 },
+                open: Boolean,
             },
         },
     };
 
     setup() {
         this.state = useState(this.props.state);
+        this.toolbarEl = useRef("toolbarEl");
+
+        useEffect(
+            () => {
+                // When toolbar expands, focus the first button
+                this.state.namespace == "expanded" &&
+                    this.toolbarEl.el.querySelector("button")?.focus();
+            },
+            () => [this.state.namespace]
+        );
+    }
+
+    onKeyDown(ev) {
+        const isDropdownOpen = ev.target.classList?.contains("show");
+        if (isDropdownOpen) {
+            return;
+        }
+        // On tab, loop through toolbar buttons
+        if (ev.key === "Tab") {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const toolbarButtons = this.toolbarEl.el.querySelectorAll("button");
+            trapFocus(toolbarButtons, ev.shiftKey);
+        } else if (ev.key === "Escape") {
+            ev.stopPropagation();
+            this.props.closeToolbar();
+            this.props.state.open = false;
+            this.props.focusEditable();
+        }
     }
 
     onButtonClick(button) {

@@ -2,6 +2,8 @@ import { describe, test } from "@odoo/hoot";
 import { press } from "@odoo/hoot-dom";
 import { testEditor } from "../_helpers/editor";
 import { unformat } from "../_helpers/format";
+import { closeToolbar } from "../_helpers/toolbar";
+import { keydownShiftTab, keydownTab } from "../_helpers/user_actions";
 
 describe("move selection with tab/shift+tab", () => {
     describe("tab", () => {
@@ -160,7 +162,10 @@ describe("move selection with tab/shift+tab", () => {
                         </tbody>
                     </table>
                 `),
-                stepFunction: async () => press("Tab"),
+                stepFunction: async (editor) => {
+                    await closeToolbar();
+                    await keydownTab(editor);
+                },
                 contentAfter: unformat(`
                     <table>
                         <tbody>
@@ -259,7 +264,10 @@ describe("move selection with tab/shift+tab", () => {
                         </tbody>
                     </table>
                 `),
-                stepFunction: async () => press(["Shift", "Tab"]),
+                stepFunction: async (editor) => {
+                    await closeToolbar();
+                    await keydownShiftTab(editor);
+                },
                 contentAfter: unformat(`
                     <table>
                         <tbody>
@@ -289,7 +297,10 @@ describe("move selection with tab/shift+tab", () => {
                         </tbody>
                     </table>
                 `),
-                stepFunction: async () => press(["Shift", "Tab"]),
+                stepFunction: async (editor) => {
+                    await closeToolbar();
+                    await keydownShiftTab(editor);
+                },
                 contentAfter: unformat(`
                     <table>
                         <tbody>

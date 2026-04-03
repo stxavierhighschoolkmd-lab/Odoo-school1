@@ -51,6 +51,7 @@ import { expectElementCount } from "./_helpers/ui_expectations";
 import { DELAY_TOOLBAR_OPEN, ToolbarPlugin } from "@html_editor/main/toolbar/toolbar_plugin";
 import { ImageCrop } from "@html_editor/main/media/image_crop";
 import { Editor } from "@html_editor/editor";
+import { oeTab, TAB_WIDTH } from "./_helpers/tabs";
 
 test.tags("desktop");
 test("toolbar is only visible when selection is not collapsed in desktop", async () => {
@@ -161,6 +162,118 @@ test("toolbar closes when selection leaves editor", async () => {
     await expectElementCount(".o-we-toolbar", 0);
 });
 
+test.tags("desktop");
+test("focus should be trap in toolbar on tab", async () => {
+    await setupEditor("<p>[test]</p>");
+    await waitFor(".o-we-toolbar");
+
+    await expandToolbar();
+    const toolbarBtns = queryAll(".o-we-toolbar button:not([disabled])");
+    // First button should be focused after expanding toolbar
+    expect(getActiveElement()).toBe(toolbarBtns[0]);
+
+    for (let i = 1; i < toolbarBtns.length; i++) {
+        await press("Tab");
+        expect(getActiveElement()).toBe(toolbarBtns[i]);
+    }
+
+    // Tab on last button should cycle back to first
+    await press("Tab");
+    expect(getActiveElement()).toBe(toolbarBtns[0]);
+
+    // Shift+Tab on first button should cycle back to last
+    await press(["shift", "tab"]);
+    expect(getActiveElement()).toBe(toolbarBtns[toolbarBtns.length - 1]);
+});
+
+test.tags("desktop");
+test("tab should move focus to first toolbar button when focus is in editable", async () => {
+    const { el } = await setupEditor("<p>[test]</p>");
+    await waitFor(".o-we-toolbar");
+    expect(getActiveElement()).toBe(el);
+
+    // Tab from editable should move focus to first toolbar button
+    await press("Tab");
+    const toolbarBtns = queryAll(".o-we-toolbar button");
+    expect(getActiveElement()).toBe(toolbarBtns[0]);
+});
+
+test.tags("desktop");
+test("should close toolbar on escape", async () => {
+    const { el } = await setupEditor("<p>[test]</p>");
+    await waitFor(".o-we-toolbar");
+
+    // Escape should close toolbar and keep selection intact
+    await press("Escape");
+    await expectElementCount(".o-we-toolbar", 0);
+    expect(getContent(el)).toBe("<p>[test]</p>");
+    expect(getActiveElement()).toBe(el);
+});
+test.tags("desktop");
+test("after closing toolbar by escape, tab should indent text and not open toolbar", async () => {
+    const { el } = await setupEditor("<p>[test]</p>");
+    await waitFor(".o-we-toolbar");
+
+    // Move focus to toolbar
+    await press("Tab");
+    expect(queryAll(".o-we-toolbar button")[0]).toBeFocused();
+
+    // Escape should close toolbar and return focus to editable
+    await press("Escape");
+    await expectElementCount(".o-we-toolbar", 0);
+    expect(getActiveElement()).toBe(el);
+
+    // Tab should indent the text and not reopen the toolbar
+    await press("Tab");
+    expect(getContent(el)).toBe(`<p>${oeTab(TAB_WIDTH, false)}[test]</p>`);
+    await expectElementCount(".o-we-toolbar", 0);
+});
+
+test.tags("desktop");
+test("toolbar should reopen on manual selection after being closed by escape", async () => {
+    const { el } = await setupEditor("<p>tes[t]</p>");
+    await waitFor(".o-we-toolbar");
+
+    // Close toolbar by escape
+    await press("Escape");
+    await animationFrame();
+    await expectElementCount(".o-we-toolbar", 0);
+
+    await keyDown(["Shift", "ArrowLeft"]);
+    setContent(el, "<p>te[st]</p>");
+    await tick(); // selectionChange
+
+    // Toolbar should reopen after keyup
+    await keyUp(["Shift", "ArrowLeft"]);
+    await advanceTime(DELAY_TOOLBAR_OPEN); // toolbar open on keyup is debounced
+
+    await expectElementCount(".o-we-toolbar", 1);
+    expect(getContent(el)).toBe("<p>te[st]</p>");
+});
+
+test.tags("desktop");
+test("pressing Escape closes dropdown and returns focus to dropdown button, then editable", async () => {
+    const { el } = await setupEditor("<p>[test]</p>");
+    await waitFor(".o-we-toolbar");
+
+    await click("button[name='font']");
+    await expectElementCount(".o_font_selector_menu", 1);
+
+    // Closes dropdown and move focus to the parent button
+    await press("Escape");
+    await expectElementCount(".o_font_selector_menu", 0);
+    expect(getActiveElement()).toBe(queryOne("button[name='font']"));
+
+    // Move focus from toolbar to editbale
+    await press("Escape");
+    expect(getActiveElement()).toBe(el);
+
+    // Closes the toolbar on Escape when focus is inside the editable
+    await press("Escape");
+    await expectElementCount(".o-we-toolbar", 0);
+    expect(getActiveElement()).toBe(el);
+});
+
 test("toolbar works: can format bold", async () => {
     const { el } = await setupEditor("<p>test</p>");
     expect(getContent(el)).toBe("<p>test</p>");
@@ -172,6 +285,26 @@ test("toolbar works: can format bold", async () => {
 
     // click on toggle bold
     await contains(".btn[name='bold']").click();
+    expect(getContent(el)).toBe("<p><strong>[test]</strong></p>");
+});
+
+test.tags("desktop");
+test("bold shortcut should work when focus is on a toolbar button", async () => {
+    const { el } = await setupEditor("<p>test</p>");
+    expect(getContent(el)).toBe("<p>test</p>");
+
+    // set selection to open toolbar
+    await expectElementCount(".o-we-toolbar", 0);
+    setContent(el, "<p>[test]</p>");
+    await expectElementCount(".o-we-toolbar", 1);
+
+    // Move focus to toolbar button by pressing Tab
+    await press("Tab");
+    await animationFrame();
+    expect(getActiveElement()).toBe(queryOne(".o-we-toolbar button[name='font']"));
+
+    // Format bold shortcut operation should be performed
+    await press(["ctrl", "b"]);
     expect(getContent(el)).toBe("<p><strong>[test]</strong></p>");
 });
 
@@ -296,6 +429,39 @@ test("toolbar link buttons react to selection change", async () => {
     expect(".btn[name='link']").toHaveCount(1);
     expect(".btn[name='link']").not.toHaveClass("active");
     expect(".btn[name='unlink']").toHaveCount(1);
+});
+
+test.tags("desktop");
+test("move focus in list dropdown on Tab, Escape returns focus to dropdown button, then editable", async () => {
+    const { el } = await setupEditor("<p>[test]</p>");
+    await waitFor(".o-we-toolbar");
+    await expandToolbar();
+
+    await click("button[name='list_selector']");
+    await expectElementCount(".o-we-toolbar-dropdown button[name='bulleted_list']", 1);
+
+    await press("Tab");
+    expect(getActiveElement()).toBe(queryOne("button[name='bulleted_list']"));
+    await press("Tab");
+    expect(getActiveElement()).toBe(queryOne("button[name='numbered_list']"));
+    await press("Tab");
+    expect(getActiveElement()).toBe(queryOne("button[name='checklist']"));
+    await press("Tab");
+    expect(getActiveElement()).toBe(queryOne("button[name='bulleted_list']"));
+
+    // Closes dropdown and move focus to the toolbar list button
+    await press("Escape");
+    await expectElementCount(".o-we-toolbar-dropdown button[name='bulleted_list']", 0);
+    expect(getActiveElement()).toBe(queryOne("button[name='list_selector']"));
+
+    // Move focus from toolbar to editbale
+    await press("Escape");
+    expect(getActiveElement()).toBe(el);
+
+    // Closes the toolbar on Escape when focus is inside the editable
+    await press("Escape");
+    await expectElementCount(".o-we-toolbar", 0);
+    expect(getActiveElement()).toBe(el);
 });
 
 test("toolbar unlink button should be disabled when link is unremovable", async () => {
@@ -439,19 +605,19 @@ test("toolbar works: can select font size", async () => {
     await waitFor(".o-we-toolbar");
     const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
-    expect(inputEl).toHaveValue(getFontSizeFromVar("body-font-size").toString());
+    expect(inputEl).toHaveValue(getFontSizeFromVar("body-font-size"));
 
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
     const sizes = [...new Set(fontSizeItems.map((item) => getFontSizeFromVar(item.variableName)))]
         .sort((a, b) => a - b)
         .map(String);
     expect(queryAllTexts(".o_font_size_selector_menu .dropdown-item")).toEqual([...sizes]);
-    const h1Size = getFontSizeFromVar("h1-font-size").toString();
+    const h1Size = getFontSizeFromVar("h1-font-size");
     await contains(`.o_font_size_selector_menu .dropdown-item:contains('${h1Size}')`).click();
     expect(getContent(el)).toBe(`<p><span class="h1-fs">[test]</span></p>`);
     expect(inputEl).toHaveValue(h1Size);
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
-    const oSmallSize = getFontSizeFromVar("small-font-size").toString();
+    const oSmallSize = getFontSizeFromVar("small-font-size");
     await contains(`.o_font_size_selector_menu .dropdown-item:contains('${oSmallSize}')`).click();
     expect(getContent(el)).toBe(`<p><span class="o_small-fs">[test]</span></p>`);
     expect(inputEl).toHaveValue(oSmallSize);
@@ -470,14 +636,14 @@ test("toolbar works: change font size correctly when closest block element has a
     await waitFor(".o-we-toolbar");
     const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
-    expect(inputEl).toHaveValue(getFontSizeFromVar("h3-font-size").toString());
+    expect(inputEl).toHaveValue(getFontSizeFromVar("h3-font-size"));
 
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
     const sizes = [...new Set(fontSizeItems.map((item) => getFontSizeFromVar(item.variableName)))]
         .sort((a, b) => a - b)
         .map(String);
     expect(queryAllTexts(".o_font_size_selector_menu .dropdown-item")).toEqual([...sizes]);
-    const h1Size = getFontSizeFromVar("h1-font-size").toString();
+    const h1Size = getFontSizeFromVar("h1-font-size");
     await contains(`.o_font_size_selector_menu .dropdown-item:contains('${h1Size}')`).click();
     expect(getContent(el)).toBe(
         `<h2 class="h3-fs">abc <strong>def </strong><span class="h1-fs"><strong>[ghi]</strong></span></h2>`
@@ -491,7 +657,7 @@ test("toolbar works: show the correct text alignment", async () => {
     expect("button[name='text_align']").toHaveCount(1);
     expect("button[name='text_align'] span").toHaveInnerHTML(`<i class="fa fa-align-left"> </i>`);
     await click("button[name='text_align']");
-    await contains(".o-we-toolbar-dropdown .btn.fa-align-right").click();
+    await contains(".o-we-toolbar-dropdown button.fa-align-right").click();
     expect(getContent(el)).toBe(
         `<p style="text-align: right;">[test</p><p style="text-align: right;"><br>]</p>`
     );
@@ -518,8 +684,8 @@ test("toolbar works: show the correct text alignment after undo/redo", async () 
 });
 
 test.tags("desktop");
-test("should focus the editable area after selecting a font size item", async () => {
-    const { editor, el } = await setupEditor("<p>[test]</p>");
+test("should focus the fontsize dropdown button after selecting a font size item", async () => {
+    const { el } = await setupEditor("<p>[test]</p>");
 
     await expectElementCount(".o-we-toolbar", 1);
     const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
@@ -528,7 +694,7 @@ test("should focus the editable area after selecting a font size item", async ()
     expect(getActiveElement()).toBe(inputEl);
     await waitFor(".o_font_size_selector_menu .dropdown-item:contains('21')");
     await contains(".o_font_size_selector_menu .dropdown-item:contains('21')").click();
-    expect(getActiveElement()).toBe(editor.editable);
+    expect(getActiveElement()).toBe(queryOne(".o-we-toolbar button[name='font_size_selector']"));
     expect(getActiveElement()).not.toBe(inputEl);
     expect(getContent(el)).toBe(`<p><span class="h2-fs">[test]</span></p>`);
 });
@@ -540,9 +706,10 @@ test("should focus the editable area after selecting a font size item on mobile"
     await expectElementCount(".o-we-toolbar", 1);
     const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
-    await contains(".o-we-toolbar [name='font_size_selector']").click();
+    await contains(inputEl).click();
+    await animationFrame();
     // In mobile the toolbar is hidden while o_bottom_sheet is opened.
-    expect(getActiveElement()).toBe(editor.editable);
+    expect(getActiveElement()).toBe(iframeEl);
     expect(getActiveElement()).not.toBe(inputEl);
     await waitFor(".o_font_size_selector_menu .dropdown-item:contains('21')");
     await contains(".o_font_size_selector_menu .dropdown-item:contains('21')").click();
@@ -564,7 +731,7 @@ test("should not create empty extra nodes while changing format of link", async 
     await waitFor(".o_font_size_selector_menu .dropdown-item:contains('80')");
     await contains(".o_font_size_selector_menu .dropdown-item:contains('80')").click();
     expect(getContent(el)).toBe(
-        `<p><span class="display-1-fs">\ufeff<a href="http://test.com" class="o_link_in_selection">\ufeff[test.com]\ufeff</a>\ufeff</span></p>`
+        `<p><span class="display-1-fs">\ufeff<a href="http://test.com">\ufeff[test.com]\ufeff</a>\ufeff</span></p>`
     );
 });
 
@@ -606,14 +773,14 @@ test("toolbar works: display correct font size on select all", async () => {
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
     await animationFrame();
-    const h1Size = getFontSizeFromVar("h1-font-size").toString();
+    const h1Size = getFontSizeFromVar("h1-font-size");
     await contains(`.o_font_size_selector_menu .dropdown-item:contains('${h1Size}')`).click();
     expect(getContent(el)).toBe(`<p><span class="h1-fs">[test]</span></p>`);
     setContent(el, `<p><span class="h1-fs">te[]st</span></p>`);
     await waitForNone(".o-we-toolbar");
     await press(["ctrl", "a"]); // Select all
     await waitFor(".o-we-toolbar");
-    expect(inputEl).toHaveValue(`${h1Size}`);
+    expect(inputEl).toHaveValue(h1Size);
 });
 
 test("toolbar works: displays correct font size on input", async () => {
@@ -625,21 +792,46 @@ test("toolbar works: displays correct font size on input", async () => {
     const inputEl = iframeEl.contentWindow.document?.querySelector("input");
     await contains(inputEl).click();
     // Ensure that the input has the default font size value.
-    expect(inputEl).toHaveValue("14");
+    expect(inputEl).toHaveValue(14);
     expect(".o_font_size_selector_menu").toHaveCount(1);
     // Ensure that the selection is still present in the editable.
     expect(getContent(el)).toBe(`<p>[test]</p>`);
     expect(getActiveElement()).toBe(inputEl);
 
-    await press("8");
-    expect(inputEl).toHaveValue("8");
+    inputEl.value = 8;
+    await manuallyDispatchProgrammaticEvent(inputEl, "input", {
+        inputType: "insertText",
+    });
+    expect(inputEl).toHaveValue(8);
     await advanceTime(200);
     expectElementCount(".o_font_size_selector_menu", 1);
     expect(getContent(el)).toBe(`<p><span style="font-size: 8px;">[test]</span></p>`);
     await expectElementCount(".o-we-toolbar", 1);
 });
 
-test("toolbar works: font size dropdown closes on Enter and Tab key press", async () => {
+test("should allow font size up to 144px in editor", async () => {
+    const { el } = await setupEditor(`<p>[abc]</p>`);
+    await waitFor(".o-we-toolbar");
+
+    const iframeEl = queryOne(".o-we-toolbar [name='font_size_selector'] iframe");
+    expect(iframeEl).toHaveCount(1);
+    const inputEl = iframeEl.contentWindow.document?.querySelector("input");
+    await contains(inputEl).click();
+    // Ensure that the input has the default font size value.
+    expect(inputEl).toHaveValue(14);
+
+    // Simulate entering a font size greater than 144px (backend limit)
+    inputEl.value = 150;
+    await manuallyDispatchProgrammaticEvent(inputEl, "input", {
+        inputType: "insertText",
+    });
+    await advanceTime(200);
+
+    expect(inputEl).toHaveValue(144);
+    expect(getContent(el)).toBe(`<p><span style="font-size: 144px;">[abc]</span></p>`);
+});
+
+test("toolbar works: font size dropdown closes on Enter and Escape key press", async () => {
     await setupEditor("<p>[test]</p>");
     await waitFor(".o-we-toolbar");
 
@@ -655,13 +847,13 @@ test("toolbar works: font size dropdown closes on Enter and Tab key press", asyn
 
     await contains(inputEl).click();
     expect(".o_font_size_selector_menu").toHaveCount(1);
-    await press("Tab");
+    await press("Escape");
     await animationFrame();
     expect(".o_font_size_selector_menu").toHaveCount(0);
 });
 
 test.tags("desktop");
-test("toolbar works: ArrowUp/Down moves focus to font size dropdown", async () => {
+test("toolbar works: ArrowUp/Down and Tab moves focus to font size dropdown", async () => {
     await setupEditor("<p>[test]</p>");
     await waitFor(".o-we-toolbar");
 
@@ -684,6 +876,12 @@ test("toolbar works: ArrowUp/Down moves focus to font size dropdown", async () =
     await animationFrame();
     expect(".o_font_size_selector_menu").toHaveCount(1);
     expect(getActiveElement()).toBe(fontSizeSelectorMenu.lastElementChild);
+
+    await contains(inputEl).click();
+    expect(".o_font_size_selector_menu").toHaveCount(1);
+    await press("Tab");
+    await animationFrame();
+    expect(getActiveElement()).toBe(fontSizeSelectorMenu.firstElementChild);
 });
 
 test.tags("mobile");
@@ -885,9 +1083,16 @@ test("toolbar should close on keypress tab inside table", async () => {
 
     const { el } = await setupEditor(contentBefore);
     await waitFor(".o-we-toolbar");
+
+    // Tab should move focus to the first toolbar button
+    await press("Tab");
+    expect(queryAll(".o-we-toolbar button")[0]).toBeFocused();
+    // Escape should close toolbar and return focus to editable
+    await press("Escape");
+    await expectElementCount(".o-we-toolbar", 0);
+    // Tab should now move the selection to the next table cell
     await press("Tab");
     expect(getContent(el)).toBe(contentAfter);
-    await expectElementCount(".o-we-toolbar", 0);
 });
 
 test("toolbar works: show the correct vertical alignment", async () => {
@@ -913,7 +1118,7 @@ test("toolbar works: show the correct vertical alignment", async () => {
     expect("button[name='vertical_align'] svg[name='vertical_align_top']").toHaveCount(1);
     await click("button[name='vertical_align']");
     await animationFrame();
-    await contains(".dropdown-menu button svg[name='vertical_align_middle']").click();
+    await contains(".dropdown-menu button[name='vertical_align_middle']").click();
     expect("button[name='vertical_align'] svg[name='vertical_align_middle']").toHaveCount(1);
     expect(".dropdown-menu button.active svg[name='vertical_align_middle']").toHaveCount(1);
     expect(getContent(el)).toBe(
@@ -959,7 +1164,7 @@ test("toolbar works: show the correct vertical alignment after undo/redo", async
     expect("button[name='vertical_align'] svg[name='vertical_align_top']").toHaveCount(1);
     await click("button[name='vertical_align']");
     await animationFrame();
-    await contains(".dropdown-menu button svg[name='vertical_align_bottom']").click();
+    await contains(".dropdown-menu button[name='vertical_align_bottom']").click();
     expect("button[name='vertical_align'] svg[name='vertical_align_bottom']").toHaveCount(1);
     expect(".dropdown-menu button.active svg[name='vertical_align_bottom']").toHaveCount(1);
     expect(getContent(el)).toBe(
@@ -1004,7 +1209,6 @@ test("toolbar works: show the correct vertical alignment after undo/redo", async
     await press(["ctrl", "y"]);
     await animationFrame();
     expect("button[name='vertical_align'] svg[name='vertical_align_bottom']").toHaveCount(1);
-    expect(".dropdown-menu button.active svg[name='vertical_align_bottom']").toHaveCount(1);
     expect(getContent(el)).toBe(
         unformat(`
             <p data-selection-placeholder=""><br></p>

@@ -3,6 +3,7 @@ import { setupEditor, testEditor } from "../_helpers/editor";
 import { unformat } from "../_helpers/format";
 import { splitBlock, keydownTab, undo, tripleClick } from "../_helpers/user_actions";
 import { getContent } from "../_helpers/selection";
+import { closeToolbar } from "../_helpers/toolbar";
 
 before(async () => {
     const font = new FontFace("Roboto", "url(/web/static/fonts/google/Roboto/Roboto-Regular.ttf)");
@@ -18,7 +19,10 @@ describe("Checklist", () => {
                     <ul class="o_checklist">
                         <li class="o_checked">a[b]c</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li class="oe-nested">
@@ -36,7 +40,10 @@ describe("Checklist", () => {
                     <ul class="o_checklist">
                         <li>a[b]c</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li class="oe-nested">
@@ -55,7 +62,10 @@ describe("Checklist", () => {
                         <li class="o_checked">abc</li>
                         <li class="o_checked">d[e]f</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li class="o_checked">
@@ -75,7 +85,10 @@ describe("Checklist", () => {
                         <li class="o_checked">abc</li>
                         <li>d[e]f</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li class="o_checked">
@@ -95,7 +108,10 @@ describe("Checklist", () => {
                         <li>abc</li>
                         <li>d[e]f</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li>
@@ -115,7 +131,10 @@ describe("Checklist", () => {
                         <li>abc</li>
                         <li class="o_checked">d[e]f</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li>
@@ -139,7 +158,10 @@ describe("Checklist", () => {
                         </li>
                         <li class="o_checked">g[h]i</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li class="oe-nested">
@@ -163,7 +185,10 @@ describe("Checklist", () => {
                         </li>
                         <li class="o_checked">g[h]i</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li><p>abc</p>
@@ -187,7 +212,10 @@ describe("Checklist", () => {
                         </li>
                         <li>g[h]i</li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li><p>abc</p>
@@ -211,7 +239,10 @@ describe("Checklist", () => {
                             </ul>
                         </li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li class="o_checked"><p>abc</p>
@@ -235,7 +266,10 @@ describe("Checklist", () => {
                             </ul>
                         </li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li><p>abc</p>
@@ -259,7 +293,10 @@ describe("Checklist", () => {
                             </ul>
                         </li>
                     </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                     <ul class="o_checklist">
                         <li class="o_checked"><p>abc</p>
@@ -725,7 +762,10 @@ describe("with selection", () => {
                     <li>[a]</li>
                     <li>b</li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li class="oe-nested">
@@ -746,7 +786,10 @@ describe("with selection", () => {
                     <li>[b]</li>
                     <li>c</li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -772,7 +815,10 @@ describe("with selection", () => {
                     </li>
                 </ul>
             `),
-            stepFunction: async (editor) => await keydownTab(editor),
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li class="oe-nested">
@@ -794,7 +840,10 @@ describe("with selection", () => {
                     [<li><h1>abc</h1></li>]
                 </ul>
             `),
-            stepFunction: async (editor) => await keydownTab(editor),
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li class="oe-nested">
@@ -816,7 +865,10 @@ describe("with selection", () => {
                     <li>c]</li>
                 </ul>
             `),
-            stepFunction: async (editor) => await keydownTab(editor),
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li class="oe-nested">
@@ -845,7 +897,10 @@ describe("with selection", () => {
                         </ul>
                     </li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -879,7 +934,10 @@ describe("with selection", () => {
                         </ul>
                     </li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -922,7 +980,10 @@ describe("with selection", () => {
                     </li>
                     <li>g]</li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li class="oe-nested">
@@ -965,7 +1026,10 @@ describe("with selection", () => {
                         </ul>
                     </li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -1008,7 +1072,10 @@ describe("with selection", () => {
                         </ul>
                     </li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -1043,7 +1110,10 @@ describe("with selection", () => {
                     <li>c]</li>
                     <li>d</li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -1070,7 +1140,10 @@ describe("with selection", () => {
                     <li>c[</li>
                     <li>d</li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -1103,7 +1176,10 @@ describe("with selection", () => {
                     <li>d]</li>
                     <li>e</li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -1138,7 +1214,10 @@ describe("with selection", () => {
                         </ol>
                     </li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>
@@ -1171,7 +1250,10 @@ describe("with selection", () => {
                         </ol>
                     </li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li><p>a</p>
@@ -1204,6 +1286,7 @@ describe("with selection", () => {
                 </ul>`),
             stepFunction: async (editor) => {
                 await tripleClick(editor.editable.querySelectorAll("li")[1]);
+                await closeToolbar();
                 await keydownTab(editor);
             },
             contentAfter: unformat(`
@@ -1242,7 +1325,10 @@ describe("with selection", () => {
                     <li>h]</li>
                     <li>i</li>
                 </ul>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                 <ul>
                     <li>a</li>
@@ -1285,7 +1371,10 @@ describe("with selection", () => {
                     <li>a</li>
                 </ul>
                 <p>after]</p>`),
-            stepFunction: keydownTab,
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter:
                 `<p>${tab}[before</p>` +
                 unformat(`
@@ -1325,7 +1414,10 @@ describe("with selection", () => {
                             </tbody>
                         </table>
                     `),
-            stepFunction: async (editor) => await keydownTab(editor),
+            stepFunction: async (editor) => {
+                await closeToolbar();
+                await keydownTab(editor);
+            },
             contentAfter: unformat(`
                         <table>
                             <tbody>
@@ -1361,7 +1453,7 @@ describe("Mixed: list + paragraph", () => {
             </ul>
             <p>def]</p>`);
         const { el, editor } = await setupEditor(contentBefore);
-
+        await closeToolbar();
         await keydownTab(editor);
 
         /* eslint-disable */

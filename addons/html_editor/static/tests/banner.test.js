@@ -8,6 +8,7 @@ import { loader } from "@web/core/emoji_picker/emoji_picker";
 import { execCommand } from "./_helpers/userCommands";
 import { unformat } from "./_helpers/format";
 import { expectElementCount } from "./_helpers/ui_expectations";
+import { closeToolbar } from "./_helpers/toolbar";
 
 test("should insert a banner with focus inside followed by a paragraph", async () => {
     const { el, editor } = await setupEditor("<p>Test[]</p>");
@@ -381,6 +382,7 @@ test("Monospace banner should unindent on shift+tab", async () => {
     const tabZws = `${tab}\u200b`;
     const { el, editor } = await setupEditor(wrap(["[a() {", `${tab}x = 1;`, "}]"]));
     expect(unformat(getContent(el))).toBe(unformat(wrap(["[a() {", `${tab}x = 1;`, "}]"])));
+    await closeToolbar();
     await keydownTab(editor);
     expect(unformat(getContent(el))).toBe(
         unformat(wrap([`${tabZws}[a() {`, `${tabZws}${tab}x = 1;`, `${tabZws}}]`]))

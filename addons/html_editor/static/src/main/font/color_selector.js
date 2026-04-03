@@ -1,5 +1,5 @@
 import { isColorGradient } from "@web/core/utils/colors";
-import { Component, useState } from "@odoo/owl";
+import { Component, useRef, useState } from "@odoo/owl";
 import {
     useColorPicker,
     DEFAULT_COLORS,
@@ -60,6 +60,7 @@ export class ColorSelector extends Component {
         );
 
         const colorPickerRef = useChildRef();
+        const colorSelectorBtn = useRef("root");
         this.colorPicker = useColorPicker(
             "root",
             {
@@ -78,6 +79,7 @@ export class ColorSelector extends Component {
                 onClose: () => {
                     this.props.applyColorResetPreview();
                     this.props.onClose();
+                    colorSelectorBtn.el?.focus();
                 },
                 ref: colorPickerRef,
             }
