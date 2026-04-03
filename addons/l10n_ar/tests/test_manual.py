@@ -2,7 +2,7 @@
 from unittest import skip
 
 from . import common
-from odoo import Command
+from odoo import Command, fields
 from odoo.tests import Form, tagged
 from odoo.tools.float_utils import float_split_str
 from odoo.exceptions import ValidationError
@@ -17,6 +17,13 @@ class TestArManual(common.TestArCommon):
         cls.journal = cls._create_journal('preprinted')
         cls.partner = cls.res_partner_adhoc
         cls._create_test_invoices_like_demo()
+
+        cls.own_check_method_line = cls.company_data['default_journal_bank']\
+        .outbound_payment_method_line_ids\
+        .filtered(lambda l: l.code == 'own_checks')
+
+        # Set the outstanding account
+        cls.own_check_method_line.payment_account_id = cls.outbound_payment_method_line.payment_account_id
 
     def test_01_create_invoice(self):
         """ Create and validate an invoice for a Responsable Inscripto
@@ -409,3 +416,39 @@ class TestArManual(common.TestArCommon):
             .sorted(lambda x: (x.move_id.id, x.tax_line_id.id, x.tax_ids.ids, x.tax_repartition_line_id.id))
 
         self.assertEqual(tax_lines_a.balance, tax_lines_b.balance, 'Tax balances should be equal since both invoices have a single line and the total matches the line amount.')
+
+    def test_invoice_status_after_voided_check(self):
+        # Create a new invoice
+        invoice = self._create_invoice_ar(
+            move_type='in_invoice',
+            l10n_latam_document_type_id=self.env.ref('l10n_ar.dc_liq_uci_a'),
+            l10n_latam_document_number="001-00001",
+            post=True
+        )
+        self.assertEqual(invoice.state, 'posted', 'Invoice has not been validate in Odoo')
+        self.assertEqual(invoice.payment_state, 'not_paid', 'No payment has yet been made on the invoice')
+
+        # Use the wizard to create the own check payment
+        action = invoice.action_register_payment()
+        wizard = self.env[action['res_model']].with_context(action['context']).create({
+            'journal_id': self.company_data['default_journal_bank'].id,
+            'payment_method_line_id': self.own_check_method_line.id,
+            'l10n_latam_new_check_ids': [
+                Command.create({
+                    'name': '0000001',
+                    'payment_date': fields.Date.today(),
+                    'amount': invoice.amount_total,
+                })
+            ],
+        })
+        action = wizard.action_create_payments()
+
+        # Check that the own check is in 'handed' state after payment is made
+        payment = self.env['account.payment'].browse(action['res_id'])
+        check = payment.l10n_latam_new_check_ids
+        self.assertEqual(check.issue_state, 'handed', 'Own check should be in handed state after payment')
+
+        # Void the check and validate invoice state
+        check.action_void()
+        self.assertEqual(check.issue_state, 'voided', 'Own check should be voided after action_void()')
+        self.assertEqual(invoice.payment_state, 'not_paid', 'Invoice should return to not_paid after the check is voided')
