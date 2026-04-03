@@ -24,7 +24,12 @@ Pro rules and show the errors.
     'depends': ['account'],
     'data': [
         'data/cii_22_templates.xml',
+<<<<<<< 9b9ff3ddcba6f0c9d37d08fb4fb900bed3b396a4
         'views/account_tax_views.xml',
+||||||| 7464858e03620b37b9a9bb35f5a16c61519b67ff
+=======
+        'data/ir_config_parameter_data.xml',
+>>>>>>> 56b4e45a55d3207d5b6ba2957666cf539d2f71c6
         'views/account_move_views.xml',
         'views/res_partner_views.xml',
         'report/account_edi_ubl_cii_report_templates.xml',
