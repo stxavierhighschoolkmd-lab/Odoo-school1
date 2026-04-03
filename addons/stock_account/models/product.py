@@ -415,12 +415,23 @@ class ProductProduct(models.Model):
         if oldest_manual_value and self.env['product.product'].concat(*last_manual_value_by_product.keys()) == self:
             moves_domain &= Domain([('date', '>=', oldest_manual_value)])
 
+        historical_qty_by_product_date = {}
+        if not lot:
+            products_by_manual_value_date = defaultdict(set)
+            for manual_value in last_manual_value_by_product.values():
+                products_by_manual_value_date[manual_value.date].add(manual_value.product_id.id)
+            for manual_value_date, product_ids in products_by_manual_value_date.items():
+                products_at_date = self.env['product.product'].browse(product_ids).with_context(to_date=manual_value_date)
+                # Batch qty_available per historical date instead of recomputing it for each product.value entry.
+                for product in products_at_date:
+                    historical_qty_by_product_date[product.id, manual_value_date] = product.qty_available
+
         for manual_value in last_manual_value_by_product.values():
             product = manual_value.product_id
             if lot:
                 quantity = lot.with_context(to_date=manual_value.date, skip_in_progress=True).product_qty
             else:
-                quantity = product.with_context(to_date=manual_value.date).qty_available
+                quantity = historical_qty_by_product_date[product.id, manual_value.date]
 
             std_price_by_product_id[product.id] = manual_value.value
             quantity_by_product_id[product.id] = quantity
