@@ -324,21 +324,18 @@ export class CalendarController extends Component {
     }
     async editRecord(record, context = {}) {
         if (this.model.hasEditDialog) {
+            const dialogProps = {
+                resModel: this.model.resModel,
+                resId: record.id || false,
+                context,
+                title: record.id ? _t("Open: %s", record.title) : this.editRecordDefaultDisplayText,
+                onRecordSaved: () => this.model.load(),
+            };
+            if (!context?.form_view_ref) {
+                dialogProps.viewId = this.model.formViewId;
+            }
             return new Promise((resolve) => {
-                this.displayDialog(
-                    FormViewDialog,
-                    {
-                        resModel: this.model.resModel,
-                        resId: record.id || false,
-                        context,
-                        title: record.id
-                            ? _t("Open: %s", record.title)
-                            : this.editRecordDefaultDisplayText,
-                        viewId: this.model.formViewId,
-                        onRecordSaved: () => this.model.load(),
-                    },
-                    { onClose: () => resolve() }
-                );
+                this.displayDialog(FormViewDialog, dialogProps, { onClose: () => resolve() });
             });
         } else {
             const action = {
