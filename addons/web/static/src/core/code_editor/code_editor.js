@@ -1,6 +1,57 @@
 import { useLayoutEffect, useRef, useState } from "@web/owl2/utils";
-import { Component, onMounted, onWillStart, status } from "@odoo/owl";
+import { Component, onMounted, onWillStart, status, markRaw } from "@odoo/owl";
 import { loadBundle } from "@web/core/assets";
+import { Reactive } from "../utils/reactive";
+
+class CodeEditorState extends Reactive {
+    /**@protected*/
+    _session = null;
+    /**@protected*/
+    _canUndo = false;
+    /**@protected*/
+    _canRedo = false;
+
+    get canUndo() {
+        return this._session && this._canUndo;
+    }
+
+    get canRedo() {
+        return this._session && this._canRedo;
+    }
+
+    undo() {
+        this._session?.getUndoManager().undo();
+        this._update();
+    }
+
+    redo() {
+        this._session?.getUndoManager().redo();
+        this._update();
+    }
+
+    /** @protected */
+    _setSession(session) {
+        this._session = session ? markRaw(session) : null;
+        this._update();
+    }
+
+    /**@protected */
+    _update() {
+        if (this._session) {
+            const undoManager = this._session.getUndoManager();
+            this._canUndo = undoManager.canUndo();
+            this._canRedo = undoManager.canRedo();
+        }
+    }
+}
+
+/**
+ * Hook used to interact with the CodeEditor undo state and to subscribe to changes.
+ * @returns {CodeEditorState}
+ */
+export function useCodeEditorState() {
+    return useState(new CodeEditorState());
+}
 
 export class CodeEditor extends Component {
     static template = "web.CodeEditor";
@@ -27,6 +78,7 @@ export class CodeEditor extends Component {
         initialCursorPosition: { type: Object, optional: true },
         showLineNumbers: { type: Boolean, optional: true },
         lineWrapping: { type: Boolean, optional: true },
+        editorState: { type: CodeEditorState, optional: true },
     };
     static defaultProps = {
         readonly: false,
@@ -82,8 +134,18 @@ export class CodeEditor extends Component {
                 if (!sessions[this.props.sessionId]) {
                     sessions[this.props.sessionId] = session;
                 }
+
+                if (this.props.editorState) {
+                    this.props.editorState._setSession(session);
+                }
+
                 session.setValue(this.props.value);
                 session.on("change", () => {
+                    if (this.props.editorState) {
+                        this.props.editorState._canUndo = session.getUndoManager().canUndo();
+                        this.props.editorState._canRedo = session.getUndoManager().canRedo();
+                    }
+
                     if (this.props.onChange && !ignoredAceChange) {
                         this.props.onChange(
                             this.aceEditor.getValue(),
@@ -98,6 +160,11 @@ export class CodeEditor extends Component {
                 });
 
                 return () => {
+                    if (this.props.editorState) {
+                        this.props.editorState._setSession(null);
+                        this.props.editorState._canUndo = false;
+                        this.props.editorState._canRedo = false;
+                    }
                     aceEditor.destroy();
                 };
             },
@@ -156,6 +223,11 @@ export class CodeEditor extends Component {
                     });
                     sessions[sessionId] = session;
                 }
+
+                if (this.props.editorState) {
+                    this.props.editorState._setSession(session);
+                }
+
                 session.setMode(this.aceMode);
                 this.aceEditor.setSession(session);
             },
