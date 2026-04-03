@@ -361,7 +361,7 @@ class TestSafeEvalRuntime(TransactionCase):
 
     @mute_logger('odoo.tools.safe_eval.runtime')
     def test_check_generator(self):
-        # Not listen `YIELD` event for external generator
+        # Not listen events for external generator
         expr = """
             gen = get_generator()
             list(gen)
@@ -384,7 +384,7 @@ class TestSafeEvalRuntime(TransactionCase):
         with self.assertRaises(UnsafeClassError):
             list(self.unsafe_context['g'])
 
-        # Attempt to hide a dangerous object (caught by the `YIELD` event)
+        # Attempt to hide a dangerous object (caught by the `PY_START` event)
         expr = """
             g = (UnsafeClass for _ in [0])
             use_generator(g)
@@ -398,7 +398,7 @@ class TestSafeEvalRuntime(TransactionCase):
             safe_eval(dedent(expr), self.unsafe_context, mode='exec')
 
         # Attempt to alter the generator's context by modifying globals
-        # (caught by the `YIELD` event)
+        # (caught by the `PY_START` event)
         expr = """
             d['g'] = (d['foo'] for _ in [0])
             use_generator(d)
@@ -418,7 +418,7 @@ class TestSafeEvalRuntime(TransactionCase):
             safe_eval(dedent(expr), safe_ctx, mode='exec')
 
         # Attempt to alter the generator's context by modifying locals
-        # (caught by the `YIELD` event)
+        # (caught by the `PY_START` event)
         expr = """
             d={}
             g = (d['foo'] for d in [d])
@@ -438,7 +438,7 @@ class TestSafeEvalRuntime(TransactionCase):
             safe_eval(dedent(expr), safe_ctx, mode='exec')
 
         # Attempt to alter the generator's context by modifying builtins
-        # and shadow them in globals (caught by the `YIELD` event)
+        # and shadow them in globals (caught by the `PY_START` event)
         expr = """
             g = (foo for _ in [0])
             use_generator(g)
@@ -456,6 +456,82 @@ class TestSafeEvalRuntime(TransactionCase):
         safe_ctx = {
             'foo': '',  # Shadow builtin
             'use_generator': use_generator_3,
+        }
+        with self.assertRaisesRegex(ValueError, '^UnsafeClassError'):
+            safe_eval(dedent(expr), safe_ctx, mode='exec')
+
+        # Attempt to escape unsafe context using `StopIteration` (`return`)
+        # (caught by the `PY_START` event)
+        expr = """
+            def gen():
+                return
+                yield d['foo']
+
+            d['g'] = gen()
+            use_generator(d)
+        """
+
+        def use_generator_4(d):
+            # Make the generator's context unsafe
+            d['foo'] = self.unsafe_context['UnsafeClass']
+            # Attempt to consume the generator
+            list(d['g'])  # Triggers `UnsafeObjectError`
+
+        safe_ctx = {
+            'd': {},
+            'use_generator': use_generator_4,
+        }
+        with self.assertRaisesRegex(ValueError, '^UnsafeClassError'):
+            safe_eval(dedent(expr), safe_ctx, mode='exec')
+
+        # Attempt to escape unsafe context using exception
+        # (caught by the `PY_START` event)
+        expr = """
+            def gen():
+                raise Exception
+                yield d['foo']
+
+            d['g'] = gen()
+            try:
+                use_generator(d)
+            except Exception:
+                pass
+        """
+
+        def use_generator_5(d):
+            # Make the generator's context unsafe
+            d['foo'] = self.unsafe_context['UnsafeClass']
+            # Attempt to consume the generator
+            list(d['g'])  # Triggers `UnsafeObjectError`
+
+        safe_ctx = {
+            'd': {},
+            'use_generator': use_generator_5,
+        }
+        with self.assertRaisesRegex(ValueError, '^UnsafeClassError'):
+            safe_eval(dedent(expr), safe_ctx, mode='exec')
+
+        # Attempt to escape unsafe context using intermediate yield
+        # (caught by the `PY_RESUME` event)
+        expr = """
+            def gen():
+                yield
+                yield d['foo']
+
+            d['g'] = gen()
+            use_generator(d)
+        """
+
+        def use_generator_6(d):
+            next(d['g'])
+            # Make the generator's context unsafe
+            d['foo'] = self.unsafe_context['UnsafeClass']
+            # Attempt to consume the generator
+            list(d['g'])  # Triggers `UnsafeObjectError`
+
+        safe_ctx = {
+            'd': {},
+            'use_generator': use_generator_6,
         }
         with self.assertRaisesRegex(ValueError, '^UnsafeClassError'):
             safe_eval(dedent(expr), safe_ctx, mode='exec')
