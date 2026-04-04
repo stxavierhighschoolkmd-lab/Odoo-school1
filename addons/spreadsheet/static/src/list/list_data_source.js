@@ -147,6 +147,8 @@ export class ListDataSource extends OdooViewsDataSource {
      * Get the fields to fetch from the server.
      */
     async _getReadSpec() {
+        console.log("_getReadSpec", this.fieldPathsToFetch);
+
         const allFieldPaths = await Promise.all(
             [...this.fieldPathsToFetch].map((fieldPath) =>
                 this.fieldService.loadPath(this._metaData.resModel, fieldPath)
@@ -184,6 +186,11 @@ export class ListDataSource extends OdooViewsDataSource {
             return this._loadError;
         }
         if (!this.isMetaDataLoaded()) {
+            this._triggerFetching();
+            return LOADING_ERROR;
+        }
+        if (!this.alreadyFetchedFieldPaths.has(fieldPath)) {
+            this.addFieldPathToFetch(fieldPath);
             this._triggerFetching();
             return LOADING_ERROR;
         }
