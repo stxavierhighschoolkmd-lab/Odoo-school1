@@ -31,6 +31,9 @@ from odoo.tools import SQL, Query
 from odoo.tools.image import image_process
 from odoo.tools.sql import escape_psql
 from odoo.tools.translate import _
+from bs4 import BeautifulSoup
+from urllib.parse import urlsplit
+from markupsafe import Markup
 
 logger = logging.getLogger(__name__)
 
@@ -2366,3 +2369,60 @@ class Website(models.Model):
         """
         self.ensure_one()
         return not self.cookies_bar or self.env['ir.http']._is_allowed_cookie('optional')
+
+    def check_third_party_trackers_in_html(self, html):
+        if not html or not self._should_remove_third_party_trackers():
+            return html
+        soup = BeautifulSoup(html, "html.parser")
+        cookies_watchlist = {'domains': self.blocked_third_party_domains.split('\n')}
+        for tag in soup.find_all(["script", "iframe"]):
+            self._remove_third_party_trackers(tag.name, tag, cookies_watchlist)
+        return Markup(str(soup))
+
+    def _should_remove_third_party_trackers(self):
+        return (self.cookies_bar
+            and self.block_third_party_domains
+            and not self.env.context.get('cookies_allowed')
+            and not self.env.user.has_group('website.group_website_restricted_editor'))
+
+    def _remove_third_party_trackers(self, tagName, atts, cookies_watchlist):
+        # If the cookie banner is activated, 3rd-party embedded iframes and
+        # scripts should be controlled. As such:
+        # - 'domains' is a watchlist on the iframe/script's src itself,
+        # - 'classes' is a watchlist on container elements in which iframes
+        # are/could be built on the fly client-side for some reason.
+        watchlist_checker = {
+            'domains': self._is_tag_domains_watchlisted,
+            'classes': self._is_tag_classes_watchlisted,
+        }
+        remove_src = False
+        for watched_part, data in cookies_watchlist.items():
+            if (checker := watchlist_checker.get(watched_part)) and checker(tagName, atts, data):
+                remove_src = True
+                break
+        if remove_src:
+            atts['data-need-cookies-approval'] = 'true'
+            # Case class in watchlist: we stop here. The element could
+            # contain an iframe created on the fly client-side. It is marked
+            # now so that the iframe can be marked later when created.
+            # Case iframe/script's src in watchlist: we adapt the src.
+            if atts.get("src"):
+                atts['data-nocookie-src'] = atts['src']
+                atts['src'] = 'about:blank'
+
+    def _is_tag_domains_watchlisted(self, tagName, atts, data):
+        if tagName in ('iframe', 'script'):
+            src_host = urlsplit((atts.get('src') or '').lower()).hostname
+            if src_host:
+                return any(
+                    # "www.example.com" and "example.com" should block both.
+                    src_host == domain.removeprefix('www.')
+                    # "domain.com" should block "subdomain.domain.com", but
+                    # not "(subdomain.)mydomain.com".
+                    or src_host.endswith('.' + domain.removeprefix('www.'))
+                    for domain in data
+                )
+        return False
+
+    def _is_tag_classes_watchlisted(self, tagName, atts, data):
+        return data.intersection((atts.get('class') or '').split(' '))
