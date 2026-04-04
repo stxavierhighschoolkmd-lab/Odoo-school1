@@ -17,6 +17,28 @@ import { isCSSColor, normalizeCSSColor } from "@web/core/utils/colors";
 // Options
 //--------------------------------------------------------------------------
 
+// Resolve theme color names to concrete values so mailings don't depend on the website theme.
+options.Class = options.Class.extend({
+    /**
+     * @override
+     */
+    selectStyle: async function (previewMode, widgetValue, params) {
+        if (params.colorNames && params.colorPrefix &&
+                params.colorNames.includes(widgetValue) &&
+                !isCSSColor(widgetValue) && !weUtils.isColorGradient(widgetValue)) {
+            const doc = this.options.document;
+            if (doc) {
+                const htmlStyle = doc.defaultView.getComputedStyle(doc.documentElement);
+                const resolvedColor = weUtils.getCSSVariableValue(widgetValue, htmlStyle);
+                if (resolvedColor && isCSSColor(resolvedColor)) {
+                    widgetValue = resolvedColor;
+                }
+            }
+        }
+        return this._super(previewMode, widgetValue, params);
+    },
+});
+
 // Adding compatibility for the outlook compliance of mailings.
 // Commit of such compatibility : a14f89c8663c9cafecb1cc26918055e023ecbe42
 options.registry.MassMailingBackgroundImage = options.registry.BackgroundImage.extend({

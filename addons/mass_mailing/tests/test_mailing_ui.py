@@ -68,6 +68,16 @@ class TestMailingUi(MassMailCommon, HttpCaseWithUserDemo):
     def test_mailing_editor_theme_tour(self):
         self.start_tour('/odoo', 'mailing_editor_theme', login="demo")
 
+    def test_mass_mailing_theme_color_tour(self):
+        self.env['mailing.list'].create({'name': 'Test'})
+        self.start_tour('/odoo', 'mass_mailing_theme_color', login="demo")
+        mailing = self.env['mailing.mailing'].search(
+            [('subject', '=', 'Test Theme Color')], limit=1
+        )
+        self.assertTrue(mailing)
+        self.assertNotIn('bg-o-color-', mailing.body_arch)
+        self.assertIn('background-color', mailing.body_arch)
+
     def test_snippets_mailing_menu_tabs_tour(self):
         self.start_tour("/odoo", 'snippets_mailing_menu_tabs', login="demo")
 
