@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import collections
+from dateutil.relativedelta import relativedelta
 from datetime import timedelta
 import operator as py_operator
 from odoo import api, fields, models, _
@@ -31,6 +32,38 @@ class ProductTemplate(models.Model):
     mrp_product_qty = fields.Float('Manufactured', digits='Product Unit',
         compute='_compute_mrp_product_qty', compute_sudo=False)
     is_kits = fields.Boolean(compute='_compute_is_kits', search='_search_is_kits')
+
+    def _compute_nbr_moves(self):
+        res = collections.defaultdict(lambda: {'moves_in': 0, 'moves_out': 0})
+        incoming_moves = self.env['stock.move.line']._read_group([
+                ('product_id.product_tmpl_id', 'in', self.ids),
+                ('state', '=', 'done'),
+                '|',
+                    ('picking_code', '=', 'incoming'),
+                    '&',
+                        ('location_id.usage', '=', 'production'),
+                        ('location_dest_id.usage', '=', 'internal'),
+                ('date', '>=', fields.Datetime.now() - relativedelta(years=1))
+            ], ['product_id'], ['__count'])
+        outgoing_moves = self.env['stock.move.line']._read_group([
+                ('product_id.product_tmpl_id', 'in', self.ids),
+                ('state', '=', 'done'),
+                '|',
+                    ('picking_code', '=', 'outgoing'),
+                    '&',
+                        ('location_id.usage', '=', 'internal'),
+                        ('location_dest_id.usage', '=', 'production'),
+                ('date', '>=', fields.Datetime.now() - relativedelta(years=1))
+            ], ['product_id'], ['__count'])
+        for product, count in incoming_moves:
+            product_tmpl_id = product.product_tmpl_id.id
+            res[product_tmpl_id]['moves_in'] += count
+        for product, count in outgoing_moves:
+            product_tmpl_id = product.product_tmpl_id.id
+            res[product_tmpl_id]['moves_out'] += count
+        for template in self:
+            template.nbr_moves_in = res[template.id]['moves_in']
+            template.nbr_moves_out = res[template.id]['moves_out']
 
     def _compute_bom_count(self):
         for product in self:
@@ -359,6 +392,33 @@ class ProductProduct(models.Model):
                 }
 
         return res
+
+    def _compute_nbr_moves(self):
+        incoming_moves = self.env['stock.move.line']._read_group([
+                ('product_id', 'in', self.ids),
+                ('state', '=', 'done'),
+                '|',
+                    ('picking_code', '=', 'incoming'),
+                    '&',
+                        ('location_id.usage', '=', 'production'),
+                        ('location_dest_id.usage', '=', 'internal'),
+                ('date', '>=', fields.Datetime.now() - relativedelta(years=1))
+            ], ['product_id'], ['__count'])
+        outgoing_moves = self.env['stock.move.line']._read_group([
+                ('product_id', 'in', self.ids),
+                ('state', '=', 'done'),
+                '|',
+                    ('picking_code', '=', 'outgoing'),
+                    '&',
+                        ('location_id.usage', '=', 'internal'),
+                        ('location_dest_id.usage', '=', 'production'),
+                ('date', '>=', fields.Datetime.now() - relativedelta(years=1))
+            ], ['product_id'], ['__count'])
+        res_incoming = {product.id: count for product, count in incoming_moves}
+        res_outgoing = {product.id: count for product, count in outgoing_moves}
+        for product in self:
+            product.nbr_moves_in = res_incoming.get(product.id, 0)
+            product.nbr_moves_out = res_outgoing.get(product.id, 0)
 
     def action_view_bom(self):
         action = self.env["ir.actions.actions"]._for_xml_id("mrp.product_open_bom")
