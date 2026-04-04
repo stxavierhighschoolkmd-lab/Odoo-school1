@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
+from odoo.fields import Command
 from odoo.exceptions import UserError
 
 
@@ -49,8 +50,19 @@ class MrpProductionSerials(models.TransientModel):
         action['res_id'] = self.id
         return action
 
+    def action_split_and_assign_serials(self):
+        self.ensure_one()
+        lots = self._parse_serial_numbers()
+
+        split_amounts = {self.production_id: [1] * len(lots)}
+        mos = self.production_id._split_productions(amounts=split_amounts)
+        for mo, serial in zip(mos, lots):
+            mo.lot_producing_ids = [Command.link(serial.id)]
+        return self._closing_action(mos)
+
     def action_apply(self):
         self.ensure_one()
+<<<<<<< 2732c0c2ddf04012bf393d41368b0f74923a1275
         if not self.serial_numbers:
             raise UserError(self.env._("There is no serial numbers to apply."))
         lots = list(filter(lambda serial_number: len(serial_number.strip()) > 0, self.serial_numbers.split('\n'))) if self.serial_numbers else []
@@ -73,10 +85,93 @@ class MrpProductionSerials(models.TransientModel):
             })
         new_lots = self.env['stock.lot'].create(new_lot_vals)
         self.production_id.lot_producing_ids = existing_lots + new_lots
+||||||| 0b39e1d6ff86cdc9d4b5158ac275c17433b50eae
+        if not self.serial_numbers:
+            raise UserError(self.env._("There is no serial numbers to apply."))
+        lots = list(filter(lambda serial_number: len(serial_number.strip()) > 0, self.serial_numbers.split('\n'))) if self.serial_numbers else []
+        existing_lots = self.env['stock.lot'].search([
+            '|', ('company_id', '=', False), ('company_id', '=', self.production_id.company_id.id),
+            ('product_id', '=', self.production_id.product_id.id),
+            ('name', 'in', lots),
+        ])
+        existing_lot_names = existing_lots.mapped('name')
+        new_lots = []
+        sequence = self.production_id.product_id.lot_sequence_id
+        for lot_name in sorted(lots):
+            if lot_name in existing_lot_names:
+                continue
+            if sequence and lot_name == sequence.get_next_char(sequence.number_next_actual):
+                sequence.sudo().number_next_actual += 1
+            new_lots.append({
+                'name': lot_name,
+                'product_id': self.production_id.product_id.id
+            })
+        self.production_id.lot_producing_ids = existing_lots + self.env['stock.lot'].create(new_lots)
+=======
+        lots = self._parse_serial_numbers()
+        self.production_id.lot_producing_ids = lots
+>>>>>>> fad4d0a70cde212b59912e8e8f2f93ebe2c29d7d
         if self.production_id.qty_producing != len(self.production_id.lot_producing_ids):
             self.production_id.qty_producing = len(self.production_id.lot_producing_ids)
         (self.workorder_id or self.production_id).set_qty_producing()
+<<<<<<< 2732c0c2ddf04012bf393d41368b0f74923a1275
         if new_lots and self.production_id.picking_type_id.auto_print_generated_mrp_lot:
             print_action = self.production_id._autoprint_generated_lots(new_lots)
             print_action['close_on_report_download'] = True
             return print_action
+||||||| 0b39e1d6ff86cdc9d4b5158ac275c17433b50eae
+
+        print_actions = self.production_id._autoprint_mass_generated_lots()
+        if print_actions:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'do_multi_print',
+                'context': {},
+                'params': {
+                    'reports': print_actions,
+                }
+            }
+=======
+        return self._closing_action()
+
+    def _closing_action(self, mos=False):
+        mos = mos or self.production_id
+        print_actions = mos._autoprint_mass_generated_lots()
+        if print_actions:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'do_multi_print',
+                'context': {},
+                'params': {
+                    'reports': print_actions,
+                }
+            }
+        return {'type': 'ir.actions.act_window_close'}
+
+    def _parse_serial_numbers(self):
+        self.ensure_one()
+        if not self.serial_numbers:
+            raise UserError(self.env._("There is no serial numbers to apply."))
+        lots = list(filter(lambda serial_number: len(serial_number.strip()) > 0, self.serial_numbers.split('\n'))) if self.serial_numbers else []
+        if not lots:
+            raise UserError(self.env._("No valid serial numbers provided."))
+        existing_lots = self.env['stock.lot'].search([
+            '|', ('company_id', '=', False), ('company_id', '=', self.production_id.company_id.id),
+            ('product_id', '=', self.production_id.product_id.id),
+            ('name', 'in', lots),
+        ])
+        existing_lot_names = existing_lots.mapped('name')
+        new_lots_vals = []
+        sequence = self.production_id.product_id.lot_sequence_id
+        for lot_name in sorted(lots):
+            if lot_name in existing_lot_names:
+                continue
+            if sequence and lot_name == sequence.get_next_char(sequence.number_next_actual):
+                sequence.sudo().number_next_actual += 1
+            new_lots_vals.append({
+                'name': lot_name,
+                'product_id': self.production_id.product_id.id,
+            })
+        new_lots = self.env['stock.lot'].create(new_lots_vals)
+        return existing_lots + new_lots
+>>>>>>> fad4d0a70cde212b59912e8e8f2f93ebe2c29d7d
