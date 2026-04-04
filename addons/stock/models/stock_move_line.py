@@ -420,6 +420,9 @@ class StockMoveLine(models.Model):
         move_done = mls.filtered(lambda m: m.state == "done").move_id
         if move_done:
             move_done._check_quantity()
+        mls_to_check = mls.filtered(lambda m: m.package_id and not m.result_package_id and m.picking_id and m.state not in ('done', 'cancel') and not m.picked)
+        for picking in mls_to_check.mapped('picking_id'):
+            picking._check_entire_pack()
         return mls
 
     def write(self, vals):

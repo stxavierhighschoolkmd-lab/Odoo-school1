@@ -185,3 +185,46 @@ class StockMoveLine(TestStockCommon):
             (move_line1 | move_line2).lot_id = self.lot
         with self.assertRaises(UserError):
             (move_line1 | move_line2).quant_id = quant_productA
+
+    def test_manually_readded_move_line_sets_result_package(self):
+        """Test When a move reserves multiple packaged quants, unlinking one move line
+        and re-adding it via quant should be auto-filled result_package_id."""
+        self.shelf1.quant_ids.unlink()
+        package_1, package_2 = self.env['stock.quant.package'].create([
+            {'name': 'Pack A'},
+            {'name': 'Pack B'},
+        ])
+        quants = self.env['stock.quant'].create([
+            {
+                'product_id': self.product.id,
+                'location_id': self.shelf1.id,
+                'quantity': 1,
+                'lot_id': self.lot.id,
+                'owner_id': self.partner.id,
+                'package_id': package.id,
+            }
+            for package in (package_1, package_2)
+        ])
+        move = self.env['stock.move'].create({
+            'name': 'Test Move',
+            'product_id': self.product.id,
+            'product_uom_qty': 2,
+            'location_id': self.shelf1.id,
+            'location_dest_id': self.stock_location,
+            'picking_type_id': self.picking_type_internal,
+        })
+        move._action_confirm()
+        move._action_assign()
+        self.assertRecordValues(move.move_line_ids, [
+            {'package_id': package_1.id, 'result_package_id': package_1.id},
+            {'package_id': package_2.id, 'result_package_id': package_2.id},
+        ])
+        move.move_line_ids[1].unlink()
+        move_form = Form(move, view='stock.view_stock_move_operations')
+        with move_form.move_line_ids.new() as ml:
+            ml.quant_id = quants[1]
+        move = move_form.save()
+        self.assertRecordValues(move.move_line_ids, [
+            {'package_id': package_2.id, 'result_package_id': package_2.id},
+            {'package_id': package_1.id, 'result_package_id': package_1.id},
+        ])
