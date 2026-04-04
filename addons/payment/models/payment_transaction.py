@@ -22,6 +22,7 @@ _logger = get_payment_logger(__name__, sensitive_keys=SENSITIVE_KEYS)
 
 class PaymentTransaction(models.Model):
     _name = "payment.transaction"
+    _inherit = "bus.listener.mixin"
     _description = "Payment Transaction"
     _order = "id desc"
     _rec_name = "reference"
@@ -793,6 +794,7 @@ class PaymentTransaction(models.Model):
             tx._apply_updates(payment_data)
             if tx.tokenize and tx.state in {"authorized", "done"}:
                 tx._tokenize(payment_data)
+            tx._bus_send("payment.notify_transaction_processed", {})
         return tx
 
     @api.model
@@ -1314,3 +1316,35 @@ class PaymentTransaction(models.Model):
         :rtype: recordset of `payment.transaction`
         """
         return self.filtered(lambda t: t.state != "draft").sorted()[:1]
+
+    def _get_transaction_status_message(self, **_kwargs):
+        """Get the status message relevant to the current transaction.
+
+        :return: status message of the transaction.
+        :rtype: Markup
+        """
+        validation_status_messages = {
+            "pending": Markup(f"<p>{_('Saving your payment method.')}</p>"),
+            "done": Markup(f"<p>{_('Your payment method has been saved.')}</p>"),
+            "cancel": Markup(f"<p>{_('The saving of your payment method has been canceled.')}</p>"),
+            "error": Markup(f"""
+                    <p>{_("An error occurred while saving your payment method.")}</p>
+                    <p>{self.state_message}</p>
+            """),
+        }
+        if self.operation == "validation" and self.state in validation_status_messages:
+            status_messages = validation_status_messages
+        else:
+            provider_sudo = self.provider_id.sudo()
+            status_messages = {
+                "draft": Markup(f"<p>{_('Your payment has not been processed yet.')}</p>"),
+                "pending": provider_sudo.pending_msg,
+                "authorized": provider_sudo.auth_msg,
+                "done": provider_sudo.done_msg,
+                "cancel": provider_sudo.cancel_msg,
+                "error": Markup(f"""
+                    <p>{_("An error occurred during the processing of your payment.")}</p>
+                    <p>{self.state_message}</p>
+                """),
+            }
+        return status_messages.get(self.state)
