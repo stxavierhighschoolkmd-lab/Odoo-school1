@@ -67,7 +67,6 @@ class ReportSaleDetails(models.AbstractModel):
         else:
             user_currency = self.env.company.currency_id
 
-        total = 0.0
         products_sold = {}
         taxes = {
             'base_amount': 0.0,
@@ -79,11 +78,6 @@ class ReportSaleDetails(models.AbstractModel):
             'taxes': {},
         }
         for order in orders:
-            if user_currency != order.pricelist_id.currency_id:
-                total += order.pricelist_id.currency_id._convert(
-                    order.amount_total, user_currency, order.company_id, order.date_order or fields.Date.today())
-            else:
-                total += order.amount_total
             currency = order.session_id.currency_id
 
             for line in order.lines:
@@ -126,8 +120,10 @@ class ReportSaleDetails(models.AbstractModel):
             for session in sessions:
                 configs.append(session.config_id)
 
+        total = 0.0
         for payment in payments:
             payment['count'] = False
+            total += payment['total']
 
         for session in sessions:
             cash_counted = 0
