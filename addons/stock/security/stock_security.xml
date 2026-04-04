@@ -84,7 +84,7 @@
         <field name="category_id" ref="base.module_category_hidden"/>
     </record>
 </data>
-<data noupdate="1">
+<data noupdate="0">
     <record id="base.default_user" model="res.users">
         <field name="groups_id" eval="[(4,ref('stock.group_stock_manager'))]"/>
     </record>
@@ -184,6 +184,12 @@
         <field name="name">stock_storage_category multi-company</field>
         <field name="model_id" ref="model_stock_storage_category"/>
         <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+    </record>
+
+    <record model="ir.rule" id="stock_quant_product_company_rule">
+        <field name="name">stock_quant_product_company multi-company</field>
+        <field name="model_id" ref="model_stock_quant"/>
+        <field name="domain_force">['|', ('product_id.company_id', '=', False), ('product_id.company_id', 'in', company_ids)]</field>
     </record>
 
 </data>
