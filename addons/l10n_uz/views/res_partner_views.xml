@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="l10n_uz_view_partner_form" model="ir.ui.view">
+        <field name="name">l10n_uz.res.partner.form.inherit</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="l10n_uz_vat_registry" invisible="'UZ' not in fiscal_country_codes"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
