@@ -9,7 +9,7 @@ import { TranslateSetupEditorPlugin } from "./plugins/translate_setup_editor_plu
 import { VisibilityPlugin } from "@html_builder/core/visibility_plugin";
 import { removePlugins } from "@html_builder/utils/utils";
 import { closestElement } from "@html_editor/utils/dom_traversal";
-import { Component, onMounted, onWillStart } from "@odoo/owl";
+import { Component, onMounted, onWillStart, useEffect } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -40,6 +40,7 @@ import {
     localStorageNoDialogKey,
     TranslatorInfoDialog,
 } from "./translation_components/translatorInfoDialog";
+import { router, routerBus } from "@web/core/browser/router";
 
 const TRANSLATION_PLUGINS = [
     BuilderOptionsTranslationPlugin,
@@ -97,20 +98,39 @@ export class WebsiteBuilder extends Component {
             }
             this.websiteEditService?.clearRpcCache();
         });
+        useEffect(
+            () => {
+                // Back navigation is handled with an additional state in the
+                // history, used to capture the popstate event.
+                history.pushState({ skipRouteChange: true }, "");
+
+                const leaveOnBackNavigation = async () => {
+                    (await this.onBeforeLeave())
+                        ? this.props.builderProps.closeEditor()
+                        : history.pushState({ skipRouteChange: true }, "");
+                };
+
+                const skipLoadOnBeforeRouteChange = () => {
+                    router.skipLoad = true;
+                };
+
+                routerBus.addEventListener("BEFORE_ROUTE_CHANGE", skipLoadOnBeforeRouteChange);
+                window.addEventListener("popstate", leaveOnBackNavigation);
+
+                return () => {
+                    routerBus.removeEventListener(
+                        "BEFORE_ROUTE_CHANGE",
+                        skipLoadOnBeforeRouteChange
+                    );
+                    window.removeEventListener("popstate", leaveOnBackNavigation);
+                };
+            },
+            () => []
+        );
     }
 
     discard() {
-        if (this.editor.shared.history.canUndo()) {
-            this.dialog.add(ConfirmationDialog, {
-                body: _t(
-                    "If you discard the current edits, all unsaved changes will be lost. You can cancel to return to edit mode."
-                ),
-                confirm: () => this.props.builderProps.closeEditor(),
-                cancel: () => {},
-            });
-        } else {
-            this.props.builderProps.closeEditor();
-        }
+        history.back();
     }
 
     onBeforeUnload(event) {
@@ -131,7 +151,9 @@ export class WebsiteBuilder extends Component {
             let continueProcess = true;
             await new Promise((resolve) => {
                 this.dialog.add(ConfirmationDialog, {
-                    body: _t("If you proceed, your changes will be lost"),
+                    body: _t(
+                        "If you discard the current edits, all unsaved changes will be lost. You can cancel to return to edit mode."
+                    ),
                     confirmLabel: _t("Continue"),
                     confirm: () => resolve(),
                     cancel: () => {
