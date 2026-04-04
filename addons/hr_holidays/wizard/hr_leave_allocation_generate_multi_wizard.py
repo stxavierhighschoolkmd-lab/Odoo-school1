@@ -1,5 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from datetime import date
+
 from odoo import _, api, fields, models
 from odoo.osv import expression
 from odoo.addons.resource.models.utils import HOURS_PER_DAY
@@ -104,7 +106,17 @@ class HrLeaveAllocationGenerateMultiWizard(models.TransientModel):
                 mail_notify_force_send=False,
                 mail_activity_automation_skip=True
             ).create(vals_list)
+<<<<<<< c77ece788eaa0bd8b66f20aa26b6a999e9da2e25
             allocations.filtered(lambda c: c.validation_type != 'no_validation').action_approve()
+||||||| 426dc7d7164a95020c1435625801e291990c865c
+            allocations.filtered(lambda c: c.validation_type != 'no_validation').action_validate()
+=======
+            accrual_allocations = allocations.filtered(lambda a: a.allocation_type == 'accrual')
+            for date_to, allocation in accrual_allocations.grouped('date_to').items():
+                date_to = min(date_to, date.today()) if date_to else False
+                allocation._process_accrual_plans(date_to)
+            allocations.filtered(lambda c: c.validation_type != 'no_validation').action_validate()
+>>>>>>> b00aa0f17274da7174e504678cdb0d906f0b4eea
 
             return {
                 'type': 'ir.actions.act_window',
