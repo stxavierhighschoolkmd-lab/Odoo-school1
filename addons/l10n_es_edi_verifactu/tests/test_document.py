@@ -588,3 +588,17 @@ class TestL10nEsEdiVerifactuDocument(TestL10nEsEdiVerifactuCommon):
             self.user.groups_id = self.env.ref(group)
             # Should not raise an error for accounting users
             move.with_user(self.user).read(['l10n_es_edi_verifactu_document_ids'])
+
+    def test_verifactu_sequence_with_prefix(self):
+        """Ensure chain_index is correctly computed when sequence has prefix."""
+        company = self.env.company
+        sequence = company._l10n_es_edi_verifactu_get_chain_sequence()
+        sequence.sudo().write({
+            'prefix': 'F2T',
+        })
+        invoice = self._create_dummy_invoice(name='INV/2019/00027', invoice_date='2024-12-30')
+
+        document_map = invoice._l10n_es_edi_verifactu_create_documents()
+        document = document_map[invoice]
+
+        self.assertIsInstance(document.chain_index, int, "chain_index should be integer")

@@ -472,7 +472,7 @@ class L10nEsEdiVerifactuDocument(models.Model):
             if not document_vals.get('errors'):
                 chain_sequence = record_values['company'].sudo()._l10n_es_edi_verifactu_get_chain_sequence()
                 try:
-                    document_vals['chain_index'] = chain_sequence.next_by_id()
+                    document_vals['chain_index'] = int(''.join(filter(str.isdigit, chain_sequence.next_by_id())))
                 except OperationalError as e:
                     # We chain all the created documents per company in generation order.
                     # (indexed by `chain_index`).
