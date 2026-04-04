@@ -1153,3 +1153,99 @@ test(`Custom filter with "&"" as value`, async function () {
     expect(getFacetTexts()).toEqual([`Foo contains &`]);
     expect(searchBar.env.searchModel.domain).toEqual([["foo", "ilike", "&"]]);
 });
+
+test("lazy selection filter", async () => {
+    const searchBar = await mountWithSearch(SearchBarMenu, {
+        resModel: "foo",
+        searchViewId: false,
+        searchMenuTypes: ["filter"],
+        searchViewArch: `
+            <search>
+                <filter string="Selection" name="selection" values="selection"/>
+            </search>
+        `,
+    });
+    await toggleSearchBarMenu();
+    expect(`.o_menu_item`).toHaveCount(2);
+    expect(`.o_accordion_toggle`).toHaveText("Selection");
+    await contains(`.o_accordion_toggle`).click();
+    expect(`.o_accordion_values .o_item_option`).toHaveCount(3);
+    expect(queryAllTexts(`.o_accordion_values .o_item_option`)).toEqual(["ABC", "DEF", "GHI"]);
+    await toggleMenuItemOption("Selection", "ABC");
+    expect(searchBar.env.searchModel.domain).toEqual([["selection", "=", "abc"]]);
+});
+
+test("lazy many2one filter", async () => {
+    let count = 0;
+    Partner._records = [
+        { id: 1, name: "John" },
+        { id: 2, name: "David" },
+        { id: 3, name: "Bertrand" },
+        { id: 4, name: "Christophe" },
+        { id: 5, name: "Jean-Edouard" },
+        { id: 6, name: "Serge" },
+        { id: 7, name: "Amelie" },
+        { id: 8, name: "Sarah" },
+        { id: 9, name: "Tristan" },
+        { id: 10, name: "Paul" },
+    ];
+    onRpc("partner", "web_search_read", ({ kwargs }) => {
+        if (count === 0) {
+            expect(kwargs.limit).toBe(8);
+        } else {
+            expect(kwargs.limit).toBe(16);
+        }
+        expect(kwargs.specification).toEqual({
+            display_name: {},
+            id: {},
+        });
+        expect(kwargs.domain).toEqual([["bar", "!=", false]]);
+        expect.step("partner web_search_read");
+    });
+    const searchBar = await mountWithSearch(SearchBarMenu, {
+        resModel: "foo",
+        searchViewId: false,
+        searchMenuTypes: ["filter"],
+        searchViewArch: `
+            <search>
+                <filter string="Bar" name="m2o" values="bar" domain="[('bar', '!=', False)]"/>
+            </search>
+        `,
+    });
+    expect.verifySteps([]);
+    await toggleSearchBarMenu();
+    expect(`.o_menu_item`).toHaveCount(2);
+    expect(`.o_accordion_toggle`).toHaveText("Bar");
+    await contains(`.o_accordion_toggle`).click();
+    expect.verifySteps(["partner web_search_read"]);
+    count++;
+    expect(`.o_accordion_values .o_item_option`).toHaveCount(9);
+    expect(queryAllTexts(`.o_accordion_values .o_item_option`)).toEqual([
+        "John",
+        "David",
+        "Bertrand",
+        "Christophe",
+        "Jean-Edouard",
+        "Serge",
+        "Amelie",
+        "Sarah",
+        "More...",
+    ]);
+    await toggleMenuItemOption("Bar", "Christophe");
+    expect(searchBar.env.searchModel.domain).toEqual([["bar", "=", 4]]);
+    await toggleMenuItemOption("Bar", "More...");
+    expect.verifySteps(["partner web_search_read"]);
+    expect(`.o_accordion_values .o_item_option`).toHaveCount(10);
+    expect(queryAllTexts(`.o_accordion_values .o_item_option`)).toEqual([
+        "John",
+        "David",
+        "Bertrand",
+        "Christophe",
+        "Jean-Edouard",
+        "Serge",
+        "Amelie",
+        "Sarah",
+        "Tristan",
+        "Paul",
+    ]);
+});

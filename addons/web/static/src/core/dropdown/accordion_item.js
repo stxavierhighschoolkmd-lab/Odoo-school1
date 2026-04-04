@@ -21,10 +21,15 @@ export class AccordionItem extends Component {
             type: String,
             optional: true,
         },
+        onToggle: {
+            type: Function,
+            optional: true,
+        },
     };
     static defaultProps = {
         class: "",
         selected: false,
+        onToggle: () => {},
     };
 
     setup() {
@@ -35,5 +40,10 @@ export class AccordionItem extends Component {
         onPatched(() => {
             this.parentComponent?.accordionStateChanged?.();
         });
+    }
+
+    async toggle() {
+        await this.props.onToggle();
+        this.state.open = !this.state.open;
     }
 }

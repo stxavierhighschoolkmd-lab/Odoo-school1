@@ -26,14 +26,19 @@
                             <t t-if="currentGroup !== null and currentGroup !== item.groupNumber">
                                 <div class="dropdown-divider" role="separator"/>
                             </t>
-                            <t t-if="item.options">
-                                <AccordionItem class="'text-truncate'" description="item.description" selected="item.isActive">
+                            <t t-if="item.options || item.type === 'lazyParentFilter'">
+                                <AccordionItem 
+                                    class="'text-truncate'" 
+                                    description="item.description" 
+                                    selected="item.isActive" 
+                                    onToggle="() => this.onToggle(item)"
+                                >
                                     <t t-set="subGroup" t-value="null"/>
                                     <t t-foreach="item.options" t-as="option" t-key="option.id">
                                         <t t-if="subGroup !== null and subGroup !== option.groupNumber">
                                             <div class="dropdown-divider" role="separator"/>
                                         </t>
-                                        <CheckboxItem class="{ o_item_option: true, selected: option.isActive }"
+                                        <CheckboxItem class="{ o_item_option: true, selected: option.isActive, 'text-truncate': true }"
                                                             t-out="option.description"
                                                             checked="option.isActive"
                                                             closingMode="'none'"
@@ -41,6 +46,7 @@
                                         />
                                         <t t-set="subGroup" t-value="option.groupNumber"/>
                                     </t>
+                                    <DropdownItem t-if="item.limit and item.count > item.limit" class="'o_item_option'" closingMode="'none'" onSelected.bind="() => this.onLoadMoreOptions(item.id)">More...</DropdownItem>
                                 </AccordionItem>
                             </t>
                             <t t-else="">

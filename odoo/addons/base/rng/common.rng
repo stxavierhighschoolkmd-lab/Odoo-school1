@@ -378,6 +378,7 @@
             <rng:optional><rng:attribute name="start_year"/></rng:optional>
             <rng:optional><rng:attribute name="end_year"/></rng:optional>
             <rng:optional><rng:attribute name="default_period"/></rng:optional>
+            <rng:optional><rng:attribute name="values"/></rng:optional>
             <rng:choice>
                 <!-- Standard Filter with a mandatory 'name' attribute -->
                 <rng:group>

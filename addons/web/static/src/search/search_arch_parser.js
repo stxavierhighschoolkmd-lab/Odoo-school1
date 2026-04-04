@@ -255,6 +255,18 @@ export class SearchArchParser {
                 preSearchItem.optionsParams = this.optionsParams;
                 this.optionsParams = null;
             }
+            if (node.hasAttribute("values")) {
+                preSearchItem.type = "lazyParentFilter";
+                preSearchItem.fieldName = node.getAttribute("values");
+                preSearchItem.fieldType = this.fields[preSearchItem.fieldName]?.type;
+                preSearchItem.optionsParams = { customOptions: [] };
+                if (
+                    !preSearchItem.fieldType ||
+                    !["many2many", "many2one", "selection"].includes(preSearchItem.fieldType)
+                ) {
+                    return;
+                }
+            }
 
             preSearchItem.domain = node.getAttribute("domain") || "[]";
         }
