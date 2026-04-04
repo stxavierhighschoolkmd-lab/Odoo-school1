@@ -59,7 +59,8 @@ class AccountMove(models.Model):
             elif allow_fallback:
                 if (
                     self.partner_id
-                    and (suggested_edi_format := self.commercial_partner_id._get_suggested_ubl_cii_edi_format())
+                    and (suggested_edi_format := self.commercial_partner_id.with_company(self.company_id)
+                        ._get_ubl_cii_edi_format())
                     and self._need_ubl_cii_xml(suggested_edi_format)
                 ):
                     builder = self.env['res.partner']._get_edi_builder(suggested_edi_format)
@@ -78,8 +79,9 @@ class AccountMove(models.Model):
         posted_moves = self.filtered(lambda move: move.state == 'posted')
         suggested_edi_formats = {
             suggested_format
-            for partner in posted_moves.commercial_partner_id
-            if (suggested_format := partner._get_suggested_ubl_cii_edi_format())
+            for move in posted_moves
+            if (suggested_format := move.commercial_partner_id.with_company(move.company_id)
+                    ._get_ubl_cii_edi_format())
         }
         if posted_moves.ubl_cii_xml_id or suggested_edi_formats:
             print_items.append({
