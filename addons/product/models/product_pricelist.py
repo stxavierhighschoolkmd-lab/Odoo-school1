@@ -197,8 +197,31 @@ class ProductPricelist(models.Model):
             date = fields.Datetime.now()
 
         # Fetch all rules potentially matching specified products/templates/categories and date
-        rules = self._get_applicable_rules(products, date, **kwargs)
+        rules = self._get_applicable_rules(products, date=date, **kwargs)
 
+        return self._compute_price_rule_real(
+            rules,
+            products,
+            quantity,
+            date,
+            currency=currency,
+            uom=uom,
+            compute_price=compute_price,
+            **kwargs,
+        )
+
+    def _compute_price_rule_real(
+        self,
+        applicable_rules,
+        products,
+        quantity,
+        date,
+        *,
+        currency=None,
+        uom=None,
+        compute_price=True,
+        **kwargs,
+    ):
         results = {}
         for product in products:
             suitable_rule = self.env['product.pricelist.item']
@@ -214,7 +237,7 @@ class ProductPricelist(models.Model):
                 **kwargs,
             )
 
-            for rule in rules:
+            for rule in applicable_rules:
                 if rule._is_applicable_for(product, qty_to_consider):
                     suitable_rule = rule
                     break
@@ -241,23 +264,31 @@ class ProductPricelist(models.Model):
             self._get_applicable_rules_domain(products=products, date=date, **kwargs)
         )
 
-    def _get_applicable_rules_domain(self, products, date, **kwargs):
+    def _get_applicable_rules_domain(self, products, *, date=None, **_kwargs):
         self and self.ensure_one()  # self is at most one record
-        if products._name == 'product.template':
-            templates_domain = ('product_tmpl_id', 'in', products.ids)
-            products_domain = ('product_id.product_tmpl_id', 'in', products.ids)
-        else:
-            templates_domain = ('product_tmpl_id', 'in', products.product_tmpl_id.ids)
-            products_domain = ('product_id', 'in', products.ids)
+        domain = Domain.AND([
+            Domain("pricelist_id", "=", self.id),
+            Domain("categ_id", "=", False) | Domain("categ_id", "parent_of", products.categ_id.ids),
+        ])
 
-        return [
-            ('pricelist_id', '=', self.id),
-            '|', ('categ_id', '=', False), ('categ_id', 'parent_of', products.categ_id.ids),
-            '|', ('product_tmpl_id', '=', False), templates_domain,
-            '|', ('product_id', '=', False), products_domain,
-            '|', ('date_start', '=', False), ('date_start', '<=', date),
-            '|', ('date_end', '=', False), ('date_end', '>=', date),
-        ]
+        if products._name == 'product.template':
+            templates_domain = Domain("product_tmpl_id", "in", products.ids)
+            products_domain = Domain("product_id.product_tmpl_id", "in", products.ids)
+        else:
+            templates_domain = Domain("product_tmpl_id", "in", products.product_tmpl_id.ids)
+            products_domain = Domain("product_id", "in", products.ids)
+        domain &= Domain.AND([
+            Domain("product_tmpl_id", "=", False) | templates_domain,
+            Domain("product_id", "=", False) | products_domain,
+        ])
+
+        if date is not None:
+            domain &= Domain.AND([
+                Domain("date_start", "=", False) | Domain("date_start", "<=", date),
+                Domain("date_end", "=", False) | Domain("date_end", ">=", date),
+            ])
+
+        return domain
 
     def _compute_qty_to_consider(self, product, quantity, uom, **_kwargs):
         """Compute quantity in product UoM because the min quantity on pricelist rules are specified
