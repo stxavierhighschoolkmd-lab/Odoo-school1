@@ -1,8 +1,10 @@
+/* global posmodel */
 // Part of Odoo. See LICENSE file for full copyright and licensing details.
 import * as ProductScreen from "@point_of_sale/../tests/tours/utils/product_screen_util";
 import * as ReceiptScreen from "@point_of_sale/../tests/tours/utils/receipt_screen_util";
 import * as PaymentScreen from "@point_of_sale/../tests/tours/utils/payment_screen_util";
 import * as Chrome from "@point_of_sale/../tests/tours/utils/chrome_util";
+import * as Utils from "@point_of_sale/../tests/tours/utils/common";
 import * as EventTourUtils from "@pos_event/../tests/tours/utils/event_tour_utils";
 import * as Dialog from "@point_of_sale/../tests/tours/utils/dialog_util";
 import { registry } from "@web/core/registry";
@@ -97,5 +99,67 @@ registry.category("web_tour.tours").add("test_pos_event_registration_not_mandato
             PaymentScreen.clickPaymentMethod("Bank"),
             PaymentScreen.clickValidate(),
             ReceiptScreen.clickNextOrder(),
+        ].flat(),
+});
+
+registry.category("web_tour.tours").add("test_pos_event_can_be_removed_getter", {
+    steps: () =>
+        [
+            Chrome.startPoS(),
+            Dialog.confirm("Open Register"),
+            ProductScreen.clickDisplayedProduct("My Awesome Event"),
+            EventTourUtils.increaseQuantityOfTicket("Ticket VIP"),
+            Dialog.confirm(),
+            EventTourUtils.answerTicketSelectQuestion("1", "Question1", "Q1-Answer1"),
+            EventTourUtils.answerGlobalSelectQuestion("Question2", "Q2-Answer1"),
+            EventTourUtils.answerGlobalSelectQuestion("Question3", "Q3-Answer1"),
+            Dialog.confirm(),
+            ProductScreen.clickPayButton(),
+            PaymentScreen.clickPaymentMethod("Bank", true, { remaining: "0.00" }),
+            {
+                content: "Keep one paid order unsynced",
+                trigger: "body",
+                run: () => {
+                    const originalSyncAllOrders = posmodel.syncAllOrders.bind(posmodel);
+                    posmodel.syncAllOrders = async (...args) => {
+                        if (!posmodel.__skipOneSyncFromValidation) {
+                            posmodel.__skipOneSyncFromValidation = true;
+                            posmodel.syncAllOrders = originalSyncAllOrders;
+                            return [];
+                        }
+                        return originalSyncAllOrders(...args);
+                    };
+                },
+            },
+            PaymentScreen.clickValidate(),
+            ReceiptScreen.isShown(),
+            {
+                content: "Ensure one paid order is still unsynced before reload",
+                trigger: "body",
+                run: () => {
+                    const unsyncedPaidOrders = posmodel.models["pos.order"].filter(
+                        (order) => order.isUnsyncedPaid
+                    );
+                    if (unsyncedPaidOrders.length !== 1) {
+                        throw new Error("Expected one unsynced paid order");
+                    }
+                },
+            },
+            {
+                content: "Wait for indexedDB debounce before refresh",
+                trigger: "body",
+                run: async () => await new Promise((resolve) => setTimeout(resolve, 300)),
+            },
+            Utils.refresh(),
+            {
+                content: "After reload, event registration should still exist in POS data",
+                trigger: "body",
+                run: () => {
+                    const registrations = posmodel.models["event.registration"];
+                    if (!registrations || registrations.length === 0) {
+                        throw new Error("Event registrations were lost after reload");
+                    }
+                },
+            },
         ].flat(),
 });

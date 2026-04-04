@@ -158,3 +158,20 @@ class TestUi(TestPointOfSaleHttpCommon):
         r_empty = partner_registrations.filtered(lambda r: r.name == "Event Parter")
         self.assertEqual(len(r_empty), 1)
         self.assertEqual(r_empty.email, "event@partner.com")
+
+    def test_pos_event_can_be_removed_from_indexeddb(self):
+        self.pos_user.write({
+            'groups_id': [
+                (4, self.env.ref('event.group_event_user').id),
+            ]
+        })
+        self.main_pos_config.with_user(self.pos_user).open_ui()
+        self.start_tour(
+            "/pos/ui?config_id=%d" % self.main_pos_config.id,
+            'test_pos_event_can_be_removed_getter',
+            login="pos_user",
+        )
+
+        order = self.env['pos.order'].search([], order='id desc', limit=1)
+        self.assertEqual(order.state, 'paid')
+        self.assertEqual(len(order.lines.event_registration_ids), 1)
