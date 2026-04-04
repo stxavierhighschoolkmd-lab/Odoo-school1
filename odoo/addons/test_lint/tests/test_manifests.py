@@ -3,7 +3,15 @@
 import logging
 from os.path import join as opj
 
+<<<<<<< 93095e1e9507fde18aefe91aac8c9cb53cadc2f3
 from odoo.modules.module import _DEFAULT_MANIFEST, Manifest
+||||||| f3e852b8961b860f1aff9bafd703cb17f20450b3
+from odoo.modules import get_modules
+from odoo.modules.module import _DEFAULT_MANIFEST, module_manifest, get_module_path
+=======
+from odoo.modules import get_modules
+from odoo.modules.module import _DEFAULT_MANIFEST, get_module_path, module_manifest
+>>>>>>> 62e3fae0710580ac27c62c1fc4ecca36738ebb39
 from odoo.tests import BaseCase
 from odoo.tools.misc import file_path
 
@@ -16,6 +24,8 @@ MANIFEST_KEYS = {
     *_DEFAULT_MANIFEST,
     # unused "informative" keys
     'contributors', 'maintainer', 'url',
+    # for odoo apps store
+    'price', 'currency', 'support', 'live_test_url',
 }
 
 
