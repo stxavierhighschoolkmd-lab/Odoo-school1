@@ -150,3 +150,31 @@ registry.category("web_tour.tours").add("test_purchase_order_suggest_search_pane
         },
     ],
 });
+
+registry.category("web_tour.tours").add("test_forecast_po_line_multi_date", {
+    steps: () => [
+        {
+            trigger: ".o_kanban_record:contains('Test Product')",
+            run: "click",
+        },
+        {
+            trigger: "button[name=action_product_tmpl_forecast_report]",
+            run: "click",
+        },
+        {
+            trigger: ".o_forecasted_details_table",
+            run: () => {
+                // Assert two separate incoming rows (not merged)
+                const links = document.querySelectorAll(
+                    ".o_forecasted_details_table td a.fw-bold"
+                );
+                if (links.length !== 2) {
+                    throw new Error(
+                        `Expected 2 separate incoming forecast lines but found ${links.length}. ` +
+                        `PO lines with different date_planned are incorrectly merged.`
+                    );
+                }
+            },
+        },
+    ],
+});
