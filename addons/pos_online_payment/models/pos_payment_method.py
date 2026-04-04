@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models, _
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -43,7 +42,7 @@ class PosPaymentMethod(models.Model):
     def _get_online_payment_providers(self, pos_config_id=False, error_if_invalid=True):
         self.ensure_one()
         providers_sudo = self.sudo().online_payment_provider_ids
-        if not providers_sudo: # Empty = all published providers
+        if not providers_sudo:  # Empty = all published providers
             providers_sudo = self.sudo().env['payment.provider'].search([('is_published', '=', True), ('state', 'in', ['enabled', 'test'])])
 
         if not pos_config_id:
@@ -73,7 +72,7 @@ class PosPaymentMethod(models.Model):
                     raise ValidationError(_("The %s already has one online payment.", config.name))
 
     def _is_write_forbidden(self, fields):
-        return super(PosPaymentMethod, self)._is_write_forbidden(fields - {'online_payment_provider_ids'})
+        return super()._is_write_forbidden(fields - {'online_payment_provider_ids'})
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -158,3 +157,59 @@ class PosPaymentMethod(models.Model):
 
     def _get_customer_required_providers_code(self):
         return ['aps', 'flutterwave']
+
+    def _create_online_payment_line_transfer(self, session):
+        """
+        Since online payments are created in another account receivable than
+        the PoS one, we need to create a transfer journal entry to link them.
+
+        The online payment creates:
+          - Debit: Payment provider receivable (destination_account_id)
+          - Credit: Outstanding account
+
+        We create a transfer entry:
+          - Debit: POS receivable
+          - Credit: Payment provider receivable
+
+        This allows reconciliation with the POS session invoice payment_term lines.
+        """
+        self.ensure_one()
+        pos_receivable = session._get_receivable_account()
+        online_orders = session.order_ids.filtered_domain([
+            ('payment_ids.payment_method_id', '=', self.id),
+        ])
+
+        total_amount = sum(pay.amount for pay in online_orders.payment_ids)
+        account_payment = online_orders.payment_ids.online_account_payment_id
+        ref = _(
+            "Transfer Online payment %s => %s",
+            account_payment.destination_account_id.name,
+            pos_receivable.name,
+        )
+        transfer_move = self.env["account.move"].create({
+            "move_type": "entry",
+            "journal_id": session.config_id.journal_id.id,
+            "date": session.stop_at.date() or session.start_at.date(),
+            "ref": ref,
+            "line_ids": [
+                Command.create({
+                    "account_id": pos_receivable.id,
+                    "debit": 0,
+                    "credit": total_amount,
+                    "name": _("POS Receivable Transfer"),
+                    "partner_id": account_payment.partner_id.id,
+                }),
+                Command.create({
+                    "account_id": account_payment.destination_account_id.id,
+                    "debit": total_amount,
+                    "credit": 0,
+                    "name": _("Online Payment Transfer"),
+                    "partner_id": account_payment.partner_id.id,
+                }),
+            ],
+        })
+
+        transfer_move.action_post()
+        return transfer_move.line_ids.filtered(
+            lambda line: line.account_id == pos_receivable,
+        )

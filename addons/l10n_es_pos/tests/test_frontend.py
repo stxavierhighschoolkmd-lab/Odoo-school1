@@ -30,7 +30,7 @@ class TestUi(TestPointOfSaleHttpCommon):
             'code': 'SIMP',
         })
         def get_number_of_regular_invoices():
-            return self.env['account.move'].search_count([('journal_id', '=', self.main_pos_config.invoice_journal_id.id), ('l10n_es_is_simplified', '=', False), ('pos_order_ids', '!=', False)])
+            return self.env['account.move'].search_count([('journal_id', '=', self.main_pos_config.journal_id.id), ('l10n_es_is_simplified', '=', False), ('pos_order_ids', '!=', False)])
         initial_number_of_regular_invoices = get_number_of_regular_invoices()
         self.main_pos_config.l10n_es_simplified_invoice_journal_id = simp
         # this `limit` value is linked to the `SIMPLIFIED_INVOICE_LIMIT` const in the tour
@@ -89,7 +89,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         order_payment.with_context(**payment_context).check()
 
         self.assertEqual(self.partner_test_1.total_due, 10)
-        current_session.action_pos_session_closing_control()
+        current_session.close_session_from_ui()
 
         self.main_pos_config.with_user(self.pos_admin).open_ui()
         self.start_tour("/pos/ui/%d" % self.main_pos_config.id, 'l10n_es_pos_settle_account_due', login="accountman")

@@ -98,7 +98,6 @@ class TestUi(TestPointOfSaleHttpCommon, OnlinePaymentCommon):
         cls.pos_config = cls.env['pos.config'].create({
             'name': 'POS OP Test Shop',
             'module_pos_restaurant': False,
-            'invoice_journal_id': cls.sales_journal.id,
             'journal_id': cls.sales_journal.id,
             'payment_method_ids': [Command.link(cls.cash_payment_method.id), Command.link(cls.online_payment_method.id)],
         })
@@ -238,10 +237,9 @@ class TestUi(TestPointOfSaleHttpCommon, OnlinePaymentCommon):
 
         # Simulate the cashier closing the session (to detect eventual accounting issues)
         total_cash_payment = sum(current_session.order_ids.filtered(lambda o: o.state != 'cancel').payment_ids.filtered(lambda payment: payment.payment_method_id.type == 'cash').mapped('amount'))
-        current_session.post_closing_cash_details(total_cash_payment)
-        close_result = current_session.close_session_from_ui()
+        close_result = current_session.close_session_from_ui(total_cash_payment)
 
-        self.assertTrue(close_result['successful'])
+        self.assertTrue(close_result['status'])
         self.assertEqual(current_session.state, 'closed', 'Session was not properly closed')
 
         self.assertEqual(order.state, 'done', "Validated order has payment of " + str(order.amount_paid) + " and total of " + str(order.amount_total))
@@ -325,7 +323,7 @@ class TestUi(TestPointOfSaleHttpCommon, OnlinePaymentCommon):
             self.assertIn("Cannot create a POS online payment without an accounting payment", str(e))
             # Make sure that we can close the session
             session.order_ids.filtered(lambda o: o.state == 'draft').unlink()
-            session.action_pos_session_close()
+            session.close_session_from_ui()
             self.assertEqual(session.state, 'closed')
 
     def test_selected_customer_after_adding_payment_sync(self):
@@ -372,4 +370,7 @@ class TestUi(TestPointOfSaleHttpCommon, OnlinePaymentCommon):
         cls.cash_payment_method.unlink()
         cls.receivable_cash_account.unlink()
         cls.cash_journal.unlink()
+        cls.env['res.partner'].search([
+            ('property_account_receivable_id', '=', cls.account_default_pos_receivable_account_id.id),
+        ]).write({'property_account_receivable_id': False})
         cls.account_default_pos_receivable_account_id.unlink()

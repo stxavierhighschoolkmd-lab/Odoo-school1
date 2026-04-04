@@ -986,8 +986,7 @@ class TestMyInvoisPoS(TestPoSCommon, HttpCase):
     def with_pos_session(self):
         session = self.open_new_session(0.0)
         yield session
-        session.post_closing_cash_details(0.0)
-        session.close_session_from_ui()
+        session.close_session_from_ui(0)
 
     def _create_order(self, ui_data):
         return next(iter(self._create_orders([ui_data]).values()))

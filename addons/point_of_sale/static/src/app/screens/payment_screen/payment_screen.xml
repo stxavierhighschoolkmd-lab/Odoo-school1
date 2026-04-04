@@ -129,14 +129,12 @@
                     </span>
                 </button>
                 <button class="button js_invoice btn btn-secondary btn-lg d-flex justify-content-between align-items-baseline w-100 w-md-50 lh-lg"
-                    t-att-class="{ 'highlight active': this.currentOrder.isToInvoice(), 'opacity-50': !this.pos.config.canInvoice }"
+                    t-att-class="{ 'highlight active': this.currentOrder.isToInvoice(), 'active disabled': this.isForcedToInvoice }"
                     t-on-click="this.toggleIsToInvoice" t-att-disabled="this.currentOrder.lines[0]?.refunded_orderline_id?.order_id?.isToInvoice()">
                     <span>
-                        <i class="fa fa-file-text-o me-2" />
-                        <t t-if="this.pos.config.canInvoice">Invoice</t>
-                        <t t-else="">Not available</t>
+                        <i class="fa fa-file-text-o me-2" /> Invoice
                     </span>
-                    <i class="fa me-2" t-attf-class="{{ this.currentOrder.isToInvoice() ? 'fa-check-square text-action' : 'fa-square-o' }}" />
+                    <i class="fa me-2" t-attf-class="{{ this.currentOrder.isToInvoice() or this.isForcedToInvoice ? 'fa-check-square text-action' : 'fa-square-o' }}" />
                 </button>
             </div>
             <div t-if="(this.pos.config.iface_tipproduct and this.pos.config.tip_product_id) or this.pos.config.iface_cashdrawer or this.pos.config.ship_later" class="d-flex flex-column gap-1 w-100">

@@ -355,7 +355,7 @@ class TestPoSOtherCurrencyConfig(TestPoSCommon):
         order_payment.with_context(**payment_context).check()
 
         # Close session with counted +10 for bank compared with expected
-        session_id.action_pos_session_closing_control(bank_payment_method_diffs={self.bank_pm2.id: 10.00})  # Real 20, expected 10, diff 10
+        session_id.close_session_from_ui()  # Real 20, expected 10, diff 10
 
         # Check debit/credit session's balance
         for move in session_id._get_related_account_moves():

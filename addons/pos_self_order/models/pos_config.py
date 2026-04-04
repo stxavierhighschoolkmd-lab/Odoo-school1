@@ -359,7 +359,7 @@ class PosConfig(models.Model):
             self.current_session_id.order_ids.filtered(lambda o: o.state == 'draft').unlink()
 
         self._notify('STATUS', {'status': 'closed'})
-        return self.current_session_id.action_pos_session_closing_control()
+        return self.current_session_id.close_session_from_ui()
 
     def _compute_status(self):
         for record in self:

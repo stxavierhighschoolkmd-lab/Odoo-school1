@@ -77,7 +77,6 @@ class TestPOSLoyaltyProductLoading(TestPointOfSaleHttpCommon):
             'name': 'new pos',
             'company_id': company_b.id,
             'journal_id': company_b_data['default_journal_sale'].id,
-            'invoice_journal_id': company_b_data['default_journal_sale'].id,
             'payment_method_ids': [Command.set([payment_method.id])],
         })
         pos_config.open_ui()

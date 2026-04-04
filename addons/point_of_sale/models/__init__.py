@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from . import account_bank_statement
+from . import account_bank_statement_line
 from . import pos_load_mixin
 from . import account_account
 from . import account_cash_rounding
@@ -9,6 +10,7 @@ from . import account_journal
 from . import account_tax
 from . import account_tax_group
 from . import account_move
+from . import account_move_line
 from . import pos_bus_mixin
 from . import barcode_rule
 from . import binary
@@ -19,6 +21,7 @@ from . import pos_order
 from . import pos_order_line
 from . import pos_session
 from . import pos_snooze
+from . import pos_pack_operation_lot
 from . import product_pricelist
 from . import product_attribute
 from . import product_category
@@ -40,6 +43,7 @@ from . import pos_payment_method
 from . import pos_bill
 from . import report_sale_details
 from . import pos_printer
+from . import stock_rule
 from . import pos_note
 from . import res_users
 from . import decimal_precision

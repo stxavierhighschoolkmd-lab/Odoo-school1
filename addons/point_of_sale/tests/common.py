@@ -58,7 +58,6 @@ class CommonPosTest(ValuationReconciliationTestCommon):
         self.pos_config_usd = self.env['pos.config'].create({
             'name': 'PoS Config USD',
             'journal_id': self.company_data['default_journal_sale'].id,
-            'invoice_journal_id': self.company_data['default_journal_sale'].id,
             'payment_method_ids': [
                 (4, self.credit_payment_method.id),
                 (4, self.bank_payment_method.id),
@@ -418,7 +417,7 @@ class TestPoSCommon(ValuationReconciliationTestCommon):
         })
         # Set Point of Sale configurations
         # basic_config
-        #   - derived from 'point_of_sale.pos_config_main' with added invoice_journal_id and credit payment method.
+        #   - derived from 'point_of_sale.pos_config_main' with added journal_id and credit payment method.
         # other_currency_config
         #   - pos.config set to have currency different from company currency.
         cls.basic_config = cls._create_basic_config()
@@ -465,7 +464,7 @@ class TestPoSCommon(ValuationReconciliationTestCommon):
     def _create_basic_config(cls):
         config = cls.env['pos.config'].create({
             'name': 'PoS Shop Test',
-            'invoice_journal_id': cls.invoice_journal.id,
+            'journal_id': cls.invoice_journal.id,
             'available_pricelist_ids': cls.currency_pricelist.ids,
             'pricelist_id': cls.currency_pricelist.id,
         })
@@ -562,7 +561,6 @@ class TestPoSCommon(ValuationReconciliationTestCommon):
 
         config = cls.env['pos.config'].create({
             'name': 'Shop Other',
-            'invoice_journal_id': other_invoice_journal.id,
             'journal_id': other_sales_journal.id,
             'use_pricelist': True,
             'available_pricelist_ids': other_pricelist.ids,
@@ -868,8 +866,7 @@ class TestPoSCommon(ValuationReconciliationTestCommon):
         _logger.info('DONE: Checks for journal entries before closing the session.')
         cash_payment_method = pos_session.payment_method_ids.filtered('is_cash_count')[:1]
         total_cash_payment = sum(pos_session.mapped('order_ids.payment_ids').filtered(lambda payment: payment.payment_method_id.id == cash_payment_method.id).mapped('amount'))
-        pos_session.post_closing_cash_details(total_cash_payment)
-        pos_session.close_session_from_ui()
+        pos_session.close_session_from_ui(total_cash_payment)
         after_closing_cb = args.get('after_closing_cb')
         if after_closing_cb:
             after_closing_cb()
@@ -929,7 +926,7 @@ class TestPoSCommon(ValuationReconciliationTestCommon):
         currency_rounding = pos_session.currency_id.rounding
 
         # check expected session journal entry
-        self._assert_account_move(pos_session.move_id, expected_values['session_journal_entry'])
+        self._assert_account_move(pos_session.sales_move_id, expected_values['session_journal_entry'])
         _logger.info("DONE: Check of the session's account move.")
 
         # check expected cash journal entries

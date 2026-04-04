@@ -152,14 +152,12 @@
                                         <div class="col-6">
                                             <span>Closing</span>
                                         </div>
-                                        <field name="last_session_closing_date" class="col-6"/>
+                                        <field name="last_session_closing_date" class="col-6 p-0"/>
                                     </div>
-                                    <div class="row" invisible="not cash_control">
-                                        <div class="col-6">
-                                            <span>Balance</span>
-                                        </div>
-                                        <field name="last_session_closing_cash" widget="monetary" class="col-6"/>
-                                    </div>
+                                    <button class="d-flex w-100 ps-0 btn-link" invisible="not cash_control" name="action_cash_bank_statement" type="object">
+                                        <span class="col-6 text-start">Balance</span>
+                                        <field name="current_cash_register_balance" class="col-6" widget="monetary"/>
+                                    </button>
                                 </t>
 
                                 <a t-if="record.number_of_rescue_session.value &gt; 0" class="col-12" name="open_opened_rescue_session_form" type="object">

@@ -86,7 +86,6 @@ class TestBancontactPay(TestPointOfSaleHttpCommon):
 
         # Pos Config
         cls.main_pos_config.journal_id.currency_id = cls.eur_currency
-        cls.main_pos_config.invoice_journal_id.currency_id = cls.eur_currency
         cls.main_pos_config.use_pricelist = False
         cls.main_pos_config.payment_method_ids = [
             Command.clear(),

@@ -10,7 +10,6 @@
                     <field name="active" invisible="1"/>
                     <field name="type" invisible="1"/>
                     <field name="all_providers_installed" invisible="1"/>
-                    <field name="default_pos_receivable_account_name" invisible="1" />
                     <div class="d-flex justify-content-between">
                         <div class="oe_title">
                             <label for="name"/>
@@ -21,9 +20,10 @@
                     <group name="Payment methods">
                         <group>
                             <field name="split_transactions"/>
+                            <field name="account_bank_statement_id" invisible="type != 'cash'" />
                             <field name="journal_id" required="not split_transactions" placeholder="Leave empty to use the receivable account of customer" />
                             <field name="outstanding_account_id" groups="account.group_account_readonly" invisible="type != 'bank'" required="type == 'bank'" placeholder="Selection of outstanding account is required" />
-                            <field name="receivable_account_id" groups="account.group_account_readonly" invisible="split_transactions" widget="many2one" options="{'placeholder_field': 'default_pos_receivable_account_name'}"/>
+                            <field name="receivable_account_id" groups="account.group_account_readonly" invisible="split_transactions" widget="many2one" placeholder="PoS Config default partner receivable"/>
                             <field name="company_id" readonly="1" groups="base.group_multi_company" />
                             <field name="config_ids" widget="many2many_tags" placeholder="No Point of Sale" />
                         </group>
