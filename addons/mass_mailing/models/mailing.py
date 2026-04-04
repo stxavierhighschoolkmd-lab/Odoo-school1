@@ -172,6 +172,8 @@ class MailingMailing(models.Model):
         default=_get_default_mail_server_id,
         help="Use a specific mail server in priority. Otherwise Odoo relies on the first outgoing mail server available (based on their sequencing) as it does for normal mails.")
     contact_list_ids = fields.Many2many('mailing.list', 'mail_mass_mailing_list_rel', string='Mailing Lists', context={'active_test': False})
+    mailing_contact_ids = fields.Many2many('mailing.contact', 'mail_mass_mailing_contact_rel', string='Mailing Contacts', context={'active_test': False})
+    is_dynamic_recipients = fields.Boolean(string='Dynamic Recipients', compute='_compute_is_dynamic_recipients', default=False)
     use_exclusion_list = fields.Boolean(
         'Use Exclusion List', default=True, copy=False, store=True,
         readonly=False, compute='_compute_use_exclusion_list',
@@ -252,6 +254,15 @@ class MailingMailing(models.Model):
                 raise ValidationError(
                     _("The saved filter targets different recipients and is incompatible with this mailing.")
                 )
+
+    @api.onchange('mailing_model_id')
+    def _onchange_mailing_model_id(self):
+        # TODO: this will reset the recipients' lists, once the model is chagned, only if the mailing
+        #  is saved. We should find a better way, even if the mailing hasn't been saved yet.
+        if not self._origin.id:
+            return
+        self.mailing_domain = []
+        self.contact_list_ids = [(5, 0, 0)]
 
     @api.depends('campaign_id.ab_testing_winner_mailing_id')
     def _compute_ab_testing_is_winner_mailing(self):
@@ -451,6 +462,8 @@ class MailingMailing(models.Model):
         for mailing in self:
             if not mailing.mailing_model_id:
                 mailing.mailing_domain = ''
+            elif mailing.is_dynamic_recipients and mailing.contact_list_ids:
+                mailing.mailing_domain = Domain.OR([mailing_list._parse_mailing_domain() for mailing_list in mailing.contact_list_ids])
             elif mailing.mailing_filter_id:
                 mailing.mailing_domain = mailing.mailing_filter_id.mailing_domain
             else:
@@ -526,6 +539,11 @@ class MailingMailing(models.Model):
 
     def _get_ab_testing_description_modifying_fields(self):
         return ['ab_testing_enabled', 'ab_testing_pc', 'ab_testing_schedule_datetime', 'ab_testing_winner_selection', 'campaign_id']
+
+    @api.depends('mailing_model_name')
+    def _compute_is_dynamic_recipients(self):
+        for record in self:
+            record.is_dynamic_recipients = record.mailing_model_name != 'mailing.list'
 
     # ------------------------------------------------------
     # ORM

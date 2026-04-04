@@ -309,3 +309,46 @@ class TestSubscriptionManagement(MassMailCommon):
             [('contact_id', '=', contact.id)]
         )
         self.assertEqual(subs.list_id, ml_1 + ml_2)
+
+
+@tagged('dynamic_list')
+@tagged('mailing_list')
+@tagged('at_install', '-post_install')  # LEGACY at_install
+class TestDynamicLists(MassMailCommon):
+
+    @users('user_marketing')
+    def test_get_mailing_list_template_values(self):
+        template_name = 'recent_sign_ups'
+        domain = [("create_date", ">=", "today -30d"), ("create_date", "<", "today")]
+        mailing_contact_model_id = self.env['ir.model']._get('mailing.contact').id
+        template_title = self.env['mailing.list'].get_mailing_list_templates_info().get(template_name).get('title')
+
+        res_action = self.env['mailing.list'].get_mailing_list_template_values(template_name)
+
+        self.assertEqual('mailing.list', res_action['res_model'])
+        self.assertEqual(domain, res_action['context']['default_mailing_domain'])
+        self.assertEqual(mailing_contact_model_id, res_action['context']['default_mailing_model_id'])
+        self.assertEqual(template_title, res_action['context']['default_name'])
+        self.assertEqual('dynamic', res_action['context']['default_mailing_list_type'])
+
+    @users('user_marketing')
+    def test_get_action_dynamic_mailing_list_form_view(self):
+        mailing_contact_model_id = self.env['ir.model']._get('mailing.contact').id
+
+        res_action = self.env['mailing.list'].get_action_dynamic_mailing_list_form_view()
+
+        self.assertEqual('mailing.list', res_action['res_model'])
+        self.assertEqual('form', res_action['view_mode'])
+        self.assertEqual('dynamic', res_action['context']['default_mailing_list_type'])
+        self.assertEqual(mailing_contact_model_id, res_action['context']['default_mailing_model_id'])
+
+    @users('user_marketing')
+    def test_get_action_manual_mailing_list_form_view(self):
+        mailing_contact_model_id = self.env['ir.model']._get('mailing.contact').id
+
+        res_action = self.env['mailing.list'].get_action_manual_mailing_list_form_view()
+
+        self.assertEqual('mailing.list', res_action['res_model'])
+        self.assertEqual('form', res_action['view_mode'])
+        self.assertEqual('manual', res_action['context']['default_mailing_list_type'])
+        self.assertEqual(mailing_contact_model_id, res_action['context']['default_mailing_model_id'])
