@@ -1,4 +1,4 @@
-from odoo import Command
+from odoo import Command, fields
 from odoo.addons.l10n_account_edi_ubl_cii_tests.tests.common import TestUBLCommon
 from odoo.addons.account.tests.test_account_move_send import TestAccountMoveSendCommon
 from odoo.tests import tagged
@@ -588,7 +588,7 @@ class TestUBLBE(TestUBLCommon, TestAccountMoveSendCommon):
             'sending_methods': ['manual'],
             'invoice_edi_format': 'ubl_bis3',
         }])
-        self._assert_mail_attachments_widget(wizard, [
+        expected_attachments_values = [
             {
                 'id': invoice.invoice_pdf_report_id.id,
                 'mimetype': 'application/pdf',
@@ -599,7 +599,19 @@ class TestUBLBE(TestUBLCommon, TestAccountMoveSendCommon):
                 'mimetype': 'application/xml',
                 'name': 'INV_2019_00001_ubl_bis3.xml',
             },
-        ])
+        ]
+        # If the follow-up module is installed, a second Send & Print is handled as a reminder and adds the open items report as an attachment
+        if self.env['ir.module.module']._get('account_followup').state == 'installed':
+            today = fields.Date.today().strftime('%m%d%Y')
+            filename = f"{invoice.partner_id.name} - open_items_{today}_{invoice.company_id.name}"
+            expected_attachments_values.insert(0, {
+                'id': f'placeholder_{filename}',
+                'name': filename,
+                'mimetype': 'application/pdf',
+                'placeholder': True,
+                'dynamic_followup': True,
+            })
+        self._assert_mail_attachments_widget(wizard, expected_attachments_values)
         wizard.action_send_and_print()
         self.assertTrue(invoice.invoice_pdf_report_id)
         self.assertTrue(invoice.ubl_cii_xml_id)
