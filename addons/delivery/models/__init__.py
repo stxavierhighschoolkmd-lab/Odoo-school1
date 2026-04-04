@@ -2,6 +2,7 @@
 
 from . import (
     delivery_carrier,
+    delivery_tracker,
     delivery_price_rule,
     delivery_zip_prefix,
     ir_http,

@@ -1012,10 +1012,11 @@ class SaleOrder(models.Model):
     @api.depends("order_line.qty_delivered")
     def _compute_show_deliver_button(self):
         for order in self:
-            order.show_deliver_button = (
-                order.state == "sale"
-                and any(line.qty_delivered < line.product_uom_qty for line in order.order_line)
-                and all(line.qty_delivered_method == "manual" for line in order.order_line)
+            order.show_deliver_button = order.state == "sale" and any(
+                line.product_id.type == "consu"
+                and line.qty_delivered < line.product_uom_qty
+                and line.qty_delivered_method == "manual"
+                for line in order.order_line
             )
 
     @api.depends("company_id", "fiscal_position_id")
@@ -2540,23 +2541,10 @@ class SaleOrder(models.Model):
         return generated_invoices
 
     def deliver_sold_quantity(self):
-        invalid_targets = self.filtered(
-            lambda o: (
-                o.state != "sale"
-                or any(line.qty_delivered_method != "manual" for line in o.order_line)
-            )
-        )
-        if invalid_targets:
-            raise UserError(
-                _(
-                    "The following sale orders %(invalid_orders)s can't be delivered. Cancelled all"
-                    " deliveries."
-                ),
-                invalid_orders=", ".join(invalid_targets.mapped("name")),
-            )
         for order in self:
             for line in order.order_line:
-                line.qty_delivered = line.product_uom_qty
+                if line.qty_delivered_method == "manual":
+                    line.qty_delivered = line.product_uom_qty
 
     def _get_or_create_analytic_account(self, plan_id):
         self.ensure_one()

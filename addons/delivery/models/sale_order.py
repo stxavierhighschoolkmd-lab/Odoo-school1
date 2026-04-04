@@ -175,6 +175,13 @@ class SaleOrder(models.Model):
             },
         }
 
+    def action_open_shipment_wizard(self):
+        self.ensure_one()
+        delivery_note = self.env["delivery.note"]._create_from_sale_order(self)
+        return delivery_note._get_records_action(
+            name=self.env._("Ship Order %s", self.name), target="new"
+        )
+
     def _action_confirm(self):
         for order in self:
             order_location = order.pickup_location_data

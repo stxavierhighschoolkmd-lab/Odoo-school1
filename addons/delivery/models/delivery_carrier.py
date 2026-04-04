@@ -288,6 +288,8 @@ class DeliveryCarrier(models.Model):
             products = source.order_line.product_id
         elif source._name == "stock.picking":
             products = source.move_ids.with_prefetch().mapped("product_id")
+        elif source._name == "delivery.note":
+            products = source.note_line_ids.mapped("product_id")
         else:
             raise UserError(_("Invalid source document type"))
         return not self.must_have_tag_ids or any(
@@ -300,6 +302,8 @@ class DeliveryCarrier(models.Model):
             products = source.order_line.product_id
         elif source._name == "stock.picking":
             products = source.move_ids.with_prefetch().mapped("product_id")
+        elif source._name == "delivery.note":
+            products = source.note_line_ids.mapped("product_id")
         else:
             raise UserError(_("Invalid source document type"))
         return not any(tag in products.all_product_tag_ids for tag in self.excluded_tag_ids)
@@ -314,6 +318,10 @@ class DeliveryCarrier(models.Model):
             total_weight = sum(
                 move.product_id.weight * move.product_uom_qty for move in source.move_ids
             )
+        elif source._name == "delivery.note":
+            total_weight = sum(
+                line.product_id.weight * line.product_uom_qty for line in source.note_line_ids
+            )
         else:
             raise UserError(_("Invalid source document type"))
         return not self.max_weight or total_weight <= self.max_weight
@@ -327,6 +335,10 @@ class DeliveryCarrier(models.Model):
         elif source._name == "stock.picking":
             total_volume = sum(
                 move.product_id.volume * move.product_uom_qty for move in source.move_ids
+            )
+        elif source._name == "delivery.note":
+            total_volume = sum(
+                line.product_id.volume * line.product_uom_qty for line in source.note_line_ids
             )
         else:
             raise UserError(_("Invalid source document type"))
@@ -465,6 +477,18 @@ class DeliveryCarrier(models.Model):
             except psycopg2.Error:
                 pass
 
+    def get_tracking_link(self, picking):
+        """Ask the tracking link to the service provider.
+
+        :param picking: record of delivery.tracker
+        :returns: an URL containing the tracking link or None
+        :rtype: str | None
+        """
+        self.ensure_one()
+        if hasattr(self, "%s_get_tracking_link" % self.delivery_type):
+            return getattr(self, "%s_get_tracking_link" % self.delivery_type)(picking)
+        return None
+
     # ------------------------------------------------ #
     # Fixed price shipping, aka a very simple provider #
     # ------------------------------------------------ #
@@ -498,6 +522,13 @@ class DeliveryCarrier(models.Model):
             }
         price = order.pricelist_id._get_product_price(self.product_id, 1.0)
         return {"success": True, "price": price, "error_message": False, "warning_message": False}
+
+    def fixed_get_tracking_link(self, picking):
+        if self.tracking_url and picking.carrier_tracking_ref:
+            return self.tracking_url.replace(
+                "<shipmenttrackingnumber>", picking.carrier_tracking_ref
+            )
+        return False
 
     # ----------------------------------- #
     # Based on rule delivery type methods #
@@ -533,6 +564,13 @@ class DeliveryCarrier(models.Model):
             "error_message": False,
             "warning_message": False,
         }
+
+    def base_on_rule_get_tracking_link(self, picking):
+        if self.tracking_url and picking.carrier_tracking_ref:
+            return self.tracking_url.replace(
+                "<shipmenttrackingnumber>", picking.carrier_tracking_ref
+            )
+        return False
 
     def _get_conversion_currencies(self, order, conversion):
         company_currency = (
