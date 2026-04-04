@@ -6,6 +6,7 @@ from collections import defaultdict
 import json
 
 from odoo import Command, _, api, fields, models
+from odoo.fields import Domain
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import format_datetime, float_round
 from odoo.tools.date_utils import sum_intervals
@@ -14,6 +15,7 @@ from odoo.tools.intervals import Intervals
 
 class MrpWorkorder(models.Model):
     _name = 'mrp.workorder'
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'product.catalog.mixin']
     _description = 'Work Order'
     _order = 'date_start, sequence, id'
 
@@ -33,7 +35,7 @@ class MrpWorkorder(models.Model):
     sequence = fields.Integer("Sequence", default=_default_sequence)
     barcode = fields.Char(compute='_compute_barcode', store=True)
     workcenter_id = fields.Many2one(
-        'mrp.workcenter', 'Work Center', required=True, index=True,
+        'mrp.workcenter', 'Work Center', required=True, index=True, tracking=True,
         group_expand='_read_group_workcenter_id', check_company=True)
     working_state = fields.Selection(
         string='Workcenter Status', related='workcenter_id.working_state') # technical: used in views only
@@ -70,14 +72,14 @@ class MrpWorkorder(models.Model):
         ('progress', 'In Progress'),
         ('done', 'Done'),
         ('cancel', 'Cancelled')], string='Status',
-        compute='_compute_state', store=True,
+        compute='_compute_state', store=True, tracking=True,
         default='ready', copy=False, index=True)
     leave_id = fields.Many2one(
         'resource.calendar.leaves',
         help='Slot into workcenter calendar once planned',
         check_company=True, copy=False)
     date_start = fields.Datetime(
-        'Start',
+        'Planned Date',
         compute='_compute_dates',
         inverse='_set_dates',
         store=True, copy=False)
@@ -88,7 +90,7 @@ class MrpWorkorder(models.Model):
         store=True, copy=False)
     duration_expected = fields.Float(
         'Expected Duration', digits=(16, 2), compute='_compute_duration_expected',
-        readonly=False, store=True) # in minutes
+        readonly=False, store=True, tracking=True) # in minutes
     duration = fields.Float(
         'Real Duration', compute='_compute_duration', inverse='_set_duration',
         readonly=False, store=True, copy=False)
@@ -147,6 +149,8 @@ class MrpWorkorder(models.Model):
     remaining_time = fields.Float('Remaining Working Time', compute='_compute_remaining_time',
                                   help="The remaining time to finish this work order.")
     color = fields.Integer('Color', related="production_id.id")
+    picking_type_id = fields.Many2one(related='production_id.picking_type_id')
+    wo_properties = fields.Properties('Properties', definition='picking_type_id.wo_properties_definition', copy=True)
 
     @api.depends('qty_ready')
     def _compute_state(self):
@@ -1003,3 +1007,58 @@ class MrpWorkorder(models.Model):
         """ This should only be called once when the MO is confirmed. """
         for workorder in self:
             workorder.cost_mode = workorder.operation_id.cost_mode or 'actual'
+
+    # -------------------------------------------------------------------------
+    # CATALOG
+    # -------------------------------------------------------------------------
+
+    def _default_order_line_values(self, child_field=False):
+        default_data = super()._default_order_line_values(child_field)
+        new_default_data = self.env['stock.move']._get_product_catalog_lines_data(parent_record=self)
+
+        return {**default_data, **new_default_data}
+
+    def _get_product_catalog_order_data(self, products, **kwargs):
+        product_catalog = super()._get_product_catalog_order_data(products, **kwargs)
+        for product in products:
+            product_catalog[product.id] |= self._get_product_price_and_data(product)
+        return product_catalog
+
+    def _get_product_price_and_data(self, product):
+        return {'price': product.standard_price}
+
+    def _get_product_catalog_record_lines(self, product_ids, **kwargs):
+        moves = self.move_raw_ids.filtered(lambda move: move.product_id.id in product_ids)
+        return moves.grouped('product_id')
+
+    def _get_product_catalog_domain(self):
+        return super()._get_product_catalog_domain() & Domain('type', '=', 'consu')
+
+    def _update_order_line_info(self, product_id, quantity, *, child_field=False, **kwargs):
+        move = self.move_raw_ids.filtered(lambda m: m.product_id.id == product_id)
+        if move:
+            if quantity != 0:
+                self._update_catalog_line_quantity(move, quantity, **kwargs)
+            else:
+                move.unlink()
+        elif quantity > 0:
+            new_line_vals = self._get_new_catalog_line_values(product_id, quantity, child_field='move_raw_ids', **kwargs)
+            command = Command.create(new_line_vals)
+            self.production_id.move_raw_ids = [command]
+            new_line = self.move_raw_ids.filtered(lambda mv: mv.product_id.id == product_id)[-1:]
+            self._update_catalog_line_quantity(new_line, quantity, **kwargs)
+
+        return self.env['product.product'].browse(product_id).standard_price
+
+    def _update_catalog_line_quantity(self, line, quantity, **kwargs):
+        line.product_uom_qty = quantity
+
+    def _is_display_stock_in_catalog(self):
+        return True
+
+    def _get_new_catalog_line_values(self, product_id, quantity, **kwargs):
+        values = self.production_id._get_new_catalog_line_values(product_id, quantity, **kwargs)
+        values.update({
+            'workorder_id': self.id,
+        })
+        return values
