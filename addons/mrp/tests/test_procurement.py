@@ -353,6 +353,71 @@ class TestProcurement(TestMrpCommon):
         move_dest._action_assign()
         self.assertEqual(move_dest.quantity, 10.0)
 
+    def test_mtso_with_multi_lvl_bom(self):
+        """Test to ensure that a Manufacturing Order use the adecuate quantity of components.
+        via MTSO route with a multi-level BoM.
+        """
+        self.warehouse_1.mto_pull_id.route_id.active = True
+        route_mto = self.warehouse_1.mto_pull_id.route_id
+        route_mto.rule_ids.procure_method = "mts_else_mto"
+        self.product_4.write({
+            'route_ids': [Command.link(route_mto.id)],
+        })
+        product_wood_guard = self.env['product.product'].create({
+            'name': 'Wood guard',
+            'route_ids': [Command.link(route_mto.id)],
+            'is_storable': True,
+        })
+        product_wood_sword = self.env['product.product'].create({
+            'name': 'Wood sword',
+            'route_ids': [Command.link(route_mto.id)],
+            'is_storable': True,
+        })
+        self.env['mrp.bom'].create({
+            'product_id': product_wood_guard.id,
+            'product_tmpl_id': product_wood_guard.product_tmpl_id.id,
+            'product_qty': 1.0,
+            'bom_line_ids': [
+                Command.create({
+                    'product_id': self.product_4.id,
+                    'product_qty': 1,
+                }),
+            ],
+        })
+        self.env['mrp.bom'].create({
+            'product_id': product_wood_sword.id,
+            'product_tmpl_id': product_wood_guard.product_tmpl_id.id,
+            'product_qty': 1.0,
+            'bom_line_ids': [
+                Command.create({
+                    'product_id': self.product_4.id,
+                    'product_qty': 5,
+                }),
+                Command.create({
+                    'product_id': product_wood_guard.id,
+                    'product_qty': 5,
+                }),
+            ],
+        })
+        self.env['stock.quant'].with_context(inventory_mode=True).create({
+            'product_id': self.product_4.id,
+            'inventory_quantity': 2,
+            'location_id': self.warehouse_1.lot_stock_id.id,
+        }).action_apply_inventory()
+        mo = self.env['mrp.production'].create({
+            'product_id': product_wood_sword.id,
+            'product_qty': 1,
+            'location_src_id': self.warehouse_1.lot_stock_id.id,
+        })
+        mo.action_confirm()
+        production_sword = self.env['mrp.production'].search([('product_id', '=', product_wood_sword.id)])
+        production_guard = self.env['mrp.production'].search([('product_id', '=', product_wood_guard.id)])
+        production_stick = self.env['mrp.production'].search([('product_id', '=', self.product_4.id)])
+
+        self.assertEqual(production_sword.product_uom_qty, 1)
+        self.assertEqual(production_guard.product_uom_qty, 5)
+        self.assertEqual(production_stick.product_uom_qty, 8)
+
     def test_mtso_with_empty_bom(self):
         """Test to ensure that a Manufacturing Order is created in 'draft' state
         via MTSO route when BoM has no components or operations.
