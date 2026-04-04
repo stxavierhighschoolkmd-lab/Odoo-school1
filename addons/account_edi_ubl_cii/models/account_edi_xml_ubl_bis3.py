@@ -290,6 +290,11 @@ class AccountEdiXmlUBLBIS3(models.AbstractModel):
                 }
             })
 
+        # [BR-O-02] If there is an invoice line with tax of category code 'O', no vat id should be present
+        if any(tax_subtotal['tax_category_vals'].get('tax_category_code') == 'O' for tax_subtotal in vals['vals']['tax_total_vals'][0]['tax_subtotal_vals']):
+            vals['vals']['accounting_supplier_party_vals']['party_vals']['party_tax_scheme_vals'] = None
+            vals['vals']['accounting_customer_party_vals']['party_vals']['party_tax_scheme_vals'] = None
+
         # For B2G transactions in Germany: set the buyer_reference to the Leitweg-ID (code 0204)
         if invoice.commercial_partner_id.peppol_eas == '0204':
             vals['vals'].update({
@@ -355,29 +360,36 @@ class AccountEdiXmlUBLBIS3(models.AbstractModel):
                 constraints.update({'cen_en16931_item_name': _("Each invoice line should have a product or a label.")})
                 break
 
-        for line in invoice.invoice_line_ids.filtered(lambda x: x.display_type not in ('line_note', 'line_section')):
+        lines = invoice.invoice_line_ids.filtered(lambda x: x.display_type not in ('line_note', 'line_section'))
+        for line in lines:
             if len(line.tax_ids.flatten_taxes_hierarchy().filtered(lambda t: t.amount_type not in ('fixed', 'code'))) != 1:
                 # [UBL-SR-48]-Invoice lines shall have one and only one classified tax category.
                 # /!\ exception: possible to have any number of ecotaxes (fixed tax) with a regular percentage tax
                 constraints.update({'cen_en16931_tax_line': _("Each invoice line shall have one and only one tax.")})
 
-        for role in ('supplier', 'customer'):
-            constraints[f'cen_en16931_{role}_country'] = self._check_required_fields(
-                vals['vals'][f'accounting_{role}_party_vals']['party_vals']['postal_address_vals']['country_vals'],
-                'identification_code',
-                _("The country is required for the %s.", role)
-            )
-            scheme_vals = vals['vals'][f'accounting_{role}_party_vals']['party_vals']['party_tax_scheme_vals'][-1:]
-            if (
-                not (scheme_vals and scheme_vals[0]['company_id'] and scheme_vals[0]['company_id'][:2].isalpha())
-                and (scheme_vals and scheme_vals[0]['tax_scheme_vals'].get('id') == 'VAT')
-                and self._name in ('account.edi.xml.ubl_bis3', 'account.edi.xml.ubl_nl', 'account.edi.xml.ubl_de')
-            ):
-                # [BR-CO-09]-The Seller VAT identifier (BT-31), the Seller tax representative VAT identifier (BT-63)
-                # and the Buyer VAT identifier (BT-48) shall have a prefix in accordance with ISO code ISO 3166-1
-                # alpha-2 by which the country of issue may be identified. Nevertheless, Greece may use the prefix ‘EL’.
-                constraints.update({f'cen_en16931_{role}_vat_country_code': _(
-                    "The VAT of the %s should be prefixed with its country code.", role)})
+        o_category_taxes = lines.tax_ids.filtered(lambda t: t.ubl_cii_tax_category_code == 'O')
+        if o_category_taxes and lines.tax_ids != o_category_taxes:
+            # taxes of category 'O' should not be mixed with other.
+            constraints.update({'cen_en1691_tax_category_o': _("Taxes of category 'Service outside scope of tax' shall not be mixed with tax from other categories. You should split your invoice in two")})
+
+        if not o_category_taxes:
+            for role in ('supplier', 'customer'):
+                constraints[f'cen_en16931_{role}_country'] = self._check_required_fields(
+                    vals['vals'][f'accounting_{role}_party_vals']['party_vals']['postal_address_vals']['country_vals'],
+                    'identification_code',
+                    _("The country is required for the %s.", role)
+                )
+                scheme_vals = vals['vals'][f'accounting_{role}_party_vals']['party_vals']['party_tax_scheme_vals'][-1:]
+                if (
+                    not (scheme_vals and scheme_vals[0]['company_id'] and scheme_vals[0]['company_id'][:2].isalpha())
+                    and (scheme_vals and scheme_vals[0]['tax_scheme_vals'].get('id') == 'VAT')
+                    and self._name in ('account.edi.xml.ubl_bis3', 'account.edi.xml.ubl_nl', 'account.edi.xml.ubl_de')
+                ):
+                    # [BR-CO-09]-The Seller VAT identifier (BT-31), the Seller tax representative VAT identifier (BT-63)
+                    # and the Buyer VAT identifier (BT-48) shall have a prefix in accordance with ISO code ISO 3166-1
+                    # alpha-2 by which the country of issue may be identified. Nevertheless, Greece may use the prefix 'EL'.
+                    constraints.update({f'cen_en16931_{role}_vat_country_code': _(
+                        "The VAT of the %s should be prefixed with its country code.", role)})
 
         if invoice.partner_shipping_id:
             # [BR-57]-Each Deliver to address (BG-15) shall contain a Deliver to country code (BT-80).

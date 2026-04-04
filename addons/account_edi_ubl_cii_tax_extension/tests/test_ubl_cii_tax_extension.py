@@ -2,13 +2,13 @@
 
 from lxml import etree
 from odoo import Command
-from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.addons.account_edi_ubl_cii.tests.common import TestUblBis3Common, TestUblCiiBECommon
 from odoo.addons.account_edi_ubl_cii_tax_extension.models.account_edi_common import FIX_WRONG_CODES_MAPPING
 from odoo.tests import tagged
 
 
-@tagged('post_install', '-at_install')
-class TestAccountEdiUblCiiTaxExtension(AccountTestInvoicingCommon):
+@tagged('post_install', '-at_install', *TestUblBis3Common.extra_tags)
+class TestAccountEdiUblCiiTaxExtension(TestUblBis3Common, TestUblCiiBECommon):
 
     @classmethod
     def setUpClass(cls, chart_template_ref=None):
@@ -18,6 +18,7 @@ class TestAccountEdiUblCiiTaxExtension(AccountTestInvoicingCommon):
         cls.zero_rated_tax = cls.company_data['default_tax_sale'].copy({'name': 'Zero rated tax', 'ubl_cii_tax_category_code': 'Z'})
         cls.prod_tax = cls.company_data['default_tax_sale'].copy({'name': 'Production tax', 'ubl_cii_tax_category_code': 'M'})
         cls.free_export_tax = cls.company_data['default_tax_sale'].copy({'name': 'Free export tax', 'ubl_cii_tax_category_code': 'G', 'ubl_cii_tax_exemption_reason_code': 'VATEX-EU-132-1G'})
+        cls.out_of_scope_tax = cls.company_data['default_tax_sale'].copy({'name': 'out of tax scope', 'amount': 0.0, 'ubl_cii_tax_category_code': 'O', 'ubl_cii_tax_exemption_reason_code': 'VATEX_EU_O'})
 
     def test_tax_subtotal(self):
         ubl_taxes = (self.reverse_charge_tax + self.zero_rated_tax + self.prod_tax + self.free_export_tax)
@@ -37,3 +38,15 @@ class TestAccountEdiUblCiiTaxExtension(AccountTestInvoicingCommon):
                 reason_code = FIX_WRONG_CODES_MAPPING.get(reason_code, reason_code)
                 self.assertEqual(node.findtext('.//{*}ID') or False, tax.ubl_cii_tax_category_code)
                 self.assertEqual(node.findtext('.//{*}TaxExemptionReasonCode') or False, reason_code)
+
+    def test_out_of_scope_tax(self):
+        invoice = self._create_invoice(
+            partner_id=self.partner_be,
+            invoice_line_ids=[
+                self._prepare_invoice_line(product_id=self.product_a, price_unit=10, tax_ids=self.out_of_scope_tax),
+            ],
+            post=True,
+        )
+
+        self._generate_invoice_ubl_file(invoice)
+        self._assert_invoice_ubl_file(invoice, 'test_out_of_scope_tax')

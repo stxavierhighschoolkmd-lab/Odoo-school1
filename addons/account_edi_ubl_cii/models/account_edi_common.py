@@ -251,7 +251,7 @@ class AccountEdiCommon(models.AbstractModel):
                 percent = tax.amount if tax.amount_type == 'percent' else False
             res.append({
                 'id': tax_unece_codes.get('tax_category_code'),
-                'percent': percent,
+                'percent': percent if tax_unece_codes.get('tax_category_code') != 'O' else None,
                 'name': tax_unece_codes.get('tax_exemption_reason'),
                 'tax_scheme_vals': {'id': 'VAT'},
                 **tax_unece_codes,
