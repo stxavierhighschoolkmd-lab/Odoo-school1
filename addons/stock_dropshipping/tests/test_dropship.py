@@ -7,7 +7,7 @@ from freezegun import freeze_time
 from odoo import Command
 
 from odoo.tests import common, tagged, Form
-from odoo.tools import mute_logger
+from odoo.tools import mute_logger, html2plaintext
 
 
 @tagged('at_install', '-post_install')  # LEGACY at_install
@@ -644,3 +644,48 @@ class TestDropshipPostInstall(common.TransactionCase):
         self.assertFalse(po.dest_address_id)
         po.picking_type_id = self.env['stock.picking.type'].search([('name', '=', 'Dropship'), ('company_id', '=', self.env.company.id)], limit=1)
         self.assertEqual(po.dest_address_id, self.customer)
+
+    def test_dropship_po_report_shows_customer_address(self):
+        """
+        Test dropship PO report (Purchase Order and RFQ)
+        must contain the customer's shipping address in the
+        information_block / 'Shipping address' section.
+        """
+        self.customer.write({
+            'name': 'DropshipCustomer',
+            'street': '42 Dropship Lane',
+            'city': 'Belgium',
+        })
+        so = self.env['sale.order'].create({
+            'partner_id': self.customer.id,
+            'partner_shipping_id': self.customer.id,
+            'order_line': [Command.create({
+                'product_id': self.dropship_product.id,
+                'product_uom_qty': 1.0,
+                'price_unit': 50.0,
+            })],
+        })
+        so.action_confirm()
+        po = so._get_purchase_orders()
+        self.assertEqual(po.dest_address_id, self.customer)
+        IrActionsReport = self.env['ir.actions.report']
+        # --- Purchase Order report ---
+        po_html = IrActionsReport._render_qweb_html(
+            'purchase.report_purchaseorder', po.ids
+        )[0]
+        po_text = html2plaintext(po_html)
+        self.assertRegex(
+            po_text,
+            r"Shipping address\*?\s+DropshipCustomer\s+42 Dropship Lane\s+Belgium",
+            "Full shipping address block (label, name, street, city) must appear in the PO report"
+        )
+        # --- RFQ (Quotation) report ---
+        rfq_html = IrActionsReport._render_qweb_html(
+            'purchase.report_purchasequotation', po.ids
+        )[0]
+        rfq_text = html2plaintext(rfq_html)
+        self.assertRegex(
+            rfq_text,
+            r"Shipping address\*?\s+DropshipCustomer\s+42 Dropship Lane\s+Belgium",
+            "Full shipping address block (label, name, street, city) must appear in the RFQ report"
+        )
