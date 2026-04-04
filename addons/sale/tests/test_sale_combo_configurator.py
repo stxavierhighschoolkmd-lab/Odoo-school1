@@ -170,3 +170,55 @@ class TestSaleComboConfigurator(HttpCase, SaleCommon):
             'name': combo_name,
             'combo_item_ids': [Command.create({'product_id': product.product_variant_id.id})],
         })
+
+
+@tagged('post_install', '-at_install')
+class TestSaleComboConfiguratorMobile(HttpCase, SaleCommon):
+    browser_size = '375x667'
+    touch_enabled = True
+
+    def test_sale_combo_configurator_mobile(self):
+        if self.env['ir.module.module']._get('sale_management').state != 'installed':
+            self.skipTest("Sale App is not installed, Sale menu is not accessible.")
+
+        unconfigurable_no_variant_attribute = self.env['product.attribute'].create({
+            'name': "Attribute A",
+            'create_variant': 'no_variant',
+            'value_ids': [Command.create({'name': "A"})],
+        })
+        configurable_no_variant_attribute = self.env['product.attribute'].create({
+            'name': "Attribute B",
+            'create_variant': 'no_variant',
+            'display_type': 'multi',
+            'value_ids': [Command.create({'name': "B"})],
+        })
+        product = self.env['product.template'].create({
+            'name': "Test product",
+            'list_price': 100,
+            'attribute_line_ids': [
+                Command.create({
+                    'attribute_id': unconfigurable_no_variant_attribute.id,
+                    'value_ids': [Command.set(unconfigurable_no_variant_attribute.value_ids.ids)],
+                }),
+                Command.create({
+                    'attribute_id': configurable_no_variant_attribute.id,
+                    'value_ids': [Command.set(configurable_no_variant_attribute.value_ids.ids)],
+                }),
+            ],
+        })
+        combo = self.env['product.combo'].create({
+            'name': "Combo A",
+            'combo_item_ids': [Command.create({'product_id': product.product_variant_id.id})],
+        })
+        self._create_product(
+            name="Combo product",
+            list_price=25,
+            type='combo',
+            combo_ids=[Command.link(combo.id)],
+        )
+
+        self.env['res.partner'].create({'name': "Test Partner"})
+        self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+        })
+        self.start_tour('/', 'sale_combo_configurator_mobile', login='admin')

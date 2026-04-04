@@ -430,10 +430,14 @@
                                                 readonly="not product_updatable"
                                                 required="not display_type and not is_downpayment"
                                                 force_save="1"
-                                                widget="many2one_barcode"
+                                                widget="sol_product_many2one"
+                                                options="{'can_scan_barcode': True}"
                                             />
                                         </div>
+                                        <field name="product_template_id" invisible="1"/>
                                         <field name="product_type" invisible="1"/>
+                                        <field name="selected_combo_items" invisible="1"/>
+                                        <field name="virtual_id" invisible="1"/>
                                         <field name="invoice_status" invisible="1"/>
                                         <field name="qty_to_invoice" invisible="1"/>
                                         <field name="qty_delivered_method" invisible="1"/>
@@ -684,6 +688,11 @@
                                 <field name="price_subtotal"/>
                                 <field name="display_type"/>
                                 <field name="currency_id"/>
+                                <field name="linked_line_id"/>
+                                <field name="virtual_id"/>
+                                <field name="linked_virtual_id"/>
+                                <field name="selected_combo_items"/>
+                                <field name="combo_item_id"/>
                                 <control>
                                     <create name="add_product_control" string="Add product"/>
                                     <create name="add_section_control" string="Add section" context="{'default_display_type': 'line_section'}"/>
