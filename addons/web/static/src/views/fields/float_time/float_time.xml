@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
 
-    <t t-name="web.FloatTimeField">
+    <t t-name="web.FloatTime">
         <time t-if="this.props.readonly" t-out="this.formattedValue" />
         <input t-else="" 
             t-att-id="this.props.id" 

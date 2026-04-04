@@ -19,10 +19,42 @@ import { useBus } from "@web/core/utils/hooks";
  * @param {() => boolean} [params.shouldSave] if true, save the record with the new value
  */
 export function useInputField(params) {
-    const inputRef = params.ref || useRef(params.refName || "input");
     const component = useComponent();
     const fieldName = params.fieldName || component.props.name;
     const shouldSave = params.shouldSave ?? (() => false);
+
+    const { inputRef, forceUpdate } = useInput({
+        ref: params.ref,
+        refName: params.refName,
+        parse: params.parse,
+        preventLineBreaks: params.preventLineBreaks,
+        checkValueInvalid: () => component.props.record.isFieldInvalid(fieldName),
+        onSetDirty: (isDirty) => {
+            component.props.record.model.bus.trigger("FIELD_IS_DIRTY", isDirty);
+            if (!component.props.record.isValid) {
+                component.props.record.resetFieldValidity(fieldName);
+            }
+        },
+        onParseFailure: () => {
+            component.props.record.setInvalidField(fieldName);
+        },
+        getValue: () => component.props.record.data[fieldName],
+        getFormattedValue: () => params.getValue(),
+        setValue: async (val) => {
+            await component.props.record.update({ [fieldName]: val }, { save: shouldSave() });
+            component.props.record.model.bus.trigger("FIELD_IS_DIRTY", false);
+        },
+    });
+
+    const { model } = component.props.record;
+    useBus(model.bus, "WILL_SAVE_URGENTLY", () => forceUpdate(true));
+    useBus(model.bus, "NEED_LOCAL_CHANGES", (ev) => ev.detail.proms.push(forceUpdate()));
+
+    return inputRef;
+}
+
+export function useInput(params) {
+    const inputRef = params.ref || useRef(params.refName || "input");
 
     /*
      * A field is dirty if it is no longer sync with the model
@@ -53,10 +85,7 @@ export function useInputField(params) {
         if (params.preventLineBreaks && ev.inputType === "insertFromPaste") {
             ev.target.value = ev.target.value.replace(/[\r\n]+/g, " ");
         }
-        component.props.record.model.bus.trigger("FIELD_IS_DIRTY", isDirty);
-        if (!component.props.record.isValid) {
-            component.props.record.resetFieldValidity(fieldName);
-        }
+        params.onSetDirty?.(isDirty);
     }
 
     /**
@@ -72,23 +101,19 @@ export function useInputField(params) {
                 try {
                     val = params.parse(val);
                 } catch {
-                    component.props.record.setInvalidField(fieldName);
+                    params.onParseFailure?.();
                     isInvalid = true;
                 }
             }
 
             if (!isInvalid) {
-                if (val !== component.props.record.data[fieldName]) {
+                if (val !== params.getValue()) {
                     lastSetValue = inputRef.el.value;
                     pendingUpdate = true;
-                    await component.props.record.update(
-                        { [fieldName]: val },
-                        { save: shouldSave() }
-                    );
+                    await params.setValue(val);
                     pendingUpdate = false;
-                    component.props.record.model.bus.trigger("FIELD_IS_DIRTY", isDirty);
                 } else {
-                    inputRef.el.value = params.getValue();
+                    inputRef.el.value = params.getFormattedValue();
                 }
             }
         }
@@ -100,7 +125,7 @@ export function useInputField(params) {
             keys.push("enter");
         }
         if (keys.includes(hotkey)) {
-            commitChanges(false);
+            forceUpdate(false);
         }
         if (params.preventLineBreaks && ["enter", "shift+enter"].includes(hotkey)) {
             ev.preventDefault();
@@ -133,27 +158,22 @@ export function useInputField(params) {
         // We need to call getValue before the condition to always observe
         // the corresponding value in the record. Otherwise, in some cases,
         // if the value in the record change the useLayoutEffect isn't triggered.
-        const value = params.getValue();
+        const value = params.getFormattedValue();
         if (!inputRef.el) {
             return;
         }
         if (inputRef.el.value === value) {
             isDirty = false;
         }
-        if (!isDirty && !component.props.record.isFieldInvalid(fieldName)) {
+        const editingField =
+            isDirty || (params.checkValueInvalid ? params.checkValueInvalid() : false);
+        if (!editingField) {
             inputRef.el.value = value;
             lastSetValue = inputRef.el.value;
         }
     });
 
-    const { model } = component.props.record;
-    useBus(model.bus, "WILL_SAVE_URGENTLY", () => commitChanges(true));
-    useBus(model.bus, "NEED_LOCAL_CHANGES", (ev) => ev.detail.proms.push(commitChanges()));
-
-    /**
-     * Roughly the same as onChange, but called at more specific / critical times. (See bus events)
-     */
-    async function commitChanges(urgent) {
+    async function forceUpdate(urgent) {
         if (!inputRef.el) {
             return;
         }
@@ -171,7 +191,7 @@ export function useInputField(params) {
                     if (urgent) {
                         return;
                     } else {
-                        component.props.record.setInvalidField(fieldName);
+                        params.onParseFailure?.();
                     }
                 }
             }
@@ -180,15 +200,14 @@ export function useInputField(params) {
                 return;
             }
 
-            if ((val || false) !== (component.props.record.data[fieldName] || false)) {
+            if ((val || false) !== (params.getValue() || false)) {
                 lastSetValue = inputRef.el.value;
-                await component.props.record.update({ [fieldName]: val }, { save: shouldSave() });
-                component.props.record.model.bus.trigger("FIELD_IS_DIRTY", false);
+                await params.setValue(val);
             } else {
-                inputRef.el.value = params.getValue();
+                inputRef.el.value = params.getFormattedValue();
             }
         }
     }
 
-    return inputRef;
+    return { inputRef, forceUpdate };
 }

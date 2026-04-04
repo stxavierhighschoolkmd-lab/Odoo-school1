@@ -52,6 +52,7 @@ export class DateTimeField extends Component {
         warnFuture: { type: Boolean, optional: true },
         showSeconds: { type: Boolean, optional: true },
         showTime: { type: Boolean, optional: true },
+        showWeekday: { type: Boolean, optional: true },
         minPrecision: {
             type: String,
             optional: true,
@@ -66,6 +67,7 @@ export class DateTimeField extends Component {
     static defaultProps = {
         showSeconds: false,
         showTime: true,
+        showWeekday: false,
         numeric: false,
     };
 
@@ -276,7 +278,7 @@ export class DateTimeField extends Component {
         if (!value) {
             return "";
         }
-        const { showSeconds, showTime } = this.props;
+        const { showSeconds, showTime, showWeekday } = this.props;
         if (this.field.type === "date") {
             return formatDate(value, { numeric });
         } else {
@@ -287,6 +289,7 @@ export class DateTimeField extends Component {
                 showSeconds,
                 showTime,
                 showDate,
+                showWeekday: showWeekday && showDate,
             });
         }
     }
@@ -553,6 +556,7 @@ export const dateTimeField = {
         ...dateField.extractProps(fieldInfo, dynamicInfo),
         showSeconds: fieldInfo.options.show_seconds ?? false,
         showTime: fieldInfo.options.show_time ?? true,
+        showWeekday: fieldInfo.options.show_weekday ?? false,
     }),
     supportedTypes: ["datetime"],
     listViewWidth: ({ options }) => {
