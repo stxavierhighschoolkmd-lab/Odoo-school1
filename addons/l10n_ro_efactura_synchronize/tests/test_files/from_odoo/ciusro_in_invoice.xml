@@ -92,7 +92,7 @@
     <cbc:PaymentMeansCode name="credit transfer">30</cbc:PaymentMeansCode>
     <cbc:PaymentID>INV/2025/00006</cbc:PaymentID>
     <cac:PayeeFinancialAccount>
-      <cbc:ID>RO23PORL7165378476876732</cbc:ID>
+      <cbc:ID>RO49AAAA1B31007593840000</cbc:ID>
     </cac:PayeeFinancialAccount>
   </cac:PaymentMeans>
   <cac:TaxTotal>

@@ -3,6 +3,7 @@ from markupsafe import Markup
 from odoo import _, api, models
 from odoo.addons.base.models.res_bank import sanitize_account_number
 from odoo.exceptions import UserError, ValidationError
+from odoo.fields import Domain
 from odoo.tools import float_compare, float_is_zero, float_repr
 from odoo.tools.float_utils import float_round
 from odoo.tools.misc import clean_context, formatLang, html_escape
@@ -503,10 +504,13 @@ class AccountEdiCommon(models.AbstractModel):
     def _import_partner(self, company_id, name, phone, email, vat, *, peppol_eas=False, peppol_endpoint=False, postal_address={}, **kwargs):
         """ Retrieve the partner, if no matching partner is found, create it (only if he has a vat and a name) """
         logs = []
+        domain = False
         if peppol_eas and peppol_endpoint:
             domain = [('peppol_eas', '=', peppol_eas), ('peppol_endpoint', '=', peppol_endpoint)]
-        else:
-            domain = False
+        if bank_details := kwargs.get('bank_details'):
+            # No subfield is specified on bank_ids because res.partner.bank uses acc_number as _rec_name and
+            # _search_display_name() builds the search domain on that field when _rec_names_search is not defined
+            domain = Domain.OR([domain, Domain('bank_ids', 'in', bank_details)])
         partner = self.env['res.partner'] \
             .with_company(company_id) \
             ._retrieve_partner(name=name, phone=phone, email=email, vat=vat, domain=domain)
