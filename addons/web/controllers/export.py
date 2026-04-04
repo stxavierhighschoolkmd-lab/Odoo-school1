@@ -544,6 +544,10 @@ class ExportFormat(object):
         """
         raise NotImplementedError()
 
+    def from_data_batch(self, fields, field_names, columns_headers, Model, record_ids):
+
+        raise NotImplementedError()
+
     def from_group_data(self, fields, columns_headers, groups):
         raise NotImplementedError()
 
@@ -579,18 +583,17 @@ class ExportFormat(object):
                 records |= tree.insert_leaf(leaf)
 
             response_data = self.from_group_data(fields, columns_headers, tree)
+            ids = records.ids
         else:
-            records = Model.browse(ids) if ids else Model.search(domain, offset=0, limit=False, order=False)
-
-            export_data = records.export_data(field_names).get('datas', [])
-            response_data = self.from_data(fields, columns_headers, export_data)
+            ids = ids or list(Model._search(domain, offset=0, limit=False, order=False))
+            response_data = self.from_data_batch(fields, field_names, columns_headers, Model, ids)
 
         _logger.info(
             "User %d exported %d %r records from %s. Fields: %s. %s: %s",
-            request.env.user.id, len(records.ids), records._name, request.httprequest.environ['REMOTE_ADDR'],
+            request.env.user.id, len(ids), Model._name, request.httprequest.environ['REMOTE_ADDR'],
             ','.join(field_names),
             'IDs sample' if ids else 'Domain',
-            records.ids[:10] if ids else domain,
+            ids[:10] if ids else domain,
         )
 
         # TODO: call `clean_filename` directly in `content_disposition`?
@@ -649,6 +652,35 @@ class CSVExport(ExportFormat, http.Controller):
 
         return fp.getvalue()
 
+    def from_data_batch(self, fields, field_names, columns_headers, Model, record_ids):
+        fp = io.StringIO()
+        writer = csv.writer(fp, quoting=1)
+
+        writer.writerow(columns_headers)
+
+        BATCHSIZE = 10000
+        fnames = [f for f in field_names if not "/" in f]
+        for i in range(0, len(record_ids), BATCHSIZE):
+            ids = record_ids[i:i + BATCHSIZE]
+            records = Model.browse(ids)
+            rows = records.export_data(field_names).get('datas', [])
+            for data in rows:
+                row = []
+                for d in data:
+                    if d is None or d is False:
+                        d = ''
+                    elif isinstance(d, bytes):
+                        d = d.decode()
+                    # Spreadsheet apps tend to detect formulas on leading =, + and -
+                    if isinstance(d, str) and d.startswith(('=', '-', '+')):
+                        d = "'" + d
+
+                    row.append(d)
+                writer.writerow(row)
+            records.invalidate_recordset(fnames)
+
+        return fp.getvalue()
+
 class ExcelExport(ExportFormat, http.Controller):
 
     @http.route('/web/export/xlsx', type='http', auth='user')
@@ -685,5 +717,22 @@ class ExcelExport(ExportFormat, http.Controller):
             for row_index, row in enumerate(rows):
                 for cell_index, cell_value in enumerate(row):
                     xlsx_writer.write_cell(row_index + 1, cell_index, cell_value)
+
+        return xlsx_writer.value
+
+    def from_data_batch(self, fields, field_names, columns_headers, Model, record_ids):
+        with ExportXlsxWriter(fields, columns_headers, len(record_ids)) as xlsx_writer:
+            BATCHSIZE = 10000
+            global_row = 1
+            fnames = [f for f in field_names if not "/" in f]
+            for i in range(0, len(record_ids), BATCHSIZE):
+                ids = record_ids[i:i + BATCHSIZE]
+                records = Model.browse(ids)
+                rows = records.export_data(field_names).get('datas', [])
+                for row_index, row in enumerate(rows):
+                    for cell_index, cell_value in enumerate(row):
+                        xlsx_writer.write_cell(global_row + row_index, cell_index, cell_value)
+                global_row += row_index + 1
+                records.invalidate_recordset(fnames)
 
         return xlsx_writer.value
