@@ -5,7 +5,7 @@ import { localization as l10n } from "@web/core/l10n/localization";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { escape } from "@web/core/utils/strings";
-import { isBinarySize } from "@web/core/utils/binary";
+import { humanSize, isBinarySize } from "@web/core/utils/binary";
 import {
     formatFloat as formatFloatNumber,
     humanNumber,
@@ -14,22 +14,6 @@ import {
 
 import { markup } from "@odoo/owl";
 import { formatCurrency } from "@web/core/currency";
-
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-
-function humanSize(value) {
-    if (!value) {
-        return "";
-    }
-    const suffix = value < 1024 ? " " + _t("Bytes") : "b";
-    return (
-        humanNumber(value, {
-            decimals: 2,
-        }) + suffix
-    );
-}
 
 // -----------------------------------------------------------------------------
 // Exports
@@ -42,8 +26,7 @@ function humanSize(value) {
 export function formatBinary(value) {
     if (!isBinarySize(value)) {
         // Computing approximate size out of base64 encoded string
-        // http://en.wikipedia.org/wiki/Base64#MIME
-        return humanSize(value.length / 1.37);
+        return humanSize(Math.round(value.length * 0.75));
     }
     // already bin_size
     return value;
@@ -280,7 +263,7 @@ export function formatMonetary(value, options = {}) {
         const dataValue = options.data[currencyField];
         currencyId = Array.isArray(dataValue) ? dataValue[0] : dataValue;
     }
-    return formatCurrency(value, currencyId, options)
+    return formatCurrency(value, currencyId, options);
 }
 
 /**

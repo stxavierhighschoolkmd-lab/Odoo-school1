@@ -7,10 +7,10 @@ QUnit.module("utils", () => {
     QUnit.module("binary");
 
     QUnit.test("humanSize", (assert) => {
-        assert.strictEqual(humanSize(0), "0.00 Bytes");
-        assert.strictEqual(humanSize(3), "3.00 Bytes");
-        assert.strictEqual(humanSize(2048), "2.00 Kb");
-        assert.strictEqual(humanSize(2645000), "2.52 Mb");
+        assert.strictEqual(humanSize(0), "0 Bytes");
+        assert.strictEqual(humanSize(3), "3 Bytes");
+        assert.strictEqual(humanSize(2048), "2.00 kB");
+        assert.strictEqual(humanSize(2645000), "2.52 MB");
     });
 
     QUnit.test("resize image", async (assert) => {

@@ -464,7 +464,7 @@ QUnit.module("Fields", (hooks) => {
 
         assert.strictEqual(
             target.querySelector(".o_data_row .o_data_cell").textContent,
-            "93.43 Bytes"
+            "96 Bytes"
         );
     });
 
