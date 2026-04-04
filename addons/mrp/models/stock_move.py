@@ -79,6 +79,8 @@ class StockMoveLine(models.Model):
 
     def _get_aggregated_properties(self, move_line=False, move=False):
         aggregated_properties = super()._get_aggregated_properties(move_line, move)
+        aggregated_properties['description'] = (aggregated_properties['description']
+                                               or aggregated_properties['move'].description_bom_line)
         bom = aggregated_properties['move'].bom_line_id.bom_id
         aggregated_properties['bom'] = bom or False
         aggregated_properties['line_key'] += f'_{bom.id if bom else ""}'
