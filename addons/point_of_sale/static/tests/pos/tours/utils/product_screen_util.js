@@ -463,13 +463,6 @@ export function closeWithCashAmount(val) {
         },
     ];
 }
-export function clickCloseSession() {
-    return [
-        {
-            trigger: "footer .button:contains('Close Session')",
-        },
-    ];
-}
 export function back() {
     return utilsBack();
 }
@@ -860,12 +853,6 @@ export function checkRoundingAmountIsNotThere() {
             },
         },
     ];
-}
-
-export function checkRoundingAmount(amount) {
-    return {
-        trigger: `.order-summary .rounding:contains(${amount})`,
-    };
 }
 
 export function customerIs(name) {

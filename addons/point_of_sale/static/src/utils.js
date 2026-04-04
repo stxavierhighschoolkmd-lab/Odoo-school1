@@ -1,7 +1,6 @@
 /* global QRCode */
 
 import { session } from "@web/session";
-import { getDataURLFromFile } from "@web/core/utils/urls";
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { Time } from "@web/core/l10n/time";
 /*
@@ -112,47 +111,6 @@ export function loadImage(url, options = {}) {
     });
 }
 
-/**
- * Load all images in the given element.
- * @param {HTMLElement} el
- */
-
-export function waitImages(containerElement, timeoutMs = 3000) {
-    return new Promise((resolve) => {
-        const images = containerElement.querySelectorAll("img");
-        const total = images.length;
-        let loadedCount = 0;
-        let timedOut = false;
-
-        if (total === 0) {
-            resolve({ timedOut: false });
-            return;
-        }
-
-        const timeoutId = setTimeout(() => {
-            timedOut = true;
-            resolve({ timedOut: true });
-        }, timeoutMs);
-
-        const onLoadOrError = () => {
-            loadedCount++;
-            if (loadedCount === total && !timedOut) {
-                clearTimeout(timeoutId);
-                resolve({ timedOut: false });
-            }
-        };
-
-        images.forEach((img) => {
-            if (img.complete) {
-                onLoadOrError();
-            } else {
-                img.addEventListener("load", onLoadOrError);
-                img.addEventListener("error", onLoadOrError);
-            }
-        });
-    });
-}
-
 export class Counter {
     constructor(start = 0) {
         this.value = start;
@@ -174,12 +132,6 @@ export function isValidEmail(email) {
 }
 
 export const LONG_PRESS_DURATION = session.test_mode ? 100 : 500;
-
-export async function getImageDataUrl(imageUrl) {
-    const res = await fetch(imageUrl);
-    const blob = await res.blob();
-    return await getDataURLFromFile(blob);
-}
 
 export function orderUsageUTCtoLocalUtil(data) {
     const result = {};

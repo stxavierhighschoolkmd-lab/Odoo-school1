@@ -44,9 +44,6 @@ class PosSelfOrderController(http.Controller):
             'product.attribute.custom.value': self.env['product.attribute.custom.value']._load_pos_self_data_read(order.lines.custom_attribute_value_ids, config),
         }
 
-    def _verify_line_price(self, lines, pos_config, preset_id):
-        lines.order_id.recompute_prices()
-
     @http.route('/pos-self-order/validate-partner', auth='public', type='jsonrpc', website=True)
     def validate_partner(self, access_token, name, phone, street, zip, city, country_id, state_id=None, partner_id=None, email=None):
         pos_config = self._verify_pos_config(access_token)

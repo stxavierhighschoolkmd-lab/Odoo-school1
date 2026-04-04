@@ -46,15 +46,6 @@ export function isShown() {
         },
     ];
 }
-export function totalAmountContains(value) {
-    return [
-        {
-            content: `total amount contains ${value}`,
-            trigger: `.feedback-screen .amount-container.amount:contains("${value}")`,
-        },
-    ];
-}
-
 export function checkTicketData(data, basic = false) {
     // data is an object like:
     // {
@@ -363,20 +354,6 @@ export function checkTicketData(data, basic = false) {
         },
     ];
 }
-export function trackingMethodIsLot(lot) {
-    return [
-        {
-            content: `tracking method is Lot`,
-            trigger: `li.lot-number:contains("Lot Number ${lot}")`,
-            run: function () {
-                if (document.querySelectorAll("li.lot-number").length !== 1) {
-                    throw new Error(`Expected exactly one 'Lot Number ${lot}' element.`);
-                }
-            },
-        },
-    ];
-}
-
 export function clickSendButton() {
     return [
         {
