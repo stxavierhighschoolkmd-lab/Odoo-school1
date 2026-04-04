@@ -88,7 +88,8 @@ class CrmLead(models.Model):
             'default_origin': self.name,
             'default_source_id': self.source_id.id,
             'default_company_id': self.company_id.id or self.env.company.id,
-            'default_tag_ids': [(6, 0, self.tag_ids.ids)]
+            'default_tag_ids': [(6, 0, self.tag_ids.ids)],
+            'active_test': True,
         }
         if self.team_id:
             quotation_context['default_team_id'] = self.team_id.id
