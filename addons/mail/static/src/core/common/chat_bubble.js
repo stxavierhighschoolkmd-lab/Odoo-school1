@@ -3,12 +3,13 @@ import { DiscussAvatar } from "@mail/core/common/discuss_avatar";
 import { MessageSeenIndicator } from "@mail/discuss/core/common/message_seen_indicator";
 
 import { Component } from "@odoo/owl";
-
 import { useChildRef, useService } from "@web/core/utils/hooks";
 import { useHover } from "@mail/utils/common/hooks";
 import { usePopover } from "@web/core/popover/popover_hook";
 import { CountryFlag } from "@mail/core/common/country_flag";
 import { isMobileOS } from "@web/core/browser/feature_detection";
+import { browser } from "@web/core/browser/browser";
+import { _t } from "@web/core/l10n/translation";
 
 class ChatBubblePreview extends Component {
     static components = { MessageSeenIndicator };
@@ -20,7 +21,38 @@ class ChatBubblePreview extends Component {
         return this.props.chatWindow.channel;
     }
 
+    get draftLabel() {
+        return _t("[Draft]");
+    }
+
+    get draftContent() {
+        if (!this.channel.hasDraft) {
+            return "";
+        }
+        const localId = this.channel.thread?.composer?.localId;
+        if (!localId) {
+            return "";
+        }
+        let config;
+        try {
+            config = JSON.parse(browser.localStorage.getItem(localId));
+        } catch {
+            return "";
+        }
+        let composerHtml = config?.composerHtml;
+        if (Array.isArray(composerHtml)) {
+            composerHtml = composerHtml[1];
+        }
+        if (!composerHtml) {
+            return "";
+        }
+        return new DOMParser().parseFromString(String(composerHtml), "text/html").body.textContent || "";
+    }
+
     get previewText() {
+        if (this.channel.hasDraft) {
+            return this.draftContent;
+        }
         const lastMessage = this.channel.newestPersistentOfAllMessage;
         if (!lastMessage) {
             return false;

@@ -16,9 +16,10 @@
         <div t-if="this.props.chatWindow?.channel" class="o-mail-ChatBubble-preview o-mail-ChatBubble-menu px-0 py-1 shadow-sm border border-secondary bg-100 o-rounded-bubble">
             <div class="text-truncate base-fs o-fw-600 mb-0 mx-2 px-1" t-out="this.props.chatWindow.channel.displayName"/>
             <t t-set="message" t-value="this.channel.newestPersistentOfAllMessage" />
-            <div t-if="this.previewText" class="text-truncate small mx-2 px-1 text-muted">
-                <MessageSeenIndicator t-if="message.showSeenIndicator(this.channel.thread)" message="message"/>
-                <t t-out="message.previewText" />
+            <div t-if="this.channel.hasDraft or this.previewText" class="small mx-2 px-1 d-flex align-items-baseline gap-1 o-min-width-0 text-muted">
+                <span t-if="this.channel.hasDraft" class="text-danger" t-out="this.draftLabel"/>
+                <MessageSeenIndicator t-if="!this.channel.hasDraft and message and message.showSeenIndicator(this.channel.thread)" message="message"/>
+                <span class="text-truncate" t-out="this.previewText"/>
             </div>
         </div>
     </t>
