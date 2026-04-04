@@ -125,7 +125,19 @@ class SaleOrderLine(models.Model):
                 sale_line_uom = sale_line.product_uom
                 item = sale_line.read(field_names, load=False)[0]
                 if sale_line.product_id.tracking != 'none':
-                    move_lines = sale_line.move_ids.move_line_ids.filtered(lambda ml: ml.product_id.id == sale_line.product_id.id)
+                    move_lines = self.env['stock.move.line']
+                    for picking in sale_line.order_id.picking_ids:
+                        candidates = picking.move_line_ids.filtered(
+                            lambda ml: ml.product_id == sale_line.product_id
+                            and ml.move_id.sale_line_id == sale_line
+                        )
+                        if candidates:
+                            move_lines = candidates
+                            break
+                    if not move_lines:
+                        move_lines = sale_line.move_ids.move_line_ids.filtered(
+                            lambda ml: ml.product_id == sale_line.product_id
+                        )
                     item['lot_names'] = move_lines.lot_id.mapped('name')
                     lot_qty_by_name = {}
                     for line in move_lines:
