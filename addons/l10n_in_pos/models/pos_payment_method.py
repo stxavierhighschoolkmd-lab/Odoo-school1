@@ -1,7 +1,5 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-import base64
-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools.image import image_data_uri
@@ -47,5 +45,5 @@ class PosPaymentMethod(models.Model):
                 raise UserError(_("Please set a UPI ID for the payment method '%s'.", self.name))
             payment_url = f"upi://pay?pa={self.upi_identifier}&am={amount}&cu={self.journal_id.currency_id.name or self.env.company.currency_id.name}"
             barcode = self.env['ir.actions.report'].barcode(barcode_type='QR', value=payment_url, width=120, height=120, barBorder=0)
-            return image_data_uri(base64.b64encode(barcode))
+            return image_data_uri(barcode)
         return super().get_qr_code(amount, free_communication, structured_communication, currency, debtor_partner)
