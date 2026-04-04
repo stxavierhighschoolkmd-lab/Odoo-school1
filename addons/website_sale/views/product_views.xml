@@ -184,8 +184,6 @@
                             <!-- From hidden "Extra Info" group -->
                             <field name="product_tag_ids" widget="many2many_tags" context="{'product_template_id': id}"/>
                         </group>
-                    </group>
-                    <group>
                         <group string="Long Description" name="ecom_description">
                             <field
                                 colspan="2"
@@ -194,22 +192,40 @@
                                 placeholder="A detailed, formatted description to promote your product on your eCommerce."
                             />
                         </group>
-                        <group name="product_template_images" string="Media" invisible="not sale_ok">
-                            <field
-                                name="product_template_image_ids"
-                                class="o_website_sale_image_list"
-                                context="{'default_name': name}"
-                                mode="kanban"
-                                add-label="Add Media"
-                                nolabel="1"
-                                colspan="2"
-                                widget="x2_many_media_viewer"
-                                options="{'convert_to_webp': True}"
-                            />
-                        </group>
+                    </group>
+                    <group name="product_template_images" string="Media" invisible="not sale_ok">
+                        <field
+                            name="product_template_image_ids"
+                            class="o_website_sale_image_list"
+                            context="{'default_name': name}"
+                            mode="kanban"
+                            add-label="Add Media"
+                            nolabel="1"
+                            colspan="2"
+                            widget="x2_many_media_viewer"
+                            options="{'convert_to_webp': True}"
+                        />
                     </group>
                 </page>
             </notebook>
+        </field>
+    </record>
+
+    <record id="product_normal_website_form_view" model="ir.ui.view">
+        <field name="name">product.normal.view.website</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <field name="product_template_image_ids" position="attributes">
+                <attribute name="context">
+                    {
+                        'default_name': name,
+                        'default_product_variant_ids': [id],
+                        'default_attribute_value_ids': product_template_attribute_value_ids,
+                        'default_product_tmpl_id': product_tmpl_id,
+                    }
+                </attribute>
+            </field>
         </field>
     </record>
 
@@ -221,11 +237,6 @@
             <group name="sales" position="inside">
                 <field name="website_ribbon_id" options="{'no_open': True}" readonly="True"/>
                 <field name="variant_ribbon_id" options="{'no_quick_create': True}"/>
-            </group>
-            <group name="sales" position="after">
-                <group colspan="2" name="product_variant_images" string="Extra Variant Media">
-                    <field name="product_variant_image_ids" class="o_website_sale_image_list" context="{'default_name': name}" mode="kanban" add-label="Add Media" nolabel="1" widget="x2_many_media_viewer" options="{'convert_to_webp': True}"/>
-                </group>
             </group>
         </field>
     </record>
