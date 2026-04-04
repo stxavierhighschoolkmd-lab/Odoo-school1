@@ -302,6 +302,28 @@ class TestMessageController(HttpCaseWithUserDemo):
             "guest should not be allowed to create a partner from an email from message_post",
         )
 
+    def test_mail_partner_from_email_without_partner_manager(self):
+        """User without group_partner_manager can create partners via
+        /mail/partner/from_email (full composer needs res.partner records)."""
+        user = mail_new_test_user(self.env, login='user_no_pm', groups='base.group_user')
+        user.write({'group_ids': [(3, self.env.ref('base.group_partner_manager').id)]})
+        self.authenticate('user_no_pm', 'user_no_pm')
+        res = self.url_open(
+            url="/mail/partner/from_email",
+            data=json.dumps({
+                "params": {
+                    "thread_model": "discuss.channel",
+                    "thread_id": self.channel.id,
+                    "emails": ["logan@test.be"],
+                },
+            }),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(res.status_code, 200)
+        result = res.json()["result"]
+        self.assertEqual(len(result), 1)
+        self.assertTrue(result[0]["id"], "partner should have been created")
+
     def test_mail_cache_control_header(self):
         testuser = self.env['res.users'].create({
             'email': 'testuser@testuser.com',
