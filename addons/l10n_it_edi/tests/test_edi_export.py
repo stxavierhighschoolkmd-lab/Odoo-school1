@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 from unittest import SkipTest
+from lxml import etree
 from odoo import Command
 from odoo.tests import tagged
 from odoo.addons.l10n_it_edi.tests.common import TestItEdi
@@ -618,3 +619,56 @@ class TestItEdiExport(TestItEdi):
         })
         invoice.action_post()
         self._assert_export_invoice(invoice, 'invoice_with_oss_tax.xml')
+
+    def test_export_invoice_uom_unicode_normalization(self):
+        """Test that non-standard Unicode characters (e.g. m², m³) are correctly normalized for XML invoices."""
+        uom_category = self.env['uom.category'].create({
+            'name': 'Test Surface',
+        })
+
+        self.env['uom.uom'].create({
+            'name': 'm2 ref',
+            'category_id': uom_category.id,
+            'uom_type': 'reference',
+            'factor_inv': 1.0,
+            'rounding': 0.01,
+        })
+
+        unicode_uom = self.env['uom.uom'].create({
+            'name': 'm²',
+            'category_id': uom_category.id,
+            'uom_type': 'bigger',
+            'factor_inv': 1.0,
+            'factor': 1.0,
+            'rounding': 0.01,
+        })
+
+        product = self.env['product.product'].create({
+            'name': 'Product with unicode UoM',
+            'uom_id': unicode_uom.id,
+            'uom_po_id': unicode_uom.id,
+        })
+
+        invoice = self.env['account.move'].with_company(self.company).create({
+            'move_type': 'out_invoice',
+            'invoice_date': '2022-03-24',
+            'invoice_date_due': '2022-03-24',
+            'partner_id': self.italian_partner_a.id,
+            'invoice_line_ids': [
+                Command.create({
+                    'product_id': product.id,
+                    'name': product.name,
+                    'quantity': 1,
+                    'price_unit': 800.40,
+                    'product_uom_id': unicode_uom.id,
+                    'tax_ids': [Command.set(self.default_tax.ids)],
+                }),
+            ],
+        })
+        invoice.action_post()
+
+        xml = invoice._l10n_it_edi_render_xml()
+        invoice_tree = etree.fromstring(xml)
+
+        uom_nodes = invoice_tree.xpath("//*[local-name()='DettaglioLinee']/*[local-name()='UnitaMisura']")
+        self.assertEqual(uom_nodes[0].text, 'm2')
