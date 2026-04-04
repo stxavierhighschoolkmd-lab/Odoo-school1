@@ -403,8 +403,8 @@ class AccountMove(models.Model):
             for tax in line.tax_ids:
                 if tax.l10n_in_tax_type == 'tcs':
                     max_tax = max(
-                        tax.l10n_in_section_id.l10n_in_section_tax_ids,
-                        key=lambda t: t.amount
+                        tax.l10n_in_section_id.with_context(active_test=False).l10n_in_section_tax_ids,
+                        key=lambda t: abs(t.amount),
                     )
                     updated_tax_ids.append(max_tax.id)
                 else:
@@ -419,8 +419,19 @@ class AccountMove(models.Model):
             for line in self.invoice_line_ids:
                 for tax in line.tax_ids:
                     if (
+<<<<<<< 8160cb1c12827317911183d12d46a9f2e170a407
                         tax.l10n_in_tax_type == 'tcs'
                         and tax.amount != max(tax.l10n_in_section_id.l10n_in_section_tax_ids, key=lambda t: abs(t.amount)).amount
+||||||| 2c8849fd8aa5c6413f9917596588747da43fe60c
+                        tax.l10n_in_section_id.tax_source_type == 'tcs'
+                        and tax.amount != max(tax.l10n_in_section_id.l10n_in_section_tax_ids, key=lambda t: abs(t.amount)).amount
+=======
+                        tax.l10n_in_section_id.tax_source_type == 'tcs'
+                        and tax.amount != max(
+                            tax.l10n_in_section_id.with_context(active_test=False).l10n_in_section_tax_ids,
+                            key=lambda t: abs(t.amount),
+                        ).amount
+>>>>>>> bbeada52f44dd189c6b1abf922fe3cdb1455c389
                     ):
                         lines |= line._origin
             return lines
