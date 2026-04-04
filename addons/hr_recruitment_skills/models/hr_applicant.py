@@ -182,3 +182,28 @@ class HrApplicant(models.Model):
                         mapped_skills = source_applicant._map_applicant_skill_ids_to_other_applicant_skill_ids(applicant, original_vals)
                         applicant.with_context(skills_synced=True).write({"applicant_skill_ids": mapped_skills})
         return super().write(vals)
+
+    def _compute_display_name(self):
+        super()._compute_display_name()
+        if self.env.context.get("show_matching_score_in_name", False):
+            for applicant in self:
+                if applicant.matching_score:
+                    name = f"{applicant.display_name or applicant.name} \t --{applicant.matching_score:.0f}%--"
+                    applicant.display_name = name.strip()
+
+    @api.model
+    def name_search(self, name='', domain=None, operator='ilike', limit=100):
+        domain = []
+        show_matching_score_in_name = self.env.context.get('show_matching_score_in_name', False)
+        show_talents_only = self.env.context.get('show_talents_only', False)
+        if show_talents_only:
+            domain.append(('talent_pool_ids', '!=', False))
+        if show_matching_score_in_name:
+            domain.append(('linked_applicant_ids', 'not in', self.env.context.get('active_job_applicant_ids', [])))
+            records = self.search_fetch(
+                domain=domain,
+                field_names=['display_name'],
+            )
+            records = records.sorted(lambda a: a.matching_score, reverse=True)[:limit]
+            return [(r.id, r.display_name) for r in records]
+        return super().name_search(name=name, domain=domain if domain else None, operator=operator, limit=limit)

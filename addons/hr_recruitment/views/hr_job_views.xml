@@ -534,4 +534,13 @@
             </p>
         </field>
     </record>
+
+    <record id="action_job_add_applicants" model="ir.actions.server">
+        <field name="name">Matching Talents</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_job"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_job_add_applicants()</field>
+        <field name="binding_model_id" ref="hr_recruitment.model_hr_job"/>
+        <field name="binding_view_types">form</field>
+    </record>
 </odoo>
