@@ -71,7 +71,7 @@ class ProductProduct(models.Model):
     standard_price = fields.Float(
         'Cost', company_dependent=True,
         min_display_digits='Product Price',
-        groups="base.group_user",
+        groups="base.group_user", tracking=True,
         help="""Value of the product (automatically computed in AVCO).
         Used to value the product when the purchase cost is not known (e.g. inventory adjustment).
         Used to compute margins on sale orders.""")
@@ -781,6 +781,25 @@ class ProductProduct(models.Model):
         )
         # Make sure the `create_product_product` context is not kept, unless it was already set.
         return products.with_env(self.env)
+
+    def write(self, vals):
+        initial_standard_price_values = {}
+        if ('standard_price' in vals and not self.env.context.get('mail_notrack')):
+            standard_price_field_definition = self.product_tmpl_id.fields_get(['standard_price'])
+
+            for product in self:
+                if product.product_tmpl_id.product_variant_count == 1:
+                    initial_standard_price_values[product] = {'standard_price': product.standard_price}
+
+        res = super().write(vals)
+
+        for product, initial_value in initial_standard_price_values.items():
+            if tracking_values := product.product_tmpl_id._mail_track(standard_price_field_definition, initial_value)[1]:
+                product.product_tmpl_id._message_log(
+                    tracking_value_ids=[(0, 0, vals) for vals in tracking_values],
+                )
+
+        return res
 
     def action_archive(self):
         records = self.filtered('active')

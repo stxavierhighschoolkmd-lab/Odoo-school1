@@ -478,18 +478,18 @@ class ProductProduct(models.Model):
             if product.cost_method == 'standard':
                 continue
             if product.lot_valuated:
-                product.sudo().with_context(disable_auto_revaluation=True).standard_price = product.avg_cost
+                product.sudo().with_context(disable_auto_revaluation=True, mail_notrack=True).standard_price = product.avg_cost
                 continue
             if product.cost_method == 'fifo':
                 qty_available = product._with_valuation_context().qty_available
                 if product.uom_id.compare(qty_available, 0) > 0:
-                    product.sudo().with_context(disable_auto_revaluation=True).standard_price = product.total_value / qty_available
+                    product.sudo().with_context(disable_auto_revaluation=True, mail_notrack=True).standard_price = product.total_value / qty_available
                 elif last_in := product._get_last_in():
-                    product.sudo().with_context(disable_auto_revaluation=True).standard_price = last_in._get_price_unit()
+                    product.sudo().with_context(disable_auto_revaluation=True, mail_notrack=True).standard_price = last_in._get_price_unit()
                 continue
             new_standard_price = product._run_avco()[0]
             if new_standard_price:
-                product.with_context(disable_auto_revaluation=True).sudo().standard_price = new_standard_price
+                product.with_context(disable_auto_revaluation=True, mail_notrack=True).sudo().standard_price = new_standard_price
 
 
 class ProductCategory(models.Model):
