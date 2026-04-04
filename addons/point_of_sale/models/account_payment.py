@@ -33,3 +33,15 @@ class AccountPayment(models.Model):
             if sepa_ct and 'pos_payment' in self.env.context and sepa_ct.code not in res:
                 res.append(sepa_ct.code)
         return res
+
+    def _prepare_move_counterpart_lines(self, default_values):
+        [res] = super()._prepare_move_counterpart_lines(default_values)
+        if self.pos_session_id and self.payment_type == 'outbound':
+            res['account_id'] = self.outstanding_account_id.id
+        return [res]
+
+    def _prepare_move_liquidity_lines(self, default_values):
+        [res] = super()._prepare_move_liquidity_lines(default_values)
+        if self.pos_session_id and self.payment_type == 'outbound':
+            res['account_id'] = self.destination_account_id.id
+        return [res]

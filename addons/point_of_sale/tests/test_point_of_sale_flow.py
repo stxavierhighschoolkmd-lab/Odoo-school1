@@ -3040,7 +3040,7 @@ class TestPointOfSaleFlow(TestPointOfSaleCommon):
         self.assertEqual(order_balance + payment_balance, 0)
 
     def test_pos_payment_direction_and_accounts(self):
-        """Ensure POS payments create correct inbound/outbound payments and accounts."""
+        """Ensure POS payments create correct inbound/outbound payments and accounts and related journal items"""
 
         def _do_pos_transaction(amount, split, index):
             self.bank_payment_method.write({'split_transactions': split})
@@ -3079,8 +3079,9 @@ class TestPointOfSaleFlow(TestPointOfSaleCommon):
             _do_pos_transaction(amount, split, idx).id
             for idx, (amount, split) in enumerate([(100, False), (-100, False), (100, True), (-100, True)])
         ]
+        payments = self.env['account.payment'].search([('pos_session_id', 'in', session_ids)], order='id')
         self.assertRecordValues(
-            self.env['account.payment'].search([('pos_session_id', 'in', session_ids)], order='id'),
+            payments,
             [
                 {
                     "payment_type": "inbound",
@@ -3104,3 +3105,19 @@ class TestPointOfSaleFlow(TestPointOfSaleCommon):
                 },
             ],
         )
+
+        def get_credit_debit_line(lines):
+            credit_line = lines.filtered(lambda line: line.credit > 0)
+            debit_line = lines - credit_line
+            self.assertEqual(len(debit_line), 1)
+            self.assertEqual(len(credit_line), 1)
+            return credit_line, debit_line
+
+        for payment in payments:
+            credit, debit = get_credit_debit_line(payment.move_id.line_ids)
+            if payment.payment_type == "inbound":
+                self.assertEqual(credit.account_id, self.bank_payment_method.receivable_account_id)
+                self.assertEqual(debit.account_id, self.bank_payment_method.outstanding_account_id)
+            else:
+                self.assertEqual(debit.account_id, self.bank_payment_method.receivable_account_id)
+                self.assertEqual(credit.account_id, self.bank_payment_method.outstanding_account_id)
