@@ -417,6 +417,18 @@ describe("restaurant pos_store.js", () => {
         const line2 = await store.addLineToOrder({ product_tmpl_id: product2, qty: 2 }, order2);
         line2.course_id = course2;
         course2.line_ids = [line2];
+        order1.last_order_preparation_change.lines[line1.preparationKey] = {
+            uuid: line1.uuid,
+            product_id: product1.id,
+            name: "Product 1",
+            quantity: 1,
+        };
+        order2.last_order_preparation_change.lines[line2.preparationKey] = {
+            uuid: line2.uuid,
+            product_id: product2.id,
+            name: "Product 2",
+            quantity: 2,
+        };
         await store.mergeOrders(order1, order2);
         expect(order2.lines.length).toBe(2);
         expect(order1.lines.length).toBe(0);
@@ -424,6 +436,11 @@ describe("restaurant pos_store.js", () => {
         expect(order2.table_id.id).toBe(table2.id);
         expect(order2.course_ids.length).toBe(1);
         expect(line2.course_id.id).toBe(course2.id);
+        const lastPrint = order2.uiState.lastPrints.at(-1);
+        expect(lastPrint).not.toBe(undefined);
+        expect(lastPrint.new.length).toBe(2);
+        const productIds = lastPrint.new.map((l) => l.product_id).sort();
+        expect(productIds).toEqual([product1.id, product2.id].sort());
     });
 
     test("mergeOrders sums guest counts", async () => {

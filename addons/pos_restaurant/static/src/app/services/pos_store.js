@@ -241,6 +241,17 @@ patch(PosStore.prototype, {
             }
         }
 
+        const consolidatedLines = Object.values(destOrder.last_order_preparation_change.lines).map(
+            (line) => ({ ...line })
+        );
+        if (consolidatedLines.length) {
+            destOrder.uiState.lastPrints.push({
+                new: consolidatedLines,
+                cancelled: [],
+                noteUpdate: [],
+            });
+        }
+
         if (typeof destOrder.id === "number") {
             await this.syncAllOrders({ orders: [destOrder] });
         }
