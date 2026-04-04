@@ -41,6 +41,7 @@ class SaleOrderLine(models.Model):
         copy=False,
     )
     sequence = fields.Integer(string="Sequence", default=10)
+    order_date = fields.Datetime(related="order_id.date_order")
 
     # Order-related fields
     company_id = fields.Many2one(
@@ -287,6 +288,10 @@ class SaleOrderLine(models.Model):
         store=True,
         readonly=False,
         copy=False,
+    )
+    amount_delivered = fields.Monetary(
+        string="Delivered Amount",
+        compute="_compute_amount_delivered",
     )
     qty_delivered_percent = fields.Float(
         string="% Delivered", compute="_compute_qty_delivered_percent", readonly=False
@@ -1019,6 +1024,12 @@ class SaleOrderLine(models.Model):
             if not so_line.qty_delivered or so_line in delivered_qties:
                 so_line.qty_delivered = delivered_qties[so_line]
 
+    @api.depends("qty_delivered", "price_unit")
+    def _compute_amount_delivered(self):
+        """Compute the delivered amount of the SO lines."""
+        for so_line in self:
+            so_line.amount_delivered = so_line.qty_delivered * so_line.price_unit
+
     @api.depends("qty_delivered", "product_uom_qty")
     def _compute_qty_delivered_percent(self):
         for line in self:
@@ -1718,6 +1729,16 @@ class SaleOrderLine(models.Model):
     def action_add_from_catalog(self):
         order = self.env["sale.order"].browse(self.env.context.get("order_id"))
         return order.with_context(child_field="order_line").action_add_from_catalog()
+
+    @api.readonly
+    def action_open_order(self):
+        self.ensure_one()
+        return {
+            "res_model": self.order_id._name,
+            "type": "ir.actions.act_window",
+            "views": [[False, "form"]],
+            "res_id": self.order_id.id,
+        }
 
     # === BUSINESS METHODS ===#
 

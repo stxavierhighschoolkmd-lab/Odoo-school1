@@ -90,10 +90,16 @@
         <field name="model">sale.order.line</field>
         <field name="arch" type="xml">
             <search string="Search Sales Order">
+                <field name="order_date"/>
+                <filter string="Date" name="year" invisible="1" date="order_date" default_period="year"/>
+                <filter name="filter_date" date="order_date" default_period="month"/>
+                <filter name="filter_order_date" invisible="1" string="Order Date: Last 365 Days" domain="[('order_date', '&gt;=', '-365d')]"/>
+                <separator/>
                 <filter string="To Invoice"
                     name="to_invoice"
                     domain="[('qty_to_invoice', '!=', 0)]"
                     help="Sales Order Lines ready to be invoiced"/>
+                <filter name="fully_invoiced" string="Fully Invoiced" domain="[('invoice_status', '=', 'invoiced')]"/>
                 <separator/>
                 <filter string="My Sales Order Lines"
                     name="my_sales_order_lines"
@@ -103,10 +109,18 @@
                 <field name="order_partner_id" operator="child_of"/>
                 <field name="product_id"/>
                 <field name="salesman_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <group>
                     <filter string="Product" name="product" context="{'group_by':'product_id'}"/>
                     <filter string="Order" name="order" context="{'group_by':'order_id'}"/>
                     <filter string="Salesperson" name="salesperson" context="{'group_by':'salesman_id'}"/>
+                    <filter string="Customer" name="customer" context="{'group_by':'order_partner_id'}"/>
+                    <filter string="Company" name="company" groups="base.group_multi_company" context="{'group_by':'company_id'}"/>
+                    <separator/>
+                    <filter string="Order Date" name="group_by_date" context="{'group_by':'order_date'}"
+                            invisible="context.get('sale_report_view_hide_date')"/>
+                    <filter string="Order Date" name="group_by_date_day" context="{'group_by':'order_date:day'}"
+                            invisible="not context.get('sale_report_view_hide_date')"/>
                 </group>
             </search>
         </field>
