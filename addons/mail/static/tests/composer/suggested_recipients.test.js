@@ -230,6 +230,21 @@ test("update email for the partner on the fly", async () => {
     await contains(".o-mail-Followers-counter", { text: "0" });
 });
 
+test("Discarding email prompt after 'Create' in recipients should not create a blank contact", async () => {
+    const pyEnv = await startServer();
+    const fakeId = pyEnv["res.fake"].create({});
+    registerArchs(archs);
+    await start();
+    await openFormView("res.fake", fakeId);
+    await click("button", { text: "Send message" });
+    await insertText(".o-mail-RecipientsInput .o-autocomplete--input", "NewContact");
+    await click(".o_m2o_dropdown_option_create");
+    await contains(".o-mail-RecipientsInputTagsListPopover");
+    await click(".o-mail-RecipientsInputTagsListPopover .btn-secondary");
+    await contains(".o-mail-RecipientsInputTagsListPopover", { count: 0 });
+    expect(pyEnv["res.partner"].search_read([["name", "=", "NewContact"]])).toHaveLength(0);
+});
+
 test("suggested recipients should not be added as follower when posting a message", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({

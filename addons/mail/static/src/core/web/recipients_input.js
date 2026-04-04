@@ -153,15 +153,12 @@ export class RecipientsInput extends Component {
                             }
                         };
                     } else {
-                        createOption.onSelectOption = async () => {
-                            const [partnerId] = await this.orm.create("res.partner", [
-                                { name, email },
-                            ]);
+                        createOption.onSelectOption = () => {
                             this.insertAdditionalRecipient({
                                 email,
                                 name,
-                                partner_id: partnerId,
-                                persona: { type: "partner", id: partnerId },
+                                partner_id: false,
+                                persona: false,
                             });
                         };
                     }
@@ -244,14 +241,26 @@ export class RecipientsInput extends Component {
      * @param {number} recipientPartnerId ID of the partner to update
      */
     async updateRecipient(emailNormalized, recipientPartnerId) {
-        await this.orm.write("res.partner", [recipientPartnerId], { email: emailNormalized });
         const allRecipients = this.getAllMailThreadRecipients();
-        allRecipients.some((oldRecipient) => {
-            if (oldRecipient.partner_id === recipientPartnerId) {
-                oldRecipient.email = emailNormalized;
-                return true;
+        if (recipientPartnerId) {
+            await this.orm.write("res.partner", [recipientPartnerId], { email: emailNormalized });
+            allRecipients.some((oldRecipient) => {
+                if (oldRecipient.partner_id === recipientPartnerId) {
+                    oldRecipient.email = emailNormalized;
+                    return true;
+                }
+            });
+        } else {
+            const recipient = allRecipients.find((r) => !r.partner_id && !r.email);
+            if (recipient) {
+                const [partnerId] = await this.orm.create("res.partner", [
+                    { name: recipient.name, email: emailNormalized },
+                ]);
+                recipient.partner_id = partnerId;
+                recipient.email = emailNormalized;
+                recipient.persona = { type: "partner", id: partnerId };
             }
-        });
+        }
     }
 
     /**
