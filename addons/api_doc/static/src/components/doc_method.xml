@@ -50,8 +50,12 @@
                 <DocRequest
                     url="this.method.url"
                     request="this.request"
-                    method="this.method"
                 />
+                <!-- <DocRequest -->
+                    <!-- url="this.method.url" -->
+                    <!-- request="this.request" -->
+                    <!-- method="this.method" -->
+                <!-- /> -->
             </div>
         </div>
     </article>

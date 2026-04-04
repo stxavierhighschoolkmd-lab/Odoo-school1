@@ -31,6 +31,11 @@ export class DocMethod extends Component {
                 { type: TABLE_TYPES.Tooltip, value: options.doc ? markup(options.doc) : "" },
             ]),
         };
+        console.log({
+            url: this.method.url,
+            request: this.request,
+            method: this.method,
+        });
     }
 
     get method() {
