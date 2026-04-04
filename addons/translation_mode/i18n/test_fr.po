@@ -1,0 +1,7 @@
+# TEST TRANSLATIONS
+
+#. module: translation_mode
+#. odoo-python
+#: code:addons/translation_mode/tests/test_translation_mode.py:0
+msgid "translation mode test"
+msgstr "test du mode de traduction"
