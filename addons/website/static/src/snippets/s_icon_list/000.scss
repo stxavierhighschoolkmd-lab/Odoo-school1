@@ -1,0 +1,42 @@
+.s_icon_list {
+    --icon-list-content: "\f00c";
+    --icon-list-width: 1.5em;
+    --icon-list-color: var(--o-cc1-btn-primary);
+    --icon-list-bg-color: #{fade-currentColor(10%)};
+    --icon-list-spacing: #{map-get($spacers, 3)};
+
+    &:not(.o_checklist):not(ol), ul:not(.o_checklist) {
+        display: flex;
+        flex-direction: column;
+        gap: var(--icon-list-spacing);
+        list-style: none;
+
+        > li {
+            position: relative;
+
+            &:not(.oe-nested)::before {
+                content: var(--icon-list-content);
+                position: absolute;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: var(--icon-list-width);
+                margin-inline-start: calc((var(--icon-list-width) + #{map-get($spacers, 2)}) * -1);
+                border-radius: 100%;
+                background: var(--icon-list-bg-color);
+                color: var(--icon-list-color);
+                font-family: FontAwesome, odoo_ui_icons;
+            }
+
+            &:not(.oe-nested) > :is(ul, ol) {
+                margin-top: var(--icon-list-spacing);
+            }
+        }
+    }
+}
+
+@for $index from 1 through 5 {
+    .o_cc#{$index} .s_icon_list {
+        --icon-list-color: var(--o-cc#{$index}-btn-primary);
+    }
+}
