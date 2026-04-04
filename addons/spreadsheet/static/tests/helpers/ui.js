@@ -43,7 +43,7 @@ export async function mountSpreadsheet(model) {
  * @returns {Promise<HTMLElement>}
  */
 export async function mountPublicSpreadsheet(dataUrl, mode, downloadExcelUrl = "downloadUrl") {
-    mountWithCleanup(PublicReadonlySpreadsheet, {
+    const comp = await mountWithCleanup(PublicReadonlySpreadsheet, {
         props: {
             dataUrl,
             downloadExcelUrl,
@@ -52,7 +52,10 @@ export async function mountPublicSpreadsheet(dataUrl, mode, downloadExcelUrl = "
         noMainContainer: true,
     });
     await animationFrame();
-    return getFixture();
+    return {
+        fixture: getFixture(),
+        comp: comp, // expose component
+    };
 }
 
 export async function doMenuAction(registry, path, env) {
