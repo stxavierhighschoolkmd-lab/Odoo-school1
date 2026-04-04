@@ -12,9 +12,17 @@ import io
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import sql
+<<<<<<< fec4186b4a9d17bdac6f50bc0a7261a28e4d06f6:odoo/addons/test_tools/tests/test_translate.py
 from odoo.tools.translate import ParsedTranslation, StoredTranslations, TranslationImporter, TranslationModuleReader
 from odoo.tools.translate import quote, unquote, xml_translate, html_translate
 from odoo.tests.common import TransactionCase, BaseCase, tagged
+||||||| 1e5c508f3e9f2c00b487a7516001333f3d089f94:odoo/addons/base/tests/test_translate.py
+from odoo.tools.translate import quote, unquote, xml_translate, html_translate, TranslationImporter, TranslationModuleReader
+from odoo.tests.common import TransactionCase, BaseCase, new_test_user, tagged
+=======
+from odoo.tools.translate import _push, quote, unquote, xml_translate, html_translate, TranslationImporter, TranslationModuleReader, TranslationReader
+from odoo.tests.common import TransactionCase, BaseCase, new_test_user, tagged
+>>>>>>> 54a852541a32de3dd9b1ce7d5a8db7b48ba99b73:odoo/addons/base/tests/test_translate.py
 
 _stats_logger = logging.getLogger('odoo.tests.stats')
 
@@ -433,6 +441,24 @@ class TranslationToolsTestCase(BaseCase):
         result = html_translate(lambda term: term, source)
         self.assertEqual(result, source)
 
+    def test_push_filters_no_letter_strings(self):
+        """Strings with no letters should not be exported for translation."""
+        terms = []
+
+        def callback(term, line):
+            return terms.append(term)
+        _push(callback, 'hello', 1)
+        _push(callback, '123', 1)
+        _push(callback, '!@#', 1)
+        _push(callback, '', 1)
+        self.assertEqual(terms, ['hello'])
+
+    def test_push_exports_one_letter_strings(self):
+        """One-letter strings should be exported (e.g. UoM abbreviations like 'g' for grams)."""
+        terms = []
+        _push(lambda term, line: terms.append(term), 'g', 1)
+        self.assertEqual(terms, ['g'])
+
 
 @tagged('at_install', '-post_install')  # LEGACY at_install
 class TestLanguageInstall(TransactionCase):
@@ -464,6 +490,23 @@ class TestTranslationExport(TransactionCase):
         """Read files of installed modules and export translatable terms"""
         with self.assertNoLogs('odoo.tools.translate', "ERROR"):
             TranslationModuleReader(self.env.cr)
+
+    def test_push_translation_filters_no_letter_strings(self):
+        """Strings with no letters should not be queued for translation export."""
+        reader = TranslationReader(self.env.cr)
+        reader._push_translation('module', 'model', 'res.partner,name', 1, 'hello')
+        reader._push_translation('module', 'model', 'res.partner,name', 2, '123')
+        reader._push_translation('module', 'model', 'res.partner,name', 3, '!@#')
+        reader._push_translation('module', 'model', 'res.partner,name', 4, '')
+        sources = [entry[1] for entry in reader._to_translate]
+        self.assertEqual(sources, ['hello'])
+
+    def test_push_translation_exports_one_letter_strings(self):
+        """One-letter strings should be queued for export (e.g. UoM abbreviations like 'g' for grams)."""
+        reader = TranslationReader(self.env.cr)
+        reader._push_translation('module', 'model', 'res.partner,name', 1, 'g')
+        sources = [entry[1] for entry in reader._to_translate]
+        self.assertEqual(sources, ['g'])
 
 
 @tagged('at_install', '-post_install')  # LEGACY at_install
@@ -1421,7 +1464,7 @@ class TestXMLTranslation(TransactionCase):
 
         self.assertEqual(view.arch_db, archf % terms_en)
         self.assertEqual(view.with_context(lang='fr_FR').arch_db, archf % terms_fr)
-        
+
         # change the order of the text term and the xml term and redo the previous test
         archf = '<form>%s<div>%s</div></form>'
         terms_en = ('<span invisible="1">Draft</span>', 'Draft')
