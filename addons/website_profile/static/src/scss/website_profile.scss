@@ -38,6 +38,10 @@ $owprofile-color-bg: mix($body-bg, #efeff4);
     }
 }
 
+.o_wforum_avatar_img {
+    @include o_square_image;
+}
+
 .o_wprofile_sidebar {
     border: 1px solid $border-color;
 
