@@ -212,7 +212,8 @@ export class ForecastedDetails extends Component {
             line1[docField] && line2[docField] &&
             line1[docField].id === line2[docField].id &&
             line1[docField]._name === line2[docField]._name &&
-            line1[docField].name === line2[docField].name
+            line1[docField].name === line2[docField].name &&
+            line1.receipt_date === line2.receipt_date
         );
     }
 
