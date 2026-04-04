@@ -337,9 +337,25 @@ class ProductProduct(models.Model):
             # no needed to join + reorder
             moves = moves_in
 
+<<<<<<< 931e5a549c2c654b5bf495b6ea5337993b4a503c
         # PERF avoid memoryerror
         moves.move_line_ids.fetch(['company_id', 'location_id', 'location_dest_id', 'lot_id', 'owner_id', 'picked', 'quantity_product_uom'])
+||||||| 0b39e1d6ff86cdc9d4b5158ac275c17433b50eae
+        for product, move_ids in move_ids_by_product.items():
+            quantity = quantity_by_product_id.get(product.id, 0)
+            average_cost = std_price_by_product_id.get(product.id, 0)
+            value = value_by_product_id.get(product.id, 0)
+=======
+        for product, move_ids in move_ids_by_product.items():
+            product_moves = self.env['stock.move'].browse(move_ids)
 
+            first_move = product_moves[0]
+            quantity = quantity_by_product_id.get(product.id, 0)
+            average_cost = std_price_by_product_id.get(product.id, first_move.value / first_move._get_valued_qty() if first_move._get_valued_qty() else 0)
+            value = value_by_product_id.get(product.id, 0)
+>>>>>>> da11df4162fe86dada3098bbd9a45b8e00eafe61
+
+<<<<<<< 931e5a549c2c654b5bf495b6ea5337993b4a503c
         # TODO Only browse from last product_value
         for move in moves:
             while product_values and move.date >= product_values[0].date:
@@ -375,6 +391,76 @@ class ProductProduct(models.Model):
                     out_qty = lot_qty
                 avco_total_value -= out_value
                 quantity -= out_qty
+||||||| 0b39e1d6ff86cdc9d4b5158ac275c17433b50eae
+            product_moves = self.env['stock.move'].browse(move_ids)
+            for moves_batch in split_every(batch_size, product_moves.ids):
+                moves_batch = self.env['stock.move'].browse(moves_batch)
+                moves_batch.fetch(move_fields)
+                moves_batch.move_line_ids.fetch(move_line_fields)
+                for move in moves_batch:
+                    if move.is_in or move.is_dropship:
+                        in_qty = move._get_valued_qty()
+                        in_value = move.value
+                        if at_date or move.is_dropship:
+                            in_value = move._get_value(at_date=at_date)
+                        if lot:
+                            lot_qty = move._get_valued_qty(lot)
+                            in_value = (in_value * lot_qty / in_qty) if in_qty else 0
+                            in_qty = lot_qty
+                        previous_qty = quantity
+                        quantity += in_qty
+                        # Regular case, value from accumulation
+                        if previous_qty > 0:
+                            value += in_value
+                            average_cost = value / quantity
+                        # From negative quantity case, value from last_in
+                        elif previous_qty <= 0:
+                            average_cost = in_value / in_qty if in_qty else average_cost
+                            value = average_cost * quantity
+                    if move.is_out or move.is_dropship:
+                        out_qty = move._get_valued_qty()
+                        out_value = out_qty * average_cost
+                        if lot:
+                            lot_qty = move._get_valued_qty(lot)
+                            out_value = (out_value * lot_qty / out_qty) if out_qty else 0
+                            out_qty = lot_qty
+                        value -= out_value
+                        quantity -= out_qty
+=======
+            for moves_batch in split_every(batch_size, product_moves.ids):
+                moves_batch = self.env['stock.move'].browse(moves_batch)
+                moves_batch.fetch(move_fields)
+                moves_batch.move_line_ids.fetch(move_line_fields)
+                for move in moves_batch:
+                    if move.is_in or move.is_dropship:
+                        in_qty = move._get_valued_qty()
+                        in_value = move.value
+                        if at_date or move.is_dropship:
+                            in_value = move._get_value(at_date=at_date, forced_std_price=average_cost)
+                        if lot:
+                            lot_qty = move._get_valued_qty(lot)
+                            in_value = (in_value * lot_qty / in_qty) if in_qty else 0
+                            in_qty = lot_qty
+                        previous_qty = quantity
+                        quantity += in_qty
+                        # Regular case, value from accumulation
+                        if previous_qty > 0:
+                            value += in_value
+                            average_cost = value / quantity
+                        # From negative quantity case, value from last_in
+                        elif previous_qty <= 0:
+                            average_cost = in_value / in_qty if in_qty else average_cost
+                            value = average_cost * quantity
+                    if move.is_out or move.is_dropship:
+                        out_qty = move._get_valued_qty()
+                        out_value = out_qty * average_cost
+                        if lot:
+                            lot_qty = move._get_valued_qty(lot)
+                            out_value = (out_value * lot_qty / out_qty) if out_qty else 0
+                            out_qty = lot_qty
+                        value -= out_value
+                        quantity -= out_qty
+>>>>>>> da11df4162fe86dada3098bbd9a45b8e00eafe61
 
         return avco_value, avco_total_value
 
