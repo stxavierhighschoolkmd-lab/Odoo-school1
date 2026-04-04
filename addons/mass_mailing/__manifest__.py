@@ -121,6 +121,7 @@
             'html_editor/static/src/scss/base_style.scss',
 
             ('after', 'web/static/lib/bootstrap/scss/_maps.scss', 'mass_mailing/static/src/scss/mass_mailing.ui.scss'),
+            'mass_mailing/static/src/scss/mass_mailing_google_fonts.scss',
 
             'html_editor/static/src/scss/bootstrap_overridden.scss',
             'html_builder/static/src/scss/background.scss',
@@ -155,6 +156,8 @@
         ],
         'web.assets_backend': [
             'mass_mailing/static/src/components/**/*',
+            'mass_mailing/static/src/builder/components/mass_mailing_builder_select_label.xml',
+            'mass_mailing/static/src/builder/components/mass_mailing_builder_select_label.scss',
             'mass_mailing/static/src/views/mailing_preview_form_view.js',
             'mass_mailing/static/src/editor/**/*',
             'mass_mailing/static/src/fields/**/*',

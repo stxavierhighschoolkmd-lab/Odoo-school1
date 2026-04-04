@@ -16,6 +16,7 @@ import { batched } from "@web/core/utils/timing";
 import { PowerButtonsPlugin } from "@html_editor/main/power_buttons_plugin";
 import { useEmailHtmlConverter } from "@mail/convert_inline/hooks";
 import { fixInvalidHTML } from "@html_editor/utils/sanitize";
+import { LinkPlugin } from "@html_editor/main/link/link_plugin";
 
 export class MassMailingHtmlField extends HtmlField {
     static template = "mass_mailing.HtmlField";
@@ -246,7 +247,9 @@ export class MassMailingHtmlField extends HtmlField {
                 ...DYNAMIC_FIELD_PLUGINS,
                 ...registry.category("basic-editor-plugins").getAll(),
                 PowerButtonsPlugin,
-            ].filter((P) => !["banner", "prompt"].includes(P.id)),
+            ]
+                .filter((P) => !["banner", "prompt", "link"].includes(P.id))
+                .concat([LinkPlugin]),
         };
     }
 

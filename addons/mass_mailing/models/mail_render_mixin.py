@@ -21,3 +21,25 @@ class MailRenderMixin(models.AbstractModel):
                     blacklist=['/unsubscribe_from_list', '/view', '/cards']
                 )
         return rendered
+
+    def _filter_urls_and_labels(self, link_nodes, urls_and_labels):
+        """Return only the links in which link tracking is enabled"""
+        def is_link_tracking_enabled(link_node):
+            """Check if link tracking is enabled for the given link_node
+
+            :param lxml.etree._Element link_node: The link node of which to check the link tracking status
+            :rtype: bool
+            """
+            prop = link_node.attrib if link_node is not None else None
+            if prop and prop.get('data-no-tracking'):
+                return prop.get('data-no-tracking') != '1'
+            return True
+
+        tracked_link_nodes = []
+        tracked_urls_and_labels = []
+        for node, url_and_label in zip(link_nodes, urls_and_labels):
+            if is_link_tracking_enabled(node):
+                tracked_link_nodes.append(node)
+                tracked_urls_and_labels.append(url_and_label)
+
+        return tracked_link_nodes, tracked_urls_and_labels
