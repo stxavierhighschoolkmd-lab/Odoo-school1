@@ -358,7 +358,7 @@ class Partner(models.Model):
         if self.company_name or self.parent_id:
             if not name and self.type in displayed_types:
                 name = type_description[self.type]
-            if not self.is_company:
+            if not self.is_company and not self.env.context.get('partner_display_name_hide_company'):
                 name = f"{self.commercial_company_name or self.sudo().parent_id.name}, {name}"
         return name.strip()
 
