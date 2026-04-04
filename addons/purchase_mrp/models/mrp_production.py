@@ -45,7 +45,7 @@ class MrpProduction(models.Model):
 
     def _get_purchase_orders(self):
         self.ensure_one()
-        return self.reference_ids.purchase_ids
+        return (self.move_raw_ids.created_purchase_line_ids | self.move_raw_ids.purchase_line_id).order_id
 
     def _prepare_merge_orig_links(self):
         origs = super()._prepare_merge_orig_links()

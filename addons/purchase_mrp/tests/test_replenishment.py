@@ -1,3 +1,6 @@
+from odoo import Command
+from odoo.tests import Form
+
 from odoo.addons.stock.tests.common import TestStockCommon
 
 
@@ -164,3 +167,44 @@ class TestReplenishment(TestStockCommon):
 
         self.assertEqual(orderpointA.route_id_placeholder, 'Manufacture')
         self.assertEqual(orderpointB.route_id_placeholder, 'Buy')
+
+    def test_mixed_mto_manufacture_and_dropship_so_keeps_links_separate(self):
+        module_model = self.env['ir.module.module']
+        if module_model._get('sale_mrp').state != 'installed':
+            self.skipTest("This test requires sale_mrp to be installed.")
+        if module_model._get('stock_dropshipping').state != 'installed':
+            self.skipTest("This test requires stock_dropshipping to be installed.")
+        manufacture_route = self.warehouse_1.manufacture_pull_id.route_id
+        dropship_route = self.env.ref('stock_dropshipping.route_drop_shipping')
+        self.productA.route_ids = [Command.set((manufacture_route | self.route_mto).ids)]
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': self.productA.product_tmpl_id.id,
+            'product_qty': 1.0,
+            'bom_line_ids': [Command.create({
+                'product_id': self.productB.id,
+                'product_qty': 1.0,
+            })],
+        })
+        self.productC.write({
+            'seller_ids': [Command.create({'partner_id': self.partner_1.id})],
+            'route_ids': [Command.set(dropship_route.ids)],
+        })
+        sale_form = Form(self.env['sale.order'])
+        sale_form.partner_id = self.env['res.partner'].create({'name': 'My Test Partner'})
+        with sale_form.order_line.new() as line:
+            line.product_id = self.productA
+            line.product_uom_qty = 1.0
+            line.price_unit = 100.0
+        with sale_form.order_line.new() as line:
+            line.product_id = self.productC
+            line.product_uom_qty = 1.0
+            line.price_unit = 200.0
+        sale_order = sale_form.save()
+        sale_order.action_confirm()
+        manufacturing_order = sale_order.mrp_production_ids
+        self.assertEqual(len(manufacturing_order), 1)
+        self.assertEqual(manufacturing_order.sale_order_count, 1)
+        self.assertEqual(manufacturing_order.purchase_order_count, 0)
+        purchase = sale_order.stock_reference_ids.purchase_ids
+        self.assertEqual(len(purchase), 1)
+        self.assertEqual(purchase.mrp_production_count, 0)
