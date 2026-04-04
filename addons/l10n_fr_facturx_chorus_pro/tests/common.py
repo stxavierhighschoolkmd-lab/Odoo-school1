@@ -3,6 +3,7 @@ from odoo.addons.account_edi_ubl_cii.models.account_edi_xml_ubl_bis3 import CHOR
 
 
 class TestUblCiiCommonChorusPro(TestUblCiiCommon):
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -23,3 +24,28 @@ class TestUblCiiCommonChorusPro(TestUblCiiCommon):
             'country_id': cls.env.ref('base.fr').id,
             **kwargs,
         })
+<<<<<<< beffc5772c097f758df78c07f74647afa64ffcb7
+||||||| a9a63976372d3b5411fd798a48cc5302c2de8af0
+
+
+class TestUblCiiFRCommonChorusPro(TestUblCiiCommonChorusPro, TestUblCiiFRCommon):
+
+    @classmethod
+    def _create_company(cls, **create_values):
+        create_values.setdefault('siret', '40678483500521')
+        return super()._create_company(**create_values)
+=======
+
+
+class TestUblCiiFRCommonChorusPro(TestUblCiiCommonChorusPro, TestUblCiiFRCommon):
+
+    @classmethod
+    def _create_company(cls, **create_values):
+        create_values.setdefault('siret', '40678483500521')
+        return super()._create_company(**create_values)
+
+    @classmethod
+    def subfolders(cls):
+        subfolder_format, subfolder_document, _subfolder_country = super().subfolders()
+        return subfolder_format, subfolder_document, 'fr'
+>>>>>>> c226e60d3e245f87c23853983b915a60187082a4

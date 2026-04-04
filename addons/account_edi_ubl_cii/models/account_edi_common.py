@@ -809,12 +809,18 @@ class AccountEdiCommon(models.AbstractModel):
             delivered_qty = float(quantity_node.text)
             uom_xml = quantity_node.attrib.get('unitCode')
             if uom_xml:
-                uom_infered_xmlid = [
-                    odoo_xmlid for odoo_xmlid, uom_unece in UOM_TO_UNECE_CODE.items() if uom_unece == uom_xml
-                ]
+                uom_infered_xmlid = {v: k for k, v in UOM_TO_UNECE_CODE.items()}.get(uom_xml)
                 if uom_infered_xmlid:
+<<<<<<< beffc5772c097f758df78c07f74647afa64ffcb7
                     product_uom = self.env.ref(uom_infered_xmlid[0], raise_if_not_found=False) or self.env['uom.uom']
         if product and product_uom and not product_uom._has_common_reference(product.product_tmpl_id.uom_id):
+||||||| a9a63976372d3b5411fd798a48cc5302c2de8af0
+                    product_uom = self.env.ref(uom_infered_xmlid[0], raise_if_not_found=False) or self.env['uom.uom']
+        if product and product_uom and product_uom.category_id != product.product_tmpl_id.uom_id.category_id:
+=======
+                    product_uom = self.env.ref(uom_infered_xmlid, raise_if_not_found=False) or self.env['uom.uom']
+        if product and product_uom and product_uom.category_id != product.product_tmpl_id.uom_id.category_id:
+>>>>>>> c226e60d3e245f87c23853983b915a60187082a4
             # uom incompatibility
             product_uom = self.env['uom.uom']
 
