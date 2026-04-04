@@ -151,9 +151,19 @@ class PosOrder(models.Model):
         # Return the error message if the xml document was not accepted
         return edi_document.response_message
 
+    def _l10n_es_tbai_get_document_name(self):
+        self.ensure_one()
+        if not self.refunded_order_id:
+            return self.name
+        session = self.session_id
+        last_part = self.get_reference_last_part()
+        prefix = session.config_id.order_seq_id.prefix or session.config_id.name
+        suffix = f" - {session.config_id.order_seq_id.suffix}" if session.config_id.order_seq_id.suffix else ''
+        return f"{prefix} - {last_part}{suffix}"
+
     def _l10n_es_tbai_create_edi_document(self, cancel=False):
         return self.sudo().env['l10n_es_edi_tbai.document'].create({
-            'name': self.name,
+            'name': self._l10n_es_tbai_get_document_name(),
             'company_id': self.company_id.id,
             'is_cancel': False,
             'date': self.date_order,
