@@ -147,3 +147,38 @@ test("basic many2many: toggle dropdown without changing search term or selection
     expect(executeCount).toBe(2);
     expect.verifySteps(["name_search", "name_search"]);
 });
+
+test("basic many2many: search with uncreated records", async () => {
+    onRpc("test", "name_search", ({ kwargs }) => {
+        expect.step("name_search");
+        expect(kwargs.domain).toEqual([["id", "not in", [1]]]);
+    });
+    const selection = reactive([
+        { id: 1, name: "First" },
+        { id: "new-4", name: "Fourth" },
+    ]);
+    class TestComponent extends BaseOptionComponent {
+        static selector = ".test-options-target";
+        static template = xml`<BasicMany2Many selection="this.selection" model="'test'" setSelection="this.setSelection.bind(this)" limit="1"/>`;
+        selection = selection;
+        setSelection(newSelection) {
+            selection.length = 0;
+            for (const item of newSelection) {
+                selection.push(item);
+            }
+        }
+    }
+    addBuilderOption(TestComponent);
+    await setupWebsiteBuilder(`<div class="test-options-target">b</div>`);
+
+    await contains(":iframe .test-options-target").click();
+    expect(".options-container").toBeDisplayed();
+    expect("table tr").toHaveCount(2);
+
+    // Click to open, 1st search should be done
+    await contains(".btn.o-dropdown").click();
+    await delay(300); // debounce
+    await animationFrame();
+
+    expect.verifySteps(["name_search"]);
+});
