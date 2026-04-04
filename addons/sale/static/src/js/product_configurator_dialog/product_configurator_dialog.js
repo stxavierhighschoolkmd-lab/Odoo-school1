@@ -12,6 +12,10 @@ export class ProductConfiguratorDialog extends Component {
     static props = {
         productTemplateId: Number,
         ptavIds: { type: Array, element: Number },
+        preloadedData: {
+            type: Object,
+            optional: true,
+        },
         customPtavs: {
             type: Array,
             element: Object,
@@ -90,11 +94,18 @@ export class ProductConfiguratorDialog extends Component {
         });
 
         onWillStart(async () => {
+            let data;
+            if(this.props.preloadedData?.products) {
+                data = this.props.preloadedData;
+            }
+            else {
+                data = await this._loadData(this.props.edit);
+            }
             const {
                 products,
                 optional_products,
                 currency_id,
-            } = await this._loadData(this.props.edit);
+            } = data;
 
             // If the product configurator is opened after the combo configurator (which happens if
             // a combo product has optional products), `_loadData` will return a single product

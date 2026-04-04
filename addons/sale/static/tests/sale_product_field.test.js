@@ -67,6 +67,14 @@ test("pressing tab with incomplete text will create a product", async () => {
     await contains(".o_field_x2many_list .o_field_x2many_list_row_add button").click();
     await contains("[name='product_template_id'] input").edit("new product");
     await press("tab");
+    onRpc("/sale/product_configurator/get_values", () => {
+        expect.step("get_values");
+        return {
+            product_id: 42,
+            product_name: "Test Product",
+            is_combo: false,
+        };
+    });
     await runAllTimers();
     expect.verifySteps([
         "get_views",
@@ -74,7 +82,7 @@ test("pressing tab with incomplete text will create a product", async () => {
         "onchange",
         "web_name_search",
         "name_create",
-        "get_single_product_variant",
+        "get_values",
     ]);
 });
 
