@@ -152,6 +152,15 @@ class TestHrAttendanceOvertime(HttpCase):
         self.assertEqual(attendance.overtime_status, 'approved')
         self.assertAlmostEqual(attendance.validated_overtime_hours, 3, 2)
         self.assertAlmostEqual(attendance.employee_id.total_overtime, 3, 2)
+        self.env['hr.attendance'].create({
+            'employee_id': self.employee.id,
+            'check_in': datetime(2021, 1, 5, 8, 0),
+            'check_out': datetime(2021, 1, 5, 20, 0)
+        })
+        self.assertEqual(
+            attendance.linked_overtime_ids.status, 'approved',
+            "Previously approved overtime should remain approved if there is no manual edits when update attendances"
+        )
 
         attendance.action_refuse_overtime()
         self.assertEqual(attendance.employee_id.total_overtime, 0, 0)

@@ -289,9 +289,13 @@ class HrAttendance(models.Model):
         if not attendance_domain:
             attendance_domain = self._get_overtimes_to_update_domain()
         all_overtime_lines = self.env['hr.attendance.overtime.line'].search(attendance_domain)
-        manual_overtimes = set(all_overtime_lines.filtered(
-            lambda l: l.manual_duration != l.duration or l.status == 'to_approve'
-        ).mapped(lambda l: (l.employee_id.id, l.date)))
+        previous_overtimes = {
+            (l.employee_id.id, l.date): {
+                'status': l.status,
+                'duration': l.duration,
+                'manual_duration': l.manual_duration,
+            } for l in all_overtime_lines
+        }
         all_overtime_lines.unlink()
         all_attendances = (self | self.env['hr.attendance'].search(attendance_domain)).filtered_domain([('check_out', '!=', False)])
         if not all_attendances:
@@ -317,13 +321,19 @@ class HrAttendance(models.Model):
         overtime_vals_list = []
         for ruleset_sudo, ruleset_attendances in attendances_by_ruleset.items():
             attendances_dates = list(chain(*ruleset_attendances._get_dates().values()))
-            overtime_vals_list.extend([
-                {
-                    **val,
-                    'status': 'to_approve'
-                } if (val['employee_id'], val['date']) in manual_overtimes else val
-                for val in ruleset_sudo.rule_ids._generate_overtime_vals_v2(min(attendances_dates), max(attendances_dates), ruleset_attendances, schedules_intervals_by_employee)
-            ])
+            for val in ruleset_sudo.rule_ids._generate_overtime_vals_v2(
+                min(attendances_dates),
+                max(attendances_dates),
+                ruleset_attendances,
+                schedules_intervals_by_employee
+            ):
+                if prev := previous_overtimes.get((val['employee_id'], val['date'])):
+                    if prev['manual_duration'] != prev['duration'] or prev['status'] == 'to_approve':
+                        val['status'] = 'to_approve'
+                    elif val['duration'] == prev['duration']:
+                        val['status'] = prev['status']
+                        val['manual_duration'] = prev['manual_duration']
+                overtime_vals_list.append(val)
         self.env['hr.attendance.overtime.line'].create(overtime_vals_list)
         self.env.add_to_compute(self._fields['overtime_hours'], all_attendances)
         self.env.add_to_compute(self._fields['expected_hours'], all_attendances)
