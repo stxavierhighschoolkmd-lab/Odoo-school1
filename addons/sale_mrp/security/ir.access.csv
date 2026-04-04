@@ -1,0 +1,7 @@
+id,name,model_id,group_id/id,operation,domain
+sale_order_line_rule_stock_user,Stock User Sales Orders Line,sale.order.line,mrp.group_mrp_user,rw,
+sale_order_stock_rule,Stock User Orders,sale.order,mrp.group_mrp_user,rw,
+access_mrp_bom_user,mrp.bom,mrp.bom,sales_team.group_sale_salesman,r,
+access_mrp_bom_line_salesman,mrp.bom.line,mrp.bom.line,sales_team.group_sale_salesman,r,
+access_mrp_production_salesman,mrp.production salesman,mrp.production,sales_team.group_sale_salesman,rwc,
+access_mrp_production_workcenter_line_salesman,mrp.workorder salesman,mrp.workorder,sales_team.group_sale_salesman,rc,

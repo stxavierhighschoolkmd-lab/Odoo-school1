@@ -1,0 +1,34 @@
+id,name,model_id,group_id/id,operation,domain
+task_edition_rule_internal,Project/Task: employees: Full access to own private task only,project.task,base.group_user,rwcd,"[('project_id', '=', False), ('user_ids', 'in', user.id), ('parent_id', '=', False)]"
+task_visibility_rule,Project/Task: employees: follow required for follower-only projects,project.task,base.group_user,r,"[
+            '|',
+                ('project_id', 'access', 'read'),
+                '|',
+                    ('message_partner_ids', 'in', [user.partner_id.id]),
+                    # to subscribe check access to the record, follower is not enough at creation
+                    ('user_ids', 'in', user.id)
+        ]"
+task_edition_rule_internal_1,Project/Task: employees: Full access to own private task only,project.task,project.group_project_user,rwcd,"[('project_id', '=', False), ('user_ids', 'in', user.id), ('parent_id', '=', False)]"
+task_visibility_rule_project_user,Project/Task: project users: follow required for follower-only projects,project.task,project.group_project_user,wcd,"[
+            '|',
+                ('project_id', 'access', 'read'),
+                '|',
+                    ('message_partner_ids', 'in', [user.partner_id.id]),
+                    # to subscribe check access to the record, follower is not enough at creation
+                    ('user_ids', 'in', user.id)
+        ]"
+ir_rule_private_task,Project: See private tasks,project.task,project.group_project_user,r,"[
+            ('project_id', 'access', 'read'),
+        ]"
+project_manager_all_project_tasks_rule,Project/Task: project manager: see all tasks linked to a project or its own tasks,project.task,project.group_project_manager,rwcd,"[
+            '|', ('project_id', '!=', False),
+                 ('user_ids', 'in', user.id),
+        ]"
+access_project_task_type_user,project.task.type.user,project.task.type,base.group_user,r,
+task_type_own_write_rule,Project/Task Type: write own stages,project.task.type,base.group_user,wcd,"[('user_id', '=', user.id)]"
+task_type_manager_rule,Project/Task Type: manager sees all,project.task.type,project.group_project_manager,rwcd,
+task_type_own_write_rule_1,Project/Task Type: write own stages,project.task.type,project.group_project_user,wcd,"[('user_id', '=', user.id)]"
+tags_own_write_rule,Project/tags employees: Full access to own tags only,project.tags,base.group_user,wcd,"[('create_uid', '=', user.id),('project_ids', '=', False)]"
+tags_user_rule,Project/tags employees: can see all,project.tags,base.group_user,r,
+tags_manager_rule,Project/tags: manager sees all,project.tags,project.group_project_manager,rwcd,
+access_mail_activity_todo_create,mail.activity.todo.create,mail.activity.todo.create,base.group_user,rwc,

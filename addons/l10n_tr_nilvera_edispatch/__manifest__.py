@@ -6,12 +6,12 @@
     'license': "LGPL-3",
     'category': 'Accounting/Localizations',
     'data': [
-        'security/ir.model.access.csv',
         'views/account_move_views.xml',
         'views/l10n_tr_nilvera_trailer_plate_views.xml',
         'views/res_partner_views.xml',
         'views/stock_picking_views.xml',
         'templates/l10n_tr_nilvera_edispatch.xml',
+        'security/ir.access.csv',
     ],
     'author': 'Odoo S.A.',
     'assets': {
