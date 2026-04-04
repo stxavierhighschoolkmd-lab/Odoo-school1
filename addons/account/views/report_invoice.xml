@@ -111,7 +111,7 @@
                             </div>
                         </div>
 
-                        <t t-set="display_discount" t-value="any(l.discount for l in o.invoice_line_ids)"/>
+                        <t t-set="display_discount" t-value="any(l.discount > 0 for l in o.invoice_line_ids)"/>
                         <div class="oe_structure"></div>
                         <t t-set="has_long_desc" t-value="any(line.name and line.name.count('\n') > 30 for line in o.invoice_line_ids if line.name)"/>
                         <table class="table table-sm o_main_table table-borderless" name="invoice_line_table">
@@ -146,10 +146,19 @@
                                                 <span t-field="line.product_uom_id"  groups="uom.group_uom">units</span>
                                             </td>
                                             <td name="td_price_unit" t-attf-class="text-end {{ 'd-none d-md-table-cell' if report_type == 'html' else '' }}">
-                                                <span class="text-nowrap" t-field="line.price_unit">9.00</span>
+                                                <span
+                                                    t-if="line.discount &lt; 0"
+                                                    class="text-nowrap"
+                                                    t-out="(1 - line.discount / 100.0) * line.price_unit" t-options='{"widget": "float", "decimal_precision": "Product Price"}'
+                                                />
+                                                <span
+                                                    t-else=""
+                                                    class="text-nowrap"
+                                                    t-field="line.price_unit"
+                                                />
                                             </td>
                                             <td name="td_discount" t-if="display_discount" t-attf-class="text-end {{ 'd-none d-md-table-cell' if report_type == 'html' else '' }}">
-                                                <span class="text-nowrap" t-field="line.discount">0</span>
+                                                <span t-if="line.discount > 0" class="text-nowrap" t-field="line.discount">0</span>
                                             </td>
                                             <t t-set="taxes" t-value="', '.join([(tax.invoice_label or tax.name) for tax in line.tax_ids])"/>
                                             <td name="td_taxes" t-attf-class="text-end {{ 'd-none d-md-table-cell' if report_type == 'html' else '' }} {{ 'text-nowrap' if len(taxes) &lt; 10 else '' }}">
