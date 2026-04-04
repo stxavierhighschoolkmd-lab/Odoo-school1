@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, useSubEnv } from "@web/owl2/utils";
 import { DiscussAvatar } from "@mail/core/common/discuss_avatar";
-import { MessageSeenIndicator } from "@mail/discuss/core/common/message_seen_indicator";
+import { ThreadPreview } from "@mail/core/common/thread_preview";
 
 import { Component } from "@odoo/owl";
 
@@ -9,25 +9,6 @@ import { useHover } from "@mail/utils/common/hooks";
 import { usePopover } from "@web/core/popover/popover_hook";
 import { CountryFlag } from "@mail/core/common/country_flag";
 import { isMobileOS } from "@web/core/browser/feature_detection";
-
-class ChatBubblePreview extends Component {
-    static components = { MessageSeenIndicator };
-    static props = ["chatWindow", "close"];
-    static template = "mail.ChatBubblePreview";
-
-    /** @returns {import("models").DiscussChannel} */
-    get channel() {
-        return this.props.chatWindow.channel;
-    }
-
-    get previewText() {
-        const lastMessage = this.channel.newestPersistentOfAllMessage;
-        if (!lastMessage) {
-            return false;
-        }
-        return lastMessage.previewText;
-    }
-}
 
 /**
  * @typedef {Object} Props
@@ -43,7 +24,7 @@ export class ChatBubble extends Component {
         this.store = useService("mail.store");
         const popoverRef = useChildRef();
         this.isMobileOS = isMobileOS();
-        this.popover = usePopover(ChatBubblePreview, {
+        this.popover = usePopover(ThreadPreview, {
             animation: false,
             onClose: () => (this.state.isPopoverOpen = false),
             position: "left-middle",
@@ -60,7 +41,10 @@ export class ChatBubble extends Component {
         this.hover = useHover(["root", popoverRef], {
             onHover: () => {
                 this.env.bus.trigger("ChatBubble:preview-will-open", this);
-                this.popover.open(this.rootRef.el, { chatWindow: this.props.chatWindow });
+                this.popover.open(this.rootRef.el, {
+                    channel: this.channel,
+                    className: "o-mail-ChatBubble-preview",
+                });
                 this.state.isPopoverOpen = true;
             },
             onAway: () => this.popover.close(),
