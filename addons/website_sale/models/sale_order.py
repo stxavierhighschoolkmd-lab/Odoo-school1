@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 from odoo import SUPERUSER_ID, _, api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 from odoo.fields import Command, Domain
 from odoo.http import request
 from odoo.tools import SQL, float_is_zero, float_round
@@ -19,7 +19,13 @@ from odoo.addons.website_sale.models.website import (
 
 
 class SaleOrder(models.Model):
-    _inherit = "sale.order"
+    _name = "sale.order"
+    _inherit = [
+        "sale.order",
+        # Add global alert to the order, rendered on the checkout page.
+        # Note: alerts are transient, they are cleared after being rendered.
+        "website.checkout.alert.mixin",
+    ]
 
     website_id = fields.Many2one(
         help="Website through which this order was placed for eCommerce orders.",
@@ -28,7 +34,6 @@ class SaleOrder(models.Model):
     )
 
     cart_recovery_email_sent = fields.Boolean(string="Cart recovery email already sent")
-    shop_warning = fields.Char(string="Warning")
 
     # Computed fields
     website_order_line = fields.One2many(
@@ -397,9 +402,6 @@ class SaleOrder(models.Model):
         # could be different from the line's product_id (see variant generation logic in
         # `_prepare_order_line_values`).
 
-        if warning:
-            (order_line or self).shop_warning = warning
-
         if not self.env.context.get("skip_cart_verification"):
             self._verify_cart_after_update()
 
@@ -510,9 +512,6 @@ class SaleOrder(models.Model):
         order_line = self._cart_update_order_line(order_line, quantity, **kwargs)
         if not self.env.context.get("skip_cart_verification"):
             self._verify_cart_after_update()
-
-        if warning:
-            (order_line or self).shop_warning = warning
 
         return {
             "added_qty": added_qty,
@@ -678,21 +677,22 @@ class SaleOrder(models.Model):
 
         return values
 
-    def _check_combo_quantities(self, line) -> bool:  # noqa: PLR6301
+    def _check_combo_quantities(self, line) -> str:  # noqa: PLR6301
         """Ensure all combo item lines have the same quantity.
 
-        :returns: whether the combo quantities had to be updated
+        :returns: A reason if the combo quantities had to be updated; otherwise an empty string.
         """
         # Ensure all combo lines have the same quantity
         if not (combo_lines := line.linked_line_ids):
-            return False
+            return ""
+
         available_combo_quantity = min(line.product_uom_qty for line in combo_lines)
         if available_combo_quantity < line.product_uom_qty:
-            line._set_shop_warning_stock(line.product_uom_qty, available_combo_quantity)
+            reason = line._get_shop_warning_stock(line.product_uom_qty, available_combo_quantity)
             (line + combo_lines).product_uom_qty = available_combo_quantity
-            return True
+            return reason
 
-        return False
+        return ""
 
     def _verify_cart_after_update(self):
         """Global checks on the cart after updates.
@@ -995,41 +995,124 @@ class SaleOrder(models.Model):
 
         return res
 
-    def _get_shop_warning(self, clear=True):
+    def _is_cart_ready_for_checkout(self):
+        """Whether the cart is ready to proceed to the checkout "Address" step: `/shop/checkout`.
+
+        This method performs the necessary validations and may add user-facing messages
+        via `_add_alert` to help the customer correct the cart (for example: empty cart).
+
+        Note: `self.ensure_one()`.
+
+        :return: True if the cart can proceed to the Address step (and beyond); False to block
+            progression.
+        :rtype: bool
+        """
         self.ensure_one()
-        warn = self.shop_warning
-        if clear:
-            self.shop_warning = ""
-        return warn
 
-    def _is_cart_ready(self):
-        """Whether the cart is valid and can be confirmed (and paid for).
+        if not self.order_line:
+            self._add_info_alert(self.env._("Your cart is empty!"))
+            return False  # Block the customer
 
+        return True
+
+    def _is_cart_ready_for_payment(self):
+        """Whether the cart is ready to be confirmed and proceed to the checkout "Payment" step:
+        `/shop/payment`.
+
+        This method performs the necessary validations and may add user-facing messages
+        via `_add_alert` to help the customer correct the cart (for example: no delivery method
+        selected).
+
+        Note: `self.ensure_one()`.
+
+        :return: True if the cart can proceed to the Payment step (and beyond); False to block
+            progression.
         :rtype: bool
         """
-        return bool(self)
+        self.ensure_one()
 
-    def _check_cart_is_ready_to_be_paid(self):
-        """Whether the cart is valid and the user can proceed to the payment.
+        if self._has_deliverable_products():
+            return self._is_cart_ready_for_delivery()
 
-        :rtype: bool
-        """
-        if not self._is_cart_ready():
-            raise ValidationError(
-                _("Your cart is not ready to be paid, please verify previous steps.")
-            )
-        if not self.only_services:
-            if not self.carrier_id:
-                raise ValidationError(_("No delivery method is selected."))
-            if self.carrier_id not in self._get_delivery_methods():
-                raise ValidationError(
-                    _("The delivery method is not compatible with your delivery address.")
+        return True
+
+    def _is_cart_ready_for_delivery(self):
+        """Whether the cart is ready to be delivered. This hook is called post /shop/checkout."""
+        if not self.carrier_id:
+            self._add_blocking_alert(self.env._("No delivery method is selected."))
+            return False
+
+        if self.carrier_id not in self._get_delivery_methods():
+            self._add_blocking_alert(
+                self.env._(
+                    "Unfortunately, the delivery method that you selected is no longer available."
+                    " Please update your choice. We apologize for any inconvenience."
                 )
+            )
+            return False
 
-    def _recompute_cart(self):
-        """Recompute taxes and prices for the current cart."""
+        return True
+
+    def _is_commitment_date_valid(self):
+        """Whether the commitment date is still up to date with the carrier constraints."""
+        self.ensure_one()
+        allowed_commitment_dates = (
+            self.commitment_date and self.carrier_id._get_estimate_delivery_days()
+        ) or []
+        if (
+            not allowed_commitment_dates  # No allowed date means any date is acceptable.
+            or self.commitment_date.date().isoformat() in allowed_commitment_dates
+        ):
+            return True
+
+        # The commitment date is normally set by :meth:`_set_delivery_method`. Since the customer
+        # has already selected a delivery method, update it manually.
+        self.commitment_date = allowed_commitment_dates[0]
+
+        if len(allowed_commitment_dates) > 1:
+            message = self.env._(
+                "The selected delivery date was no longer available."
+                " Please pick another delivery date."
+            )
+        else:
+            message = self.env._(
+                "The estimated delivery date was no longer possible."
+                " We apologize for any inconvenience."
+            )
+        self._add_blocking_alert(message)
+        return False
+
+    def _update_cart_taxes_and_prices(self):
+        """Update the taxes and prices and return True if the total amount changed.
+
+        :rtype: bool
+        """
+        self.ensure_one()
+
+        initial_amount = self.amount_total
         self._recompute_taxes()
         self._recompute_prices()
+        if self.currency_id.compare_amounts(self.amount_total, initial_amount):
+            self._add_warning_alert(self.env._("Prices have changed. Please review your cart."))
+            return True
+        return False
+
+    def _is_cart_ready(self):
+        """Whether the cart is free of errors or should the customer be blocked at the current
+        checkout step to fix them.
+
+        :return: True if the cart does not have a blocking alert, False otherwise.
+        :rtype: bool
+        """
+        return not any(alert.get("blocking") for alert in self._get_alerts())
+
+    def _add_blocking_alert(self, message: str, /, **kwargs):
+        """Add an alert of 'danger' level blocking the navigation to the next checkout step."""
+        return self._add_danger_alert(message, blocking=True, **kwargs)
+
+    def _clear_alerts(self):
+        self.order_line._clear_alerts()
+        return super()._clear_alerts()
 
     def _validate_order(self):
         self.filtered("website_id")._archive_partner_if_no_user()

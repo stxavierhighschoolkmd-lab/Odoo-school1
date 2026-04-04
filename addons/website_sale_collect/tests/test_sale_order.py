@@ -1,6 +1,5 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo.exceptions import ValidationError
 from odoo.fields import Command
 from odoo.tests import tagged
 
@@ -98,16 +97,24 @@ class TestSaleOrder(ClickAndCollectCommon):
         self.website.warehouse_id = self.warehouse_2
         so = self._create_in_store_delivery_order()
         so.warehouse_id = self.warehouse
-        free_qty = so._get_free_qty(self.storable_product)
-        self.assertEqual(free_qty, 10)
+        _, free_qty = so._get_cart_and_free_qty(self.storable_product)
+        self.assertEqual(free_qty, 10, msg="in store stock > website stock (10 > 0)")
+
+    def test_02_free_qty_includes_in_store_warehouses(self):
+        self.warehouse_2 = self._create_warehouse()
+        self.website.warehouse_id = self.warehouse_2
+        self._add_product_qty_to_wh(self.storable_product.id, 20, self.warehouse_2.lot_stock_id.id)
+        so = self._create_in_store_delivery_order()
+        so.warehouse_id = self.warehouse
+        _, free_qty = so._get_cart_and_free_qty(self.storable_product)
+        self.assertEqual(free_qty, 20, msg="in store stock < website stock (10 < 20)")
 
     def test_prevent_buying_out_of_stock_products(self):
         cart = self._create_in_store_delivery_order(
             order_line=[Command.create({"product_id": self.product_2.id, "product_uom_qty": 5.0})]
         )
         cart.warehouse_id = self.warehouse
-        with self.assertRaises(ValidationError):
-            cart._check_cart_is_ready_to_be_paid()
+        self.assertFalse(cart._is_cart_ready_for_payment())
 
     def test_product_in_stock_is_available(self):
         cart = self._create_in_store_delivery_order(
