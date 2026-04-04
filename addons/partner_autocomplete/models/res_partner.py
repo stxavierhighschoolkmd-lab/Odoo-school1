@@ -141,7 +141,12 @@ class ResPartner(models.Model):
                 'error': True,
                 'error_message': error
             })
-        return result
+        return self._validate_partner_autocomplete_response(result)
+
+    @api.model
+    def _validate_partner_autocomplete_response(self, autocomplete_response):
+        # To override to add checks
+        return autocomplete_response
 
     @api.model
     def enrich_by_duns(self, duns, timeout=15):

@@ -100,6 +100,15 @@ class ResPartner(models.Model):
     vat = fields.Char(inverse="_inverse_vat", store=True)
 
     @api.model
+    def _validate_partner_autocomplete_response(self, autocomplete_response):
+        result = super()._validate_partner_autocomplete_response(autocomplete_response)
+        if (vat_number := result.get('vat')) and (enriched_company := self.env.context.get('enriched_company_data')):
+            country = self.env['res.country'].browse(enriched_company['country_id']['id']).exists()
+            if country.code and not self._check_vat_number(country.code, vat_number):
+                result['vat'] = False
+        return result
+
+    @api.model
     def _run_vat_checks(self, country, vat, partner_name='', validation='error'):
         """ OVERRIDE """
         if not country or not vat:
