@@ -76,3 +76,55 @@ class TestResPartner(TransactionCase):
         self.assertEqual(test_partner_5.meeting_count, 2)
         self.assertEqual(test_partner_6.meeting_count, 1)
         self.assertEqual(test_partner_7.meeting_count, 1)
+
+    def test_view_multicompany_contact_with_inaccessible_meeting_parent(self):
+        """Check the partner's meeting accesses in a multi-company environment."""
+
+        company1 = self.env.ref('base.main_company')
+        company2 = self.env['res.company'].create({'name': 'OtherCompany'})
+
+        parent, child = self.env['res.partner'].create([
+            {
+                'name': 'Company A',
+                'company_id': company1.id
+            },
+            {
+                'name': 'test_user',
+                'company_id': company1.id,
+            }
+        ])
+        child.parent_id = parent.id
+
+        # create two users
+        group_user = self.env.ref('base.group_user').id
+        main_user, fake_user = self.env['res.users'].create([
+            {
+                'name': 'Main User',
+                'login': 'main_user',
+                'company_id': company1.id,
+                'company_ids': [(6, 0, [company1.id, company2.id])],
+                'groups_id': [(6, 0, [group_user])],
+            },
+            {
+                'name': 'Restricted Kanban User',
+                'login': 'restricted_kanban_user',
+                'company_id': company1.id,
+                'company_ids': [(6, 0, [company1.id, company2.id])],
+                'groups_id': [(6, 0, [group_user])],
+            }
+        ])
+        fake_user.partner_id = child
+
+        # create an event that includes both users' partners (imitates the provided payload)
+        self.env['calendar.event'].create({
+            'name': 'test',
+            'start': '2026-02-16 17:00:00',
+            'stop': '2026-02-16 18:00:00',
+            'duration': 1,
+            'allday': False,
+            'partner_ids': [main_user.partner_id.id, fake_user.partner_id.id],
+        })
+
+        # compute the meeting_count for the fake user's partner
+        child_rec = self.env['res.partner'].with_user(main_user).with_company(company2).browse(child.id)
+        self.assertEqual(child_rec.meeting_count, 1)

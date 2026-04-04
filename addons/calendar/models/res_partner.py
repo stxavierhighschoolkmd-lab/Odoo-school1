@@ -25,9 +25,10 @@ class Partner(models.Model):
     def _compute_meeting(self):
         if self.ids:
             # prefetch 'parent_id'
-            all_partners = self.with_context(active_test=False).search_fetch(
+            all_partners = self.with_context(active_test=False).sudo().search_fetch(
                 [('id', 'child_of', self.ids)], ['parent_id'],
             )
+            parent_map = {p.id: p.parent_id.id for p in all_partners if p.parent_id}
 
             query = self.env['calendar.event']._search([])  # ir.rules will be applied
             meeting_data = self.env.execute_query(SQL("""
@@ -46,12 +47,13 @@ class Partner(models.Model):
                 meetings.setdefault(p_id, set()).add(m_id)
 
             # Add the events linked to the children of the partner
-            for p in self.browse(meetings.keys()):
-                partner = p
-                while partner.parent_id:
-                    partner = partner.parent_id
-                    if partner in self:
-                        meetings[partner.id] = meetings.get(partner.id, set()) | meetings[p.id]
+            children_meetings = list(meetings.items())
+            for p_id, p_meetings in children_meetings:
+                ancestor_id = parent_map.get(p_id)
+                while ancestor_id:
+                    if ancestor_id in self._ids:
+                        meetings.setdefault(ancestor_id, set()).update(p_meetings)
+                    ancestor_id = parent_map.get(ancestor_id)
             return {p_id: list(meetings.get(p_id, set())) for p_id in self.ids}
         return {}
 
