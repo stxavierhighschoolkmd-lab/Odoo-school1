@@ -879,27 +879,31 @@ class StockMoveLine(models.Model):
             quantity = move_line.product_uom_id._compute_quantity(move_line.quantity, uom)
             if line_key not in aggregated_move_lines:
                 qty_ordered = None
-                if backorders and not kwargs.get('strict'):
+                if not kwargs.get('strict'):
                     qty_ordered = move_line.move_id.product_uom_qty
-                    # Filters on the aggregation key (product, description and uom) to add the
-                    # quantities delayed to backorders to retrieve the original ordered qty.
-                    following_move_lines = backorders.move_line_ids.filtered(
-                        lambda ml: self._get_aggregated_properties(move=ml.move_id)['line_key'] == line_key
-                    )
-                    qty_ordered += sum(following_move_lines.move_id.mapped('product_uom_qty'))
-                    # Remove the done quantities of the other move lines of the stock move
-                    previous_move_lines = move_line.move_id.move_line_ids.filtered(
-                        lambda ml: self._get_aggregated_properties(move=ml.move_id)['line_key'] == line_key and ml.id != move_line.id
-                    )
-                    qty_ordered -= sum([m.product_uom_id._compute_quantity(m.quantity, uom) for m in previous_move_lines])
+                    if backorders:
+                        # Filters on the aggregation key (product, description and uom) to add the
+                        # quantities delayed to backorders to retrieve the original ordered qty.
+                        following_move_lines = backorders.move_line_ids.filtered(
+                            lambda ml: self._get_aggregated_properties(move=ml.move_id)['line_key'] == line_key
+                        )
+                        qty_ordered += sum(following_move_lines.move_id.mapped('product_uom_qty'))
+                        # Remove the done quantities of the other move lines of the stock move
+                        previous_move_lines = move_line.move_id.move_line_ids.filtered(
+                            lambda ml: self._get_aggregated_properties(move=ml.move_id)['line_key'] == line_key and ml.id != move_line.id
+                        )
+                        qty_ordered -= sum(m.product_uom_id._compute_quantity(m.quantity, uom) for m in previous_move_lines)
                 aggregated_move_lines[line_key] = {
                     **aggregated_properties,
                     'quantity': quantity,
                     'qty_ordered': qty_ordered or quantity,
                     'product': move_line.product_id,
+                    'counted_move_ids': {move_line.move_id.id},
                 }
             else:
-                aggregated_move_lines[line_key]['qty_ordered'] += quantity
+                if move_line.move_id.id not in aggregated_move_lines[line_key]['counted_move_ids']:
+                    aggregated_move_lines[line_key]['qty_ordered'] += quantity
+                    aggregated_move_lines[line_key]['counted_move_ids'].add(move_line.move_id.id)
                 aggregated_move_lines[line_key]['quantity'] += quantity
 
         # Does the same for empty move line to retrieve the ordered qty. for partially done moves

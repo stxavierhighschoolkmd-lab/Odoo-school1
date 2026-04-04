@@ -241,7 +241,7 @@ class TestMrpStockReports(TestReportsCommon):
             ],
         })
 
-        for back_order, expected_vals in [('never', [12, 12, 2, 2]), ('always', [24, 12, 4, 2])]:
+        for back_order, expected_vals in [('never', [24, 12, 2, 2]), ('always', [24, 12, 4, 2])]:
             picking_form = Form(self.env['stock.picking'])
             picking_form.picking_type_id = self.picking_type_in
             picking_form.partner_id = self.partner
