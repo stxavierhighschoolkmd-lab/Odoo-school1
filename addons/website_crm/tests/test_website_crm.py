@@ -3,6 +3,7 @@
 
 import odoo.tests
 from odoo.addons.crm.tests.common import TestCrmCommon
+from odoo.addons.http_routing.tests.common import MockRequest
 
 
 @odoo.tests.tagged('post_install', '-at_install')
@@ -64,3 +65,31 @@ class TestWebsiteCrm(odoo.tests.HttpCase, TestCrmCommon):
             'type': 'char',
         }]
         self.start_tour(self.env['website'].get_client_action_url('/contactus'), 'website_crm_form_properties', login='admin')
+
+    def test_website_crm_assignment(self):
+        """ Test that website_form_input_filter only uses what the form submits for team and salesperson."""
+        website = self.env.ref('website.default_website')
+        website.crm_default_team_id = self.sales_team_1
+        website.crm_default_user_id = self.user_sales_leads
+
+        base = {'name': 'Test Lead'}
+        with MockRequest(self.env, website=website) as request:
+            lead_model = self.env['crm.lead']
+            filtered = lead_model.website_form_input_filter(request, {
+                **base, 'team_id': self.sales_team_1.id, 'user_id': self.user_sales_leads.id,
+            })
+            self.assertEqual(filtered['team_id'], self.sales_team_1.id)
+            self.assertEqual(filtered['user_id'], self.user_sales_leads.id)
+            filtered = lead_model.website_form_input_filter(request, {
+                **base, 'team_id': self.sales_team_1.id,
+            })
+            self.assertEqual(filtered['team_id'], self.sales_team_1.id)
+            self.assertFalse(filtered.get('user_id'))
+            filtered = lead_model.website_form_input_filter(request, {
+                **base, 'user_id': self.user_sales_leads.id,
+            })
+            self.assertFalse(filtered.get('team_id'))
+            self.assertEqual(filtered['user_id'], self.user_sales_leads.id)
+            filtered = lead_model.website_form_input_filter(request, dict(base))
+            self.assertFalse(filtered.get('team_id'))
+            self.assertFalse(filtered.get('user_id'))

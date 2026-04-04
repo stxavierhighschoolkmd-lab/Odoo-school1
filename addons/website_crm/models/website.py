@@ -12,6 +12,7 @@ class Website(models.Model):
             return [('use_opportunities', '=', True)]
         return [('use_leads', '=', True)]
 
+    # TODO master: remove both fields, no longer used
     crm_default_team_id = fields.Many2one(
         'crm.team', string='Default Sales Teams',
         default=lambda self: self.env['crm.team'].search([], limit=1),
