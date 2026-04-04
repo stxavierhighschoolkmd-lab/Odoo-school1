@@ -14,6 +14,7 @@ export class GradientPicker extends Component {
         onGradientChange: { type: Function, optional: true },
         selectedGradient: { type: String, optional: true },
         noTransparency: { type: Boolean, optional: true },
+        deferDrag: { type: Boolean, optional: true },
     };
 
     setup() {
@@ -228,15 +229,36 @@ export class GradientPicker extends Component {
         };
 
         updateAngle(ev);
-        this.onColorGradientChange();
 
-        const onKnobMouseMove = (ev) => {
-            updateAngle(ev);
+        if (this.props.deferDrag) {
+            // Only update the visual CSS gradient preview during drag and
+            // defer the onGradientChange callback to mouseup to avoid
+            // triggering heavy operations (e.g. SCSS generation) on every
+            // mousemove.
+            this.updateCssGradients();
+
+            const onKnobMouseMove = (ev) => {
+                updateAngle(ev);
+                this.updateCssGradients();
+            };
+            const onKnobMouseUp = () => {
+                document.removeEventListener("mousemove", onKnobMouseMove);
+                this.onColorGradientChange();
+            };
+
+            document.addEventListener("mousemove", onKnobMouseMove);
+            document.addEventListener("mouseup", onKnobMouseUp, { once: true });
+        } else {
             this.onColorGradientChange();
-        };
-        const onKnobMouseUp = () => document.removeEventListener("mousemove", onKnobMouseMove);
 
-        document.addEventListener("mousemove", onKnobMouseMove);
-        document.addEventListener("mouseup", onKnobMouseUp, { once: true });
+            const onKnobMouseMove = (ev) => {
+                updateAngle(ev);
+                this.onColorGradientChange();
+            };
+            const onKnobMouseUp = () => document.removeEventListener("mousemove", onKnobMouseMove);
+
+            document.addEventListener("mousemove", onKnobMouseMove);
+            document.addEventListener("mouseup", onKnobMouseUp, { once: true });
+        }
     }
 }

@@ -73,6 +73,7 @@ export class ColorPicker extends Component {
         defaultOpacity: { type: Number, optional: true },
         grayscales: { type: Object, optional: true },
         noTransparency: { type: Boolean, optional: true },
+        deferDrag: { type: Boolean, optional: true },
         close: { type: Function, optional: true },
         className: { type: String, optional: true },
     };

@@ -156,6 +156,7 @@ export class BuilderColorPicker extends Component {
                 enabledTabs: this.props.enabledTabs,
                 grayscales: this.props.grayscales,
                 defaultOpacity: this.props.defaultOpacity,
+                deferDrag: true,
                 className: "o-hb-colorpicker",
             },
             {
