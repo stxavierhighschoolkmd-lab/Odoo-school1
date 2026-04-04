@@ -3833,6 +3833,7 @@ class AccountTax(models.Model):
                 raw_gross_price_unit = raw_gross_total_excluded
             else:
                 raw_gross_price_unit = raw_gross_total_excluded / base_line['quantity']
+            tax_details[f'unrounded_raw_gross_price_unit{suffix}'] = raw_gross_price_unit
             tax_details[f'raw_gross_price_unit{suffix}'] = float_round(raw_gross_price_unit, precision_digits=precision_digits)
 
             # Compute the amount of the discount due to the 'discount' value set on 'base_line'.

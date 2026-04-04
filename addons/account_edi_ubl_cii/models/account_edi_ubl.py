@@ -1022,7 +1022,7 @@ class AccountEdiUBL(models.AbstractModel):
 
         line_node['cac:Price'] = {
             'cbc:PriceAmount': {
-                '_text': FloatFmt(base_line['tax_details'][f'raw_gross_price_unit{suffix}'], min_dp=1, max_dp=6),
+                '_text': FloatFmt(base_line['tax_details'][f'unrounded_raw_gross_price_unit{suffix}'], min_dp=1),
                 'currencyID': currency.name,
             },
         }
@@ -1215,7 +1215,7 @@ class AccountEdiUBL(models.AbstractModel):
             gross_total_excluded += sign * allowance_charge_node['cbc:Amount']['_text']
 
         line_node['cbc:LineExtensionAmount'] = {
-            '_text': FloatFmt(gross_total_excluded, min_dp=currency.decimal_places),
+            '_text': FloatFmt(gross_total_excluded, max_dp=currency.decimal_places),
             'currencyID': currency.name,
         }
 
@@ -1680,11 +1680,11 @@ class AccountEdiUBL(models.AbstractModel):
         return {
             '_currency': currency,
             'cbc:TaxableAmount': {
-                '_text': FloatFmt(tax_subtotal['base_amount'], min_dp=currency.decimal_places),
+                '_text': FloatFmt(tax_subtotal['base_amount'], max_dp=currency.decimal_places),
                 'currencyID': currency.name
             },
             'cbc:TaxAmount': {
-                '_text': FloatFmt(tax_subtotal['tax_amount'], min_dp=currency.decimal_places),
+                '_text': FloatFmt(tax_subtotal['tax_amount'], max_dp=currency.decimal_places),
                 'currencyID': currency.name
             },
             'cac:TaxCategory': [
@@ -1706,7 +1706,7 @@ class AccountEdiUBL(models.AbstractModel):
         return {
             '_currency': currency,
             'cbc:TaxAmount': {
-                '_text': FloatFmt(tax_total['amount'], min_dp=currency.decimal_places),
+                '_text': FloatFmt(tax_total['amount'], max_dp=currency.decimal_places),
                 'currencyID': currency.name
             },
             'cac:TaxSubtotal': [
@@ -1883,7 +1883,7 @@ class AccountEdiUBL(models.AbstractModel):
             for line_node in vals['document_node'].get(line_key, [])
         )
         vals['legal_monetary_total_node']['cbc:LineExtensionAmount'] = {
-            '_text': FloatFmt(line_extension_amount, min_dp=currency.decimal_places),
+            '_text': FloatFmt(line_extension_amount, max_dp=currency.decimal_places),
             'currencyID': currency.name,
         }
 
@@ -1892,7 +1892,7 @@ class AccountEdiUBL(models.AbstractModel):
         node = vals['legal_monetary_total_node']
 
         node['cbc:TaxExclusiveAmount'] = {
-            '_text': FloatFmt(node['cbc:LineExtensionAmount']['_text'], min_dp=currency.decimal_places),
+            '_text': FloatFmt(node['cbc:LineExtensionAmount']['_text'], max_dp=currency.decimal_places),
             'currencyID': currency.name,
         }
 
@@ -1914,7 +1914,7 @@ class AccountEdiUBL(models.AbstractModel):
         node['cbc:TaxInclusiveAmount'] = {
             '_text': FloatFmt(
                 node['cbc:TaxExclusiveAmount']['_text'] + tax_amount,
-                min_dp=currency.decimal_places,
+                max_dp=currency.decimal_places,
             ),
             'currencyID': currency.name,
         }
@@ -1936,11 +1936,11 @@ class AccountEdiUBL(models.AbstractModel):
 
         node.update({
             'cbc:AllowanceTotalAmount': {
-                '_text': FloatFmt(total_allowance, min_dp=currency.decimal_places),
+                '_text': FloatFmt(total_allowance, max_dp=currency.decimal_places),
                 'currencyID': currency.name,
             } if total_allowance else None,
             'cbc:ChargeTotalAmount': {
-                '_text': FloatFmt(total_charge, min_dp=currency.decimal_places),
+                '_text': FloatFmt(total_charge, max_dp=currency.decimal_places),
                 'currencyID': currency.name,
             } if total_charge else None,
         })
@@ -1951,14 +1951,14 @@ class AccountEdiUBL(models.AbstractModel):
 
         payable_rounding_amount = (node['cbc:PayableRoundingAmount'] or {}).get('_text') or 0.0
         node['cbc:PrepaidAmount'] = {
-            '_text': FloatFmt(0.0, min_dp=currency.decimal_places),
+            '_text': FloatFmt(0.0, max_dp=currency.decimal_places),
             'currencyID': currency.name,
         }
         node['cbc:PayableAmount'] = {
             '_text': FloatFmt(
                 node['cbc:TaxInclusiveAmount']['_text']
                 + payable_rounding_amount,
-                min_dp=currency.decimal_places,
+                max_dp=currency.decimal_places,
             ),
             'currencyID': currency.name,
         }
@@ -1992,7 +1992,7 @@ class AccountEdiUBL(models.AbstractModel):
             }
         else:
             node['cbc:PayableRoundingAmount'] = {
-                '_text': FloatFmt(payable_rounding_amount, min_dp=currency.decimal_places),
+                '_text': FloatFmt(payable_rounding_amount, max_dp=currency.decimal_places),
                 'currencyID': currency.name,
             }
 
