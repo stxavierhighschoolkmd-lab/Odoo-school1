@@ -26,6 +26,9 @@
                                                     t-att-checked="item[entry[0]]"
                                                     t-att-data-id="item._id"
                                                     t-on-click="this.onChange"
+                                                    t-att-disabled="isLastCheckedCheckbox(items, item, entry[0])"
+                                                    t-on-pointerenter="props.preview ? (e) => this.onPointerEnter(e) : () => {}"
+                                                    t-on-pointerleave="props.preview ? () => this.revert() : () => {}"
                                                 />
                                             </div>
                                         </t>

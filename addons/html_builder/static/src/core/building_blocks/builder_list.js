@@ -40,6 +40,7 @@ export class BuilderList extends Component {
         columnWidth: { optional: true },
         forbidLastItemRemoval: { type: Boolean, optional: true },
         isEditable: { type: Boolean, optional: true },
+        disableLastCheckedCheckbox: { type: Boolean, optional: true },
     };
     static defaultProps = {
         addItemTitle: _t("Add"),
@@ -51,6 +52,7 @@ export class BuilderList extends Component {
         columnWidth: {},
         forbidLastItemRemoval: false,
         isEditable: true,
+        disableLastCheckedCheckbox: false,
     };
     static components = { BuilderComponent, SelectMenu };
 
@@ -60,7 +62,7 @@ export class BuilderList extends Component {
         }
         this.dialog = useService("dialog");
         useBuilderComponent();
-        const { state, commit, preview } = useInputBuilderComponent({
+        const { state, commit, preview, revert } = useInputBuilderComponent({
             id: this.props.id,
             defaultValue: this.parseDisplayValue([]),
             parseDisplayValue: this.parseDisplayValue,
@@ -69,6 +71,7 @@ export class BuilderList extends Component {
         this.state = state;
         this.commit = commit;
         this.preview = preview;
+        this.revert = revert;
         this.allRecords = this.formatRawValue(this.props.records);
 
         onWillUpdateProps((props) => {
@@ -200,15 +203,23 @@ export class BuilderList extends Component {
         this.handleValueChange(e.target, true);
     }
 
-    handleValueChange(targetInputEl, commitToHistory) {
+    handleValueChange(targetInputEl, commitToHistory, { isHovering = false } = {}) {
         const id = targetInputEl.dataset.id;
         const propertyName = targetInputEl.name;
         const isCheckbox = targetInputEl.type === "checkbox";
         const isText = targetInputEl.type === "text";
-        const value = isCheckbox ? targetInputEl.checked : targetInputEl.value;
+        // `isHovering` is used as workaround for preview. Since hovering
+        // does not change `targetInputEl.checked`, we manually invert value.
+        const value = isCheckbox ? targetInputEl.checked !== isHovering : targetInputEl.value;
 
         let items = this.formatRawValue(this.state.value);
 
+        // To prevent unchecking the last checked checkbox, if the user manages
+        // to click during 1 annimationFrame, which is extremely rare.
+        if (isCheckbox && this.isLastCheckedCheckbox(items, id, propertyName)) {
+            targetInputEl.checked = true;
+            return;
+        }
         if (value === true && this.props.itemShape[propertyName] === "exclusive_boolean") {
             for (const item of items) {
                 item[propertyName] = false;
@@ -233,5 +244,35 @@ export class BuilderList extends Component {
         } else {
             this.preview(items);
         }
+    }
+
+    /**
+     * Checks if the checkbox for the given item is the only one
+     * still checked for the given property, and should be disabled
+     * to prevent unchecking all options.
+     *
+     * @param {Array} items - List of all items
+     * @param {string} currentItem - Item to check
+     * @param {string} propertyName - Property name to check against
+     * @returns {boolean} True if this is the last checked checkbox
+     */
+    isLastCheckedCheckbox(items, currentItem, propertyName) {
+        if (!this.props.disableLastCheckedCheckbox || !currentItem[propertyName]) {
+            return false;
+        }
+        let activeCount = 0;
+        for (const item of items) {
+            if (item[propertyName]) {
+                activeCount++;
+            }
+            if (activeCount > 1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    onPointerEnter(e) {
+        this.handleValueChange(e.target, false, { isHovering: true });
     }
 }

@@ -463,3 +463,41 @@ test("drops blank textual entries", async () => {
     await press("enter");
     expect(".we-bg-options-container input").toHaveCount(1);
 });
+
+test("should preview checkbox on hover and disable last checked checkbox", async () => {
+    const checkboxSelector = (id) =>
+        `.we-bg-options-container tr:nth-of-type(${id}) .o-checkbox input`;
+    addBuilderAction({
+        customAction: class extends BuilderAction {
+            static id = "testCheckboxAction";
+            apply({ isPreviewing }) {
+                expect.step(isPreviewing ? "previewing" : "applied");
+            }
+        },
+    });
+    addBuilderOption({
+        selector: ".test-options-target",
+        template: xml`
+            <BuilderList
+                action="'testCheckboxAction'"
+                dataAttributeAction="'list'"
+                itemShape="{ value: 'boolean' }"
+                default="{'value':'true'}"
+                disableLastCheckedCheckbox="true"
+                preview="true"
+            />`,
+    });
+    await setupHTMLBuilder(`<div class="test-options-target">a</div>`);
+    await contains(":iframe .test-options-target").click();
+    for (let i = 0; i < 3; i++) {
+        await contains(".we-bg-options-container .builder_list_add_item").click();
+        expect.verifySteps(["applied"]);
+    }
+    for (let i = 1; i <= 2; i++) {
+        await contains(checkboxSelector(i)).click();
+        expect.verifySteps(["previewing", "applied"]);
+    }
+    expect(checkboxSelector(3)).toHaveAttribute("disabled");
+    await contains(checkboxSelector(1)).hover();
+    expect.verifySteps(["previewing"]);
+});
