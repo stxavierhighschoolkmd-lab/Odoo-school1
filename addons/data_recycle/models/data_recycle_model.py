@@ -9,6 +9,7 @@ from odoo import api, fields, models, modules
 from odoo.exceptions import UserError
 from odoo.fields import Domain
 from odoo.tools import _, split_every
+from odoo.tools.safe_eval import safe_eval
 
 # When recycle_mode = automatic, _recycle_records calls action_validate.
 # This is quite slow so requires smaller batch size.
@@ -218,3 +219,16 @@ class Data_RecycleModel(models.Model):
         if self.recycle_mode == 'manual':
             return self.open_records()
         return
+
+    def refresh_recycle_records(self):
+        self.search([])._recycle_records(batch_commits=True)
+        recycle_model_id = self.env.context.get('recycle_model_id')
+        action = self.env["ir.actions.actions"]._for_xml_id("data_recycle.action_data_recycle_record")
+        context = action.get('context', {})
+        if isinstance(context, str):
+            context = safe_eval(context)
+        if recycle_model_id:
+            context['searchpanel_default_recycle_model_id'] = recycle_model_id
+        action['context'] = context
+        action['target'] = 'main'
+        return action
