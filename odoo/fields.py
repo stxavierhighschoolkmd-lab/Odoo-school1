@@ -1533,7 +1533,7 @@ class Float(Field):
     def get_digits(self, env):
         if isinstance(self._digits, str):
             precision = env['decimal.precision'].precision_get(self._digits)
-            return 16, precision
+            return (16, precision) if precision else None
         else:
             return self._digits
 
