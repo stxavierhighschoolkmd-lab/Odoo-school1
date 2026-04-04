@@ -64,6 +64,7 @@ registry.category("web_tour.tours").add("selfAlwaysAttributeVariants", {
         CartPage.checkProduct("Chair", "10", "1"),
         CartPage.checkAttribute("Chair", [{ name: "Color", value: "White" }]),
         CartPage.clickBack(),
+        ProductPage.clickProduct("Desk Organizer"),
         ProductPage.clickProduct("Chair"),
         ...ProductPage.setupAttribute([{ name: "Color", value: "Red" }]),
         Utils.clickBtn("Checkout"),

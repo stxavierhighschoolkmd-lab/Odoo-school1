@@ -107,6 +107,12 @@ class TestSelfOrderAttribute(SelfOrderCommonTest):
             })],
         })
 
+        # product with one variant with is_custom = true
+        desk = self.desk_organizer
+        desk.attribute_line_ids = desk.attribute_line_ids.filtered(lambda al: al.display_name == "Fabric")
+        ptvs = desk.attribute_line_ids.value_ids
+        desk.attribute_line_ids.value_ids = [Command.set(ptvs.filtered(lambda pt: pt.is_custom).ids)]
+
         self.pos_config.with_user(self.pos_user).open_ui()
         self.pos_config.current_session_id.set_opening_control(0, "")
         self_route = self.pos_config._get_self_order_route()
@@ -116,9 +122,10 @@ class TestSelfOrderAttribute(SelfOrderCommonTest):
         self.assertEqual(order.lines[0].product_id.id, chair_product_tmpl.product_variant_ids[0].id)
         self.assertEqual(order.lines[0].attribute_value_ids.ids, chair_product_tmpl.product_variant_ids[0].product_template_attribute_value_ids.ids)
         self.assertEqual(order.lines[0].price_unit, 10.0)
-        self.assertEqual(order.lines[1].product_id.id, chair_product_tmpl.product_variant_ids[1].id)
-        self.assertEqual(order.lines[1].attribute_value_ids.ids, chair_product_tmpl.product_variant_ids[1].product_template_attribute_value_ids.ids)
-        self.assertEqual(order.lines[1].price_unit, 15.0)
+        self.assertEqual(order.lines[1].product_id.id, desk.id)
+        self.assertEqual(order.lines[2].product_id.id, chair_product_tmpl.product_variant_ids[1].id)
+        self.assertEqual(order.lines[2].attribute_value_ids.ids, chair_product_tmpl.product_variant_ids[1].product_template_attribute_value_ids.ids)
+        self.assertEqual(order.lines[2].price_unit, 15.0)
 
     def test_self_order_product_info(self):
         self.pos_config.write({
