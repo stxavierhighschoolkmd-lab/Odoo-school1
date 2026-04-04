@@ -166,7 +166,7 @@ class ProductTemplate(models.Model):
             'id', 'display_name', 'standard_price', 'categ_id', 'pos_categ_ids', 'taxes_id', 'barcode', 'name', 'list_price', 'is_favorite',
             'default_code', 'to_weight', 'uom_id', 'description_sale', 'description', 'tracking', 'type', 'service_tracking', 'is_storable',
             'write_date', 'color', 'pos_sequence', 'available_in_pos', 'attribute_line_ids', 'active', 'image_128', 'combo_ids', 'product_variant_ids', 'public_description',
-            'pos_optional_product_ids', 'sequence', 'product_tag_ids'
+            'pos_optional_product_ids', 'sequence', 'product_tag_ids', 'currency_id',
         ]
 
     @api.model
@@ -266,13 +266,22 @@ class ProductTemplate(models.Model):
             for tax in taxes:
                 taxes_by_company[tax.company_id.id].add(tax.id)
 
-        different_currency = config_id.currency_id != self.env.company.currency_id
+        different_currency = {
+            product['currency_id']: product for product in products
+            if config_id.currency_id.id != product['currency_id']
+        }
+        different_currency = {}
+        for product in products:
+            currency_id = product['currency_id']
+            if currency_id != config_id.currency_id.id:
+                different_currency.setdefault(currency_id, []).append(product)
 
         self._add_archived_combinations(products)
-        for product in products:
-            if different_currency:
-                product['list_price'] = self.env.company.currency_id._convert(product['list_price'], config_id.currency_id, self.env.company, fields.Date.today())
-                product['standard_price'] = self.env.company.currency_id._convert(product['standard_price'], config_id.currency_id, self.env.company, fields.Date.today())
+        for currency_id, product_templates in different_currency.items():
+            currency = self.env['res.currency'].browse(currency_id)
+            for product in product_templates:
+                product['list_price'] = currency._convert(product['list_price'], config_id.currency_id, self.env.company, fields.Date.today())
+                product['standard_price'] = currency._convert(product['standard_price'], config_id.currency_id, self.env.company, fields.Date.today())
 
             product['image_128'] = bool(product['image_128'])
 
