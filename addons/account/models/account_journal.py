@@ -810,6 +810,15 @@ class AccountJournal(models.Model):
             if not vals['code']:
                 raise UserError(_("Cannot generate an unused journal code. Please change the name for journal %s.", vals['name']))
 
+        # === Fill missing default account for sale/purchase journals ===
+        if journal_type in ('sale', 'purchase') and not vals.get('default_account_id'):
+            if journal_type == 'purchase':
+                default_account = self.env['ir.property'].with_company(company)._get('property_account_expense_categ_id', 'product.category')
+            else:
+                default_account = self.env['ir.property'].with_company(company)._get('property_account_income_categ_id', 'product.category')
+            if default_account:
+                vals['default_account_id'] = default_account.id
+
         # === Fill missing refund_sequence ===
         if 'refund_sequence' not in vals:
             vals['refund_sequence'] = vals['type'] in ('sale', 'purchase')
