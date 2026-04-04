@@ -13,6 +13,7 @@ const QUICK_CREATE_CALENDAR_EVENT_FIELDS = {
     stop_date: { type: "date" },
     stop: { type: "datetime" },
     allday: { type: "boolean" },
+    duration: { type: "float" },
     partner_ids: { type: "many2many" },
     videocall_location: { type: "string" },
     description: { type: "string" }
