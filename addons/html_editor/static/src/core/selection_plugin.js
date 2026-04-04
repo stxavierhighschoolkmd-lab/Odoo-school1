@@ -290,6 +290,13 @@ export class SelectionPlugin extends Plugin {
         this.editable.focus = () => this.focusEditable();
     }
 
+    destroy() {
+        if (this.editableOriginalFocus) {
+            this.editable.focus = this.editableOriginalFocus;
+        }
+        super.destroy();
+    }
+
     selectAll() {
         const selection = this.getEditableSelection();
         const containerSelector = "#wrap > *, .oe_structure > *, [contenteditable]";
@@ -1063,12 +1070,29 @@ export class SelectionPlugin extends Plugin {
     }
 
     focusEditable() {
+<<<<<<< 80b3a73267787849be66fc1c91d39d038effedb9
         const { editableSelection, currentSelectionIsInEditable } = this.getSelectionData();
         if (this.editable.contains(this.document.activeElement) && currentSelectionIsInEditable) {
             // Editor has focus — nothing to do.
+||||||| 47b8b956922f8bace719be0555b4c61bb546541b
+        const { editableSelection, documentSelectionIsInEditable } = this.getSelectionData();
+        if (this.editable.contains(this.document.activeElement) && documentSelectionIsInEditable) {
+            // Editor has focus — nothing to do.
+=======
+        const selection = this.document.getSelection();
+        const documentSelectionIsInEditable = selection && this.isSelectionInEditable(selection);
+        if (this.editable.contains(this.document.activeElement) && documentSelectionIsInEditable) {
+            // Editor has focus — nothing to do. Unless the current active
+            // element is a textarea, in which case we want to focus the
+            // editable to update the selection to the editable.
+            if (this.document.activeElement.tagName === "TEXTAREA") {
+                this.editableOriginalFocus.call(this.editable);
+            }
+>>>>>>> 75ce1f36fa0bf6f00d13bfeec1f9ee5a1d96bfb5
             return;
         }
 
+<<<<<<< 80b3a73267787849be66fc1c91d39d038effedb9
         // Focusing the closest editable element is required since, in the website
         // 'this.editable' itself is contenteditable="false`.
         const closestEditable = closestElement(
@@ -1080,6 +1104,17 @@ export class SelectionPlugin extends Plugin {
         } else {
             closestEditable?.focus({ preventScroll: true });
         }
+||||||| 47b8b956922f8bace719be0555b4c61bb546541b
+        // Manualy focusing the editable is necessary to avoid some non-deterministic error in the HOOT unit tests.
+        // Use the copy of the original focus but prevent scrolling.
+        this.editableOriginalFocus.call(this.editable, { preventScroll: true });
+=======
+        const { editableSelection } = this.getSelectionData();
+
+        // Manualy focusing the editable is necessary to avoid some non-deterministic error in the HOOT unit tests.
+        // Use the copy of the original focus but prevent scrolling.
+        this.editableOriginalFocus.call(this.editable, { preventScroll: true });
+>>>>>>> 75ce1f36fa0bf6f00d13bfeec1f9ee5a1d96bfb5
 
         // If selection is inside a non-editable element, focusing editor might
         // move cursor to different position. so reapply the last selection.
